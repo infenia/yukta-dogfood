@@ -623,7 +623,7 @@ export function main(argv: string[]): number {
   if (argv.includes('--check')) {
     const cur = existsSync(PATH) ? readFileSync(PATH, 'utf8') : ''
     if (cur !== out) {
-      console.error('session.json is stale: run `bun examples/dogfood/src/heal/gen-session.ts` and commit it')
+      console.error('session.json is stale: run `bun src/heal/gen-session.ts` and commit it')
       return 1
     }
     console.log('session.json is current')

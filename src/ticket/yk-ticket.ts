@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// yk ticket: the commands of the ticket pipeline (Epic #1872). Called by dogfood/src/yk.ts; examples/dogfood/yk is the same entry for people who stand in
+// yk ticket: the commands of the ticket pipeline (Epic #1872). Called by dogfood/src/yk.ts; yk is the same entry for people who stand in
 // this folder.
 //
 //   yk ticket run <issue> [--local] [--detach [--notify]]   run the `ticket` workflow on an issue: a tested change on branch issue/<n> in ../yukta-issue-<n>;
@@ -16,7 +16,7 @@
 //   yk ticket supervisor                          install the dogfood supervisor of the ticket questions (supervisor/*.json: internal session, workflow, profile, binding)
 //   yk ticket report [--json]                      first-try pass rate, cost share and cache hit ratio by role, prefix mismatches, BLOCKED rate (ticket-events.jsonl)
 //   yk ticket resume|stop <issue|execution>       continue a paused run / end it (a drain, like yk stop --tree)
-// Approvals use `yk approve|reject <execution>` as the other gates do. The run dir is .yukta-dev/ticket/<run_id>/ (see examples/dogfood/README.md, "Ticket pipeline").
+// Approvals use `yk approve|reject <execution>` as the other gates do. The run dir is .yukta-dev/ticket/<run_id>/ (see README.md, "Ticket pipeline").
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname } from 'node:path'

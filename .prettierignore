@@ -9,3 +9,4 @@ bun.lock
 fixer-rules.md
 fixer-rules/
 ticket-template.md
+hooks

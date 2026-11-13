@@ -9,6 +9,25 @@ models, cheapest first, to fix it before a developer has to step in.
 This file is the one guide: how to set it up, which commands exist, how heal works, how to operate and improve it. (The former `DESIGN.html` and
 `RUNBOOK.md` were folded into it; the old design page is in git history.)
 
+## Setup: two sibling checkouts
+
+This repository holds the tooling only. It works **on** a [yukta](https://github.com/infenia/yukta) checkout:
+
+- `yk` takes the project from the **current directory's** git toplevel (or `YUKTA_REPO_ROOT`), so run it from inside a yukta checkout.
+- It reads its own files (`session.json`, `rules.json`, `heal.json`, ...) from the checkout it lives in: `$DEV_HOME/dogfood`
+  (`YUKTA_DOGFOOD_HOME` overrides; `DEV_HOME` is `~/.local/state/yukta-dev`). The dev server is built from `$DEV_HOME/main`, a worktree of yukta `origin/main`.
+- yukta pins the version it works with in its `.dogfood-ref` (a commit or tag of this repository). In a yukta checkout,
+  `scripts/dogfood-setup.sh` clones or updates `$DEV_HOME/dogfood` to that ref, and `scripts/dogfood-hook.sh` runs the Claude Code hooks from it.
+
+```bash
+cd yukta && scripts/dogfood-setup.sh      # once, and after a change of .dogfood-ref
+export PATH="$HOME/.local/state/yukta-dev/dogfood:$PATH"
+yk up                                      # from inside the yukta checkout
+```
+
+To develop this repository, clone it anywhere, set `YUKTA_DOGFOOD_HOME` to that clone and run `yk` from a yukta checkout; `bun test` and
+`bun check` run here directly, and CI runs them.
+
 | I want to...                                        | Read                                                                   |
 | --------------------------------------------------- | ---------------------------------------------------------------------- |
 | get going                                           | [Setup](#setup), then [Commands](#commands)                            |
@@ -30,7 +49,7 @@ any checkout/branch ──yk──┘  session apply → workflow start → prob
 
 - **One dev server per machine**, built from `origin/main` (`yk up`), listening on `127.0.0.1:9858`. It is a normal Yukta server that runs the `tool`,
   `check`, `heal`, `attempt`, `claude`, `pickup` and `ticket` workflows from `session.json`.
-- **`yk` is the client** (`examples/dogfood/yk`, TypeScript on Bun). It applies the workflow library to a session for your checkout, starts a workflow
+- **`yk` is the client** (`yk`, TypeScript on Bun). It applies the workflow library to a session for your checkout, starts a workflow
   with your working directory in the payload, watches it (problems only) and prints a single `RESULT` line.
 - **Workflows come from your checkout, plugins from the server.** Editing `heal.json` or the generators changes what runs at once; a plugin
   change needs a merged commit and a server swap (`yk up`).
@@ -44,16 +63,16 @@ any checkout/branch ──yk──┘  session apply → workflow start → prob
 Ollama with the triage model for the heal triage (without it heal starts at the average level).
 
 ```bash
-examples/dogfood/yk up            # build origin/main (minutes the first time per commit) and start it
-examples/dogfood/yk plan          # what a check of your changes would run
-examples/dogfood/yk check         # run it; a failing stage is healed or ends the run
-examples/dogfood/yk status        # what runs, stale or not (exit 3 when down)
+yk up            # build origin/main (minutes the first time per commit) and start it
+yk plan          # what a check of your changes would run
+yk check         # run it; a failing stage is healed or ends the run
+yk status        # what runs, stale or not (exit 3 when down)
 ```
 
 `yk check`, `yk gradle` and `yk tool` start the server on demand. In Claude Code the SessionStart hook puts `yk` on PATH.
 
 > **PATH matters.** The server inherits its PATH from whoever started it, and the ticket gate runs a bare `yk tool …`. Start it (or
-> `yk pickup session`) only from a shell where `yk` is on PATH (Claude Code, or add `examples/dogfood` to PATH); otherwise a ticket run stops at the
+> `yk pickup session`) only from a shell where `yk` is on PATH (Claude Code, or add this checkout to PATH); otherwise a ticket run stops at the
 > gate with `yk: command not found`.
 
 ### Keeping the server current
@@ -200,7 +219,7 @@ a per-effort budget and time box. `YK_ADVISOR=sonnet` (experimental, off by defa
 - `heal.json`: ladders per level, efforts (budget, time box), triage model and URL, the healable stages with their free fixes,
   the extra tools (ui, docs, reuse, actionlint). `YUKTA_TRIAGE_MODEL` and `YUKTA_TRIAGE_URL` override the triage model and URL.
 - `fixer-rules.md`: the common system prompt of every fixer. `fixer-rules/<kind>.md` is appended for the failed stage (`style` → `pmd`, `spotbugs`, `tests` → `junit`, `coverage`, `compile`, `ui_vitest` → `vitest`, other `ui_*` → `ui`, `cli_*` → `go`); any other stage gets the common prompt alone. One constant file per kind, so the prompt cache holds. To add a role, add the file and a line in the `case` of `src/heal/claude.ts`.
-- `session.json` is **generated**: after editing `heal.json`, run `bun src/heal/gen-session.ts` (through `yk tool -C examples/dogfood bun src/heal/gen-session.ts`), then commit it.
+- `session.json` is **generated**: after editing `heal.json`, run `bun src/heal/gen-session.ts` (through `bun src/heal/gen-session.ts`), then commit it.
 - Events of every heal step: `~/.local/state/yukta-dev/heal-events.jsonl`; records of one run: `<checkout>/.yukta-dev/heal/`.
 
 ## Pickup
@@ -351,7 +370,7 @@ is sent; the UI and `yk cli inputs answer` still answer. Design: `design/plans/t
 | questions never reach the session                      | `yk pickup status` says the bridge is not running: `yk pickup session` or `yk pickup bridge`                                                              |
 | ticket run `SUCCESS`, no PR, nothing implemented       | the server has no `yk` on PATH (`spec/gate.json` says `yk: command not found`): `yk down`, `yk up` from a shell with `yk` on PATH, `yk ticket resume <n>` |
 
-Related: "The `pickup` profile" (channel environment variables) and "Ticket pipeline" below; tests: `yk tool -C examples/dogfood bun test pickup`.
+Related: "The `pickup` profile" (channel environment variables) and "Ticket pipeline" below; tests: `bun test pickup`.
 
 ## Ticket pipeline (work in progress)
 
@@ -360,7 +379,7 @@ small step at a time inside hard guardrails; a reviewer signs off. Code (not a m
 specs, tests, code and reviews. Design: `design/plans/ticket-pipeline.md` (Epic #1872); open questions answered in
 [Design notes](#design-notes-and-measurements-ticket-pipeline).
 
-TypeScript on Bun: `yk tool -C examples/dogfood bun install`, tests with `yk tool -C examples/dogfood bun test`.
+TypeScript on Bun: `bun install`, tests with `bun test`.
 
 ### Flow
 
@@ -447,7 +466,7 @@ Sizing can only **raise** the route: `route` turns it into complexity and risk b
 
 ### Source map
 
-Everything is in `examples/dogfood`, next to `yk`: sources in `src/ticket/`, tests in `test/ticket/`, data in `schemas/`, `fixtures/`, `supervisor/`,
+Everything is in this repository, next to `yk`: sources in `src/ticket/`, tests in `test/ticket/`, data in `schemas/`, `fixtures/`, `supervisor/`,
 `project.json`, `ticket-template.md` and the generated `ticket-session.json`. `session.json` is generated: do not read or edit it.
 
 | Path                                              | What                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -462,7 +481,7 @@ Everything is in `examples/dogfood`, next to `yk`: sources in `src/ticket/`, tes
 | `src/ticket/ladder.ts`                            | failure routing and escalation (`ticketkit ladder decide                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | heal    | next-step | route-failure | build-revision                                                                                                                                                                                                                                                                                                                                                                                                    | apply-revision | review-verdict | need-approval | pause-packet | ack-pause | final-fail`): the retry ladder (a step starts on `implementer`, or `implementer_tricky`when the architect marked it`tricky` (`stepModel`in`src/ticket/lib.ts`); attempt 2 same model, attempt 3 one tier up, then the architect revises; short-circuits for BLOCKED, infra errors, licenses and security), heal for mechanical stages (everything outside `write_files`and any locked test is reverted and recorded),`baseline_failure`, revisions (completed steps immutable, spec v+1, changed cases only through the test writer), budgets (cost, wall clock, attempts, revisions: over a limit the run pauses with `human-packet.md`and waits for`yk approve | reject`) and the verdict override (a blocker or an unfaithful test turns APPROVE into CHANGES_REQUESTED) |
 | `src/ticket/gen-ticket.ts`, `ticket-session.json` | generates the workflows `ticket`, `attempt_round`, `steps_round`, `step`, `finalize` and `escalate`; `--check` fails when the committed `session.json` is stale. `session.json` is generated: do not read or edit it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `src/ticket/github.ts`                            | the GitHub side (design 15.9): `ticketkit github intake` (open, assigned, Ready, criteria; a criterion that asks for secrets, a push to main, other repos, settings or skipped checks BLOCKS, such text elsewhere in the issue is ignored), `claim`, `plan-comment`, `dead-end` (issue back to Ready + a comment, worktree stays), `finish` (drops the `[T#]` tags from the locked test names, format, commit, push `issue/<n>`, draft PR with `Fixes #n`: summary, changes per step, acceptance criteria with the reviewer's evidence, review verdict and findings, assumptions, the test cases with their tests, the final `RESULT` line, token usage per role (input, output, cache read and write, cost); fails without `Fixes #n` and `RESULT`). Never merges, never pushes main                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `yk`, `src/ticket/yk-ticket.ts`                   | `yk ticket run <issue> [--detach [--notify]]`, `yk ticket status\|resume\|stop <issue\|execution>` (also `examples/dogfood/yk ticket run 123`); approvals use `yk approve\|reject`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `yk`, `src/ticket/yk-ticket.ts`                   | `yk ticket run <issue> [--detach [--notify]]`, `yk ticket status\|resume\|stop <issue\|execution>` (also `yk ticket run 123`); approvals use `yk approve\|reject`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `src/ticket/waves.ts`                             | parallel step waves (design 11.2): `ticketkit waves next-wave                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | prepare | warm-wait | merge         | check`. Two ready steps with disjoint `write_files` run at once (`max_parallel`2, the`tool`group has two places), the second in its own worktree and branch from the same base, after the first has warmed the cache; they are merged in step order (a conflict is aborted and escalated to the later step) and a post-wave check runs on the merge.`ui/package.json`, the lockfiles and `shared_files` run alone |
 | `src/ticket/report.ts`                            | `ticketkit report` / `yk ticket report`: first-try pass rate and mean attempts by (model, effort, complexity), cost share and cache hit ratio by role, `prefix_hash` mismatches, the BLOCKED rate (above 15% the steps are too small), how often Sizing raised the static complexity or risk                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `ticketkit flow mutation`                         | pitest on the changed classes at medium or high risk (never `:boot`, `:plus:*`, `:test-support`); survivors above `mutation.max_survivor_rate` (0.25) reach the reviewer as a finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -512,7 +531,7 @@ mod; the mod adds the panes and commands.
 ```
 
 In `/config` set the `yukta` mod's
-`headers_command` `bash -c 'exec "$(git rev-parse --show-toplevel)"/examples/dogfood/yk mcp-headers'` (it gives the Yukta MCP server its key).
+`headers_command` `bash -c 'exec \"${YUKTA_DOGFOOD_HOME:-$HOME/.local/state/yukta-dev/dogfood}\"/yk mcp-headers'` (it gives the Yukta MCP server its key).
 
 ### Files (`mod/hooks/`)
 
@@ -522,7 +541,7 @@ In `/config` set the `yukta` mod's
 | `rewrite.ts`           | which build, test or lint command must run through `yk`, and how                 |
 | `gate.ts`              | the message a teammate gets back when `yk check --no-heal` fails                 |
 | `plan.ts`, `panes.tsx` | parsing of `yk plan` / `yk watch --stages` output, and the look of the two panes |
-| `*.test.ts(x)`         | tests: `claude plugin test examples/dogfood/mod`                                 |
+| `*.test.ts(x)`         | tests: `claude plugin test mod`                                 |
 
 ### Agent teams (experimental)
 
@@ -550,7 +569,7 @@ caller ── POST /v1/events ──▶ channel ── notifications/claude/chan
 caller ◀── GET /v1/stream ─── channel ◀── reply / done tools, permission prompts ── session
 ```
 
-Bun and TypeScript; dependencies are `@modelcontextprotocol/sdk` and `zod` (`yk tool -C examples/dogfood/channel bun install`, lockfile `bun.lock`).
+Bun and TypeScript; dependencies are `@modelcontextprotocol/sdk` and `zod` (`cd channel && bun install`, lockfile `bun.lock`).
 
 ### Use it
 
@@ -649,12 +668,12 @@ A new profile is a name, a token and registry location, instructions, and option
 ### Develop the channel
 
 ```bash
-yk tool -C examples/dogfood/channel bun test      # unit tests (in-memory MCP client) and the stdio end-to-end test
-yk tool -C examples/dogfood/channel bun check     # type check
-yk tool -C examples/dogfood bun test pickup       # `pickup tick` against real channels
+cd channel && bun test      # unit tests (in-memory MCP client) and the stdio end-to-end test
+cd channel && bun check     # type check
+bun test pickup       # `pickup tick` against real channels
 ```
 
-Paths relative to `examples/dogfood/channel/`:
+Paths relative to `channel/`:
 
 | File                            | What                                                                                       |
 | ------------------------------- | ------------------------------------------------------------------------------------------ |
@@ -798,16 +817,16 @@ Changing `yk`, heal, pickup or the ticket pipeline itself.
 | `src/pickup.ts`, `src/heal/gen-session.ts` | `tick` (hand the next assigned, Ready issue to the channel) and the generator of the `pickup` workflow in `session.json`                                                                                                                                           |
 | `test/pickup.test.ts`                      | offline test of `tick` (real channel, fake `gh`), the ticket mode and `busy()` ignoring the schedule                                                                                                                                                               |
 | `test/yk.online.test.ts`                   | interrupt, detach and `--stages` of `yk` against the dev server (`YK_ONLINE=1`, no cost)                                                                                                                                                                           |
-| `package.json`, `tsconfig.json`            | the Bun package of `src/` and `test/` (`yk tool -C examples/dogfood bun test`)                                                                                                                                                                                     |
+| `package.json`, `tsconfig.json`            | the Bun package of `src/` and `test/` (`bun test`)                                                                                                                                                                                     |
 
 ### Tests
 
 ```bash
-yk tool -C examples/dogfood bun test            # offline: plan, heal steps, events, stats, notify, pickup, claude launcher, heal report, triage evaluation
-yk tool -C examples/dogfood bun test             # offline: the ticket pipeline (schemas, spec, steps, gate, ladder, waves, decisions, the walked workflows)
+bun test            # offline: plan, heal steps, events, stats, notify, pickup, claude launcher, heal report, triage evaluation
+bun test             # offline: the ticket pipeline (schemas, spec, steps, gate, ladder, waves, decisions, the walked workflows)
 yk tool -C .claude/hooks bun test                  # offline: the Claude Code hook (what is denied, what passes)
 ../../.github/scripts/plan-vs-ci.test.sh           # offline, also in CI: plan.ts and ci-tasks.sh pick the same modules
-YK_ONLINE=1 yk tool -C examples/dogfood bun test heal.online yk.online   # on the dev server (yk up): a stopped foreground yk stops its run, --detach outlives, --stages;
+YK_ONLINE=1 bun test heal.online yk.online   # on the dev server (yk up): a stopped foreground yk stops its run, --detach outlives, --stages;
                                                    # check and heal against a fake claude and a fake Ollama (about a minute, no API cost)
 ```
 
@@ -817,4 +836,4 @@ pieces (issue, epic, nav, steer) are in git history.
 
 ### Format and type check
 
-`bun fmt` formats (settings in `bunfig.toml` `[fmt]`, skips in `.prettierignore`: generated `session.json` and the prompt files); `bun check` type checks like TypeScript 7 whatever `typescript` is installed (`bun -p process.versions.typescript`), `-p channel` for the one package with its own tsconfig. `yk check` runs both as the stages `dogfood.fmt` (free fix: `bun fmt`) and `dogfood.check` whenever anything under `examples/dogfood/` changes. Scripts: `bun run format`, `format:check`, `typecheck` (not named `fmt`: a project `fmt` script would replace `bun fmt`). Bun 1.4.4 has no `bun lint` yet (the docs at bun.com/docs/lint describe it), so there is no lint stage.
+`bun fmt` formats (settings in `bunfig.toml` `[fmt]`, skips in `.prettierignore`: generated `session.json` and the prompt files); `bun check` type checks like TypeScript 7 whatever `typescript` is installed (`bun -p process.versions.typescript`), `-p channel` for the one package with its own tsconfig. `yk check` runs both as the stages `dogfood.fmt` (free fix: `bun fmt`) and `dogfood.check` whenever anything under the repository root changes. Scripts: `bun run format`, `format:check`, `typecheck` (not named `fmt`: a project `fmt` script would replace `bun fmt`). Bun 1.4.4 has no `bun lint` yet (the docs at bun.com/docs/lint describe it), so there is no lint stage.
