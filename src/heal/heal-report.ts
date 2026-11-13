@@ -5,7 +5,7 @@
 //   heal-report report  [--events FILE] [--since 7d|DATE] [--run ID] [--project NAME] [--json]
 //   heal-report show    [same options]      the events as one line each, oldest first
 //
-// The log is examples/dogfood/README.md "Monitoring heal": one JSON object per line, written by heal.ts and yk (run is "-" in the first; the report
+// The log is README.md "Monitoring heal": one JSON object per line, written by heal.ts and yk (run is "-" in the first; the report
 // stamps it from the session's next result). Every event has v, ts, run (the root execution id), session, project and event; the rest depends on the event:
 //   stage    stage, secs, exit, ok, cmd, and on a failure sig and head (a stable hash of the failure and its first lines)
 //   triage   stage, route (level | uncertain | error), label, p, start, model, secs (since the brief), chars, fallback, error

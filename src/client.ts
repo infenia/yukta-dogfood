@@ -157,9 +157,8 @@ export function cliJson(args: string[]): { code: number; data: Json; raw: string
 /** Writes the one `dogfood` session to OUT, always from the main checkout the dev server runs ($DEV_HOME/main), never from the worktree yk
  * was called in: __PROJECT_PATH__ (the project) and __DOGFOOD__ (the scripts) are that checkout's. */
 export function renderSession(out: string, extra?: string): void {
-  let d = join(DEV_HOME, 'main/examples/dogfood')
-  if (!isFile(join(d, 'session.json'))) d = HERE
-  const project = d.replace(/\/examples\/dogfood$/, '')
+  const d = HERE
+  const project = join(DEV_HOME, 'main')
   const sub = (v: Json): Json =>
     typeof v === 'string'
       ? v.split('__PROJECT_PATH__').join(project).split('__DOGFOOD__').join(d)
@@ -173,8 +172,7 @@ export function renderSession(out: string, extra?: string): void {
   s.name = 'dogfood'
   // the ticket pipeline's workflows (ticket-session.json) are part of the one session: every apply (yk check, gradle, tool, ticket run) sends the same set, so
   // none of them removes the others' workflows from a run in progress ("Workflow not found: finalize")
-  let t = join(DEV_HOME, 'main/examples/dogfood')
-  if (!isFile(join(t, 'ticket-session.json'))) t = HERE
+  const t = HERE
   if (isFile(join(t, 'ticket-session.json'))) {
     const subT = (v: Json): Json =>
       typeof v === 'string'

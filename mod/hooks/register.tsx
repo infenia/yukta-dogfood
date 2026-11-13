@@ -15,6 +15,7 @@ const PROMPT =
 
 let root = ''
 let yk = ''
+let dogfood = ''
 let check: Check | undefined
 let plan: Plan | undefined
 let frame = 0
@@ -25,7 +26,11 @@ let lastDraw = 0
 const locate = async ($: Engine, cwd?: string) => {
   const top = await $.process.run(['git', 'rev-parse', '--show-toplevel'], cwd ? { cwd } : undefined)
   root = top.exitCode === 0 ? top.stdout.trim() : ''
-  yk = root && (await $.fs.exists(`${root}/examples/dogfood/yk`)) ? `${root}/examples/dogfood/yk` : ''
+  // a yukta checkout pins the dogfood version in .dogfood-ref; the dogfood checkout is YUKTA_DOGFOOD_HOME or DEV_HOME/dogfood
+  const home = (await $.env.get('HOME')) ?? ''
+  const dev = (await $.env.get('YUKTA_DEV_HOME')) || `${(await $.env.get('XDG_STATE_HOME')) || `${home}/.local/state`}/yukta-dev`
+  dogfood = (await $.env.get('YUKTA_DOGFOOD_HOME')) || `${dev}/dogfood`
+  yk = root && (await $.fs.exists(`${root}/.dogfood-ref`)) && (await $.fs.exists(`${dogfood}/yk`)) ? `${dogfood}/yk` : ''
 }
 
 const isOff = async ($: Engine) => {
@@ -51,9 +56,9 @@ const startSession = async ($: Engine, sid: string, source: string | undefined, 
   // a resumed session keeps its first baseline
   if (!(await $.fs.exists(baseline))) await $.fs.write(baseline, `${await changesSum($)}\n`)
   if (source !== 'compact') await $.process.run([yk, 'up', '--background'], { cwd: root })
-  await $.env.set('PATH', `${root}/examples/dogfood:${(await $.env.get('PATH')) ?? ''}`)
+  await $.env.set('PATH', `${dogfood}:${(await $.env.get('PATH')) ?? ''}`)
   const server = (await run($, ['timeout', '5', yk, 'status'])).split('\n')[0] || 'starting'
-  return `Yukta dev server: ${server}. ${HINT.replace('Builds, tests', 'Build, test')} yk is examples/dogfood/yk.`
+  return `Yukta dev server: ${server}. ${HINT.replace('Builds, tests', 'Build, test')} yk is ${yk}.`
 }
 
 const stopNudge = async ($: Engine, sid: string) => {
@@ -132,7 +137,7 @@ const animate = async ($: Engine) => {
   $.ui.invalidate('ui.render')
 }
 
-const OFF = 'yukta-dogfood is off (YUKTA_DOGFOOD=off, or no examples/dogfood/yk in this repo)'
+const OFF = 'yukta-dogfood is off (YUKTA_DOGFOOD=off, or no .dogfood-ref and dogfood checkout for this repo; run scripts/dogfood-setup.sh)'
 
 export const register: Register = (on) => {
   on('classic.SessionStart', async ($, e, next) => {
@@ -150,7 +155,7 @@ export const register: Register = (on) => {
     const use = (await isOff($)) ? undefined : rewrite(e.command)
     if (!use) return next(e)
     return {
-      deny: `Builds and tests of this repo run through Yukta (yukta skill). Run instead: ${use}   (yk is examples/dogfood/yk; the run prints a RESULT line). To bypass for one session the user can set YUKTA_DOGFOOD=off.`,
+      deny: `Builds and tests of this repo run through Yukta (yukta skill). Run instead: ${use}   (yk is ${yk}; the run prints a RESULT line). To bypass for one session the user can set YUKTA_DOGFOOD=off.`,
     }
   })
 

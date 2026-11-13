@@ -522,7 +522,7 @@ export function main(argv: string[]): number {
   if (argv.includes('--check')) {
     const cur = existsSync(PATH) ? readFileSync(PATH, 'utf8') : ''
     if (cur !== out) {
-      console.error('session.json is stale: run `bun examples/dogfood/src/ticket/gen-ticket.ts` and commit it')
+      console.error('session.json is stale: run `bun src/ticket/gen-ticket.ts` and commit it')
       return 1
     }
     console.log('ticket-session.json is current')

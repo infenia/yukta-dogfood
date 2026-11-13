@@ -18,7 +18,7 @@
 //   yk new engine <name>                     a supervisor engine module (plugins/supervisors/<name>-engine) that compiles and is tested, registered in Gradle and boot (scaffold.ts)
 //   yk tool [--detach] [-C dir] <cmd...>     run any other command once, e.g. -C ui pnpm lint | -C cli go test ./...
 //   (check, gradle, tool) --detach --notify  also post the RESULT into the Claude Code session that started the run when it ends (YUKTA_NOTIFY=off: never)
-//   yk ticket run <issue> [--detach [--notify]] | status|resume|stop <issue|execution>  an issue with acceptance criteria to a tested change (examples/dogfood)
+//   yk ticket run <issue> [--detach [--notify]] | status|resume|stop <issue|execution>  an issue with acceptance criteria to a tested change
 //   yk pickup session [--name N]             open an interactive Claude Code session that receives issues through its yukta-pickup channel (several may be open)
 //   yk pickup bridge                         push the questions of ticket runs to the session that works the ticket (input-bridge.ts, #1920); runs until stopped
 //   yk pickup on|off|now [--to N] [--issue 12,34]|status  the schedule that hands each idle session the next assigned, Ready issue every 30 min (now: one round at once; --issue hands out only those)
@@ -444,7 +444,7 @@ async function cmdPickup(argv: string[]): Promise<number> {
         const r = run(['bun', 'install', '--frozen-lockfile'], { cwd: join(HERE, 'channel') })
         if (r.code) {
           console.error(r.stderr)
-          die('could not install the channel dependencies (bun install in examples/dogfood/channel)')
+          die('could not install the channel dependencies (bun install in the channel folder)')
         }
       }
       mkdirp(DEV_HOME)

@@ -25,7 +25,7 @@ export {
   renameSync,
 }
 
-/** examples/dogfood */
+/** This dogfood checkout (the scripts and templates). The yukta checkout yk works on is REPO_ROOT: the current directory's, or YUKTA_REPO_ROOT. */
 export const HERE = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export type Proc = { code: number; stdout: string; stderr: string }
 
@@ -163,7 +163,7 @@ export const isoNow = (): string => new Date().toISOString().replace(/\.\d+Z$/, 
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 // ---- where things live
-export const REPO_ROOT = process.env.YUKTA_REPO_ROOT || git(['rev-parse', '--show-toplevel'], HERE).stdout.trim()
+export const REPO_ROOT = process.env.YUKTA_REPO_ROOT || git(['rev-parse', '--show-toplevel'], process.cwd()).stdout.trim()
 /** Per checkout: heal records, durations, check logs, hook marks. */
 export const STATE_DIR = process.env.YUKTA_DEV_STATE_DIR || join(REPO_ROOT, '.yukta-dev')
 /** Per machine: the one dev server every checkout shares (main worktree, builds by commit, pid, log, sessions). */

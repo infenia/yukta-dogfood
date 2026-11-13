@@ -55,7 +55,7 @@ The dogfood also _tests Yukta by using it_: if the server, plugins or workflow e
 
 ## 2. Map of the code
 
-All paths are relative to `examples/dogfood/`. Package: Bun + TypeScript, `ajv` as the only runtime dependency (`package.json`).
+All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` as the only runtime dependency (`package.json`).
 
 ### Core (`src/`)
 
@@ -158,7 +158,7 @@ tiers `yukta.input.routes.ticket`: supervisor (auto, min-confidence 0.85, 20 s) 
 
 ### 3.4 Rendering and applying the session
 
-`renderSession` (`client.ts`) reads templates from `DEV_HOME/main/examples/dogfood` (falling back to the working tree), replaces
+`renderSession` (`client.ts`) reads templates from this checkout (`HERE`), replaces
 `__PROJECT_PATH__` and `__DOGFOOD__`, forces `sessionId`/`name` to `dogfood`, and **merges the workflows of `ticket-session.json`** (replacing
 `__TICKET__`). Every `yukta-cli session apply` sends the _same full set_, so two concurrent runs never delete each other's workflows (the
 original bug was "Workflow not found: finalize"). `findCli` looks for `yukta-cli` in: `$YUKTA_BIN`, the build recorded in `server.env`, the
@@ -224,7 +224,7 @@ flowchart LR
 `plan()` in `plan.ts` computes the stage list that `yk check` will run.
 
 1. **Changed files** = `git diff --name-only <merge-base with origin/main>` plus untracked files (uncommitted work counts).
-2. **Classify** each file: Gradle module, `cli/`, `ui/`, `docs/`, workflows, `examples/dogfood/`.
+2. **Classify** each file: Gradle module, `cli/`, `ui/`, `docs/`, workflows, the repository root.
 3. **Gradle modules**: dependency edges come from quoted `":x"` strings in build files (plus `test-support`). Changed modules get every stage
    (spotless, compile, tests, coverage, style, spotbugs, licenses, security); **dependants** only compile and test. A change to the root,
    `build-logic`, `gradle` or `config` plans everything, unscoped.
@@ -376,7 +376,7 @@ flowchart TD
   `YUKTA_HEAL_FIXER=1` is set (the mod disables itself on it, §9).
 - **`format`** runs the stage's formatter; **`recheck`** re-runs the stage command and is **the only judge of "fixed"**.
 - **`judge` (the guard)** decides from what changed on disk, not what Claude claimed. It rejects: a change under a protected path (`config/`,
-  `build-logic/`, `gradle/`, `.github/`, `.claude/`, `examples/dogfood/`, `REUSE.toml`, `*.gradle.kts`); an added suppression; more assertions
+  `build-logic/`, `gradle/`, `.github/`, `.claude/`, the repository root, `REUSE.toml`, `*.gradle.kts`); an added suppression; more assertions
   removed than added; test files edited with no source change; a claimed fix with no change. Files outside the failing module are recorded
   but not a violation. A guard hit or false claim rewrites the summary to "NOT FIXED … The model said: …".
 - Nothing in heal commits or reverts. Fixers edit the working tree; **you review `git diff` afterwards** (the `healed=` field lists stages).
@@ -427,11 +427,11 @@ flowchart TD
 are TypeScript handlers registered in `register.tsx`, not shell scripts. `rewrite.ts` is a port of an older `yk-hook.sh`.
 
 **Off switch** (`isOff`): `YUKTA_DOGFOOD=off`, or `YUKTA_HEAL_FIXER` set (headless fixers must be allowed to run `./gradlew`), or no
-`examples/dogfood/yk`.
+`yk`.
 
 | Hook                              | Behaviour                                                                                                                                                                                                                                                                         |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SessionStart`                    | Writes `.yukta-dev/baseline-<sid>` with the current `yk sum`; prunes baselines > 7 days; runs `yk up --background` (not after a compact); prepends `examples/dogfood` to `PATH`; adds context "Yukta dev server: … direct gradle, go and pnpm are blocked".                       |
+| `SessionStart`                    | Writes `.yukta-dev/baseline-<sid>` with the current `yk sum`; prunes baselines > 7 days; runs `yk up --background` (not after a compact); prepends this checkout to `PATH`; adds context "Yukta dev server: … direct gradle, go and pnpm are blocked".                            |
 | `UserPromptSubmit`                | If the prompt mentions test/build/gradle/lint/issue/epic…, adds a hint to use `yk`.                                                                                                                                                                                               |
 | `tool.call` (Bash) — **the gate** | `rewrite()` splits the command on `&&`, `                                                                                                                                                                                                                                         |     | `, `;`, ` | `, `&`, parentheses; strips env, `time`, `nice`, `timeout`; maps `gradle`/`gradlew`→`yk gradle …`(dropping`-q`, `--console`), `go test | vet | build | fmt`→`yk tool -C cli …`, `pnpm | npm | npx | pnpx`→`yk tool -C ui …`. `bootRun`/`nativeRun` pass through. On a match it **denies** and names the replacement. |
 | `Stop` (`stopNudge`)              | Blocks stopping once with "run the quality gate: yk check" only if code files changed, the change sum differs from the session baseline (not your teammate's changes), it was not nudged for this sum, no SUCCESS result exists for this sum. Does nothing if `stop_hook_active`. |
@@ -666,12 +666,12 @@ steps are too small). Offline tests use a fake `claude`, a fake `gh` and a throw
 **Run** (all through `yk tool`, never bare `bun`):
 
 ```bash
-yk tool -C examples/dogfood bun test                 # everything
-yk tool -C examples/dogfood bun test test/plan.test.ts
-yk tool -C examples/dogfood bun check                # typecheck
-yk tool -C examples/dogfood bun fmt --check          # prettier (width 140, no semicolons, single quotes)
-yk tool -C examples/dogfood bun src/heal/gen-session.ts --check
-yk tool -C examples/dogfood bun src/ticket/gen-ticket.ts --check
+bun test                 # everything
+bun test test/plan.test.ts
+bun check                # typecheck
+bun fmt --check          # prettier (width 140, no semicolons, single quotes)
+bun src/heal/gen-session.ts --check
+bun src/ticket/gen-ticket.ts --check
 ```
 
 **Test layout.** `test/*.test.ts` mirror `src/` (`plan`, `yk`, `events`, `failures`, `answer`, `pickup`, `input-bridge`, `notify`,

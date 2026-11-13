@@ -26,7 +26,6 @@
     "config/**",
     ".github/**",
     ".claude/**",
-    "examples/dogfood/**",
     "release/**",
     "plus/**",
     "ui/e2e/**",
@@ -59,11 +58,6 @@
       "glob": "ui/src/types/api.generated.ts",
       "trigger": "ui/openapi.json",
       "regen": "yk tool -C ui pnpm run api:types -- openapi.json"
-    },
-    {
-      "glob": "examples/dogfood-session.json",
-      "trigger": "examples/dogfood/src/ticket/gen-ticket.ts",
-      "regen": "python3 scripts/gen-ticket.py"
     }
   ],
   "default_limits": {

@@ -115,8 +115,8 @@ function ignoreLink(wt: string, line: string): void {
   if (!cur.split('\n').includes(line)) appendFileSync(ex, (cur && !cur.endsWith('\n') ? '\n' : '') + line + '\n')
 }
 
-/** The folders whose node_modules the stages of yk check use (ui: vitest, tsc, eslint; dogfood: bun check of the scripts and the channel). */
-export const NODE_DIRS = ['ui', 'examples/dogfood', 'examples/dogfood/channel']
+/** The folders whose node_modules the stages of yk check use (ui: vitest, tsc, eslint). */
+export const NODE_DIRS = ['ui']
 
 export function worktree(argv: string[]): number {
   const { pos, opt } = parseArgs(argv, { value: ['branch', 'base', 'in'] })

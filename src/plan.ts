@@ -54,11 +54,9 @@ export function plan(full: boolean, base: string, root = REPO_ROOT): { text: str
     wf = full,
     gomod = full,
     any = full,
-    buildfile = full,
-    dogfood = full
+    buildfile = full
   for (const f of files) {
     any = true
-    if (f.startsWith('examples/dogfood/')) dogfood = true
     if (f.endsWith('.md')) continue
     if (GRADLE_ROOT.test(f)) {
       fullJava = true
@@ -247,13 +245,6 @@ export function plan(full: boolean, base: string, root = REPO_ROOT): { text: str
       )
     emit('ui.headers', 'ui', 'node scripts/validate-headers.js')
     if (full) emit('ui.build', 'ui', `${B}/vite build && node scripts/check-bundle-size.js`)
-  }
-
-  // ---- dogfood: bun fmt (bunfig.toml [fmt], .prettierignore) over the whole folder; it is fast, and bun fmt is the free fix
-  if (dogfood) {
-    emit('dogfood.fmt', 'examples/dogfood', 'bun fmt --check', 'bun fmt')
-    // bun check type checks like TypeScript 7 (tsc 7, all cores), whatever `typescript` is installed; one package each
-    emit('dogfood.check', 'examples/dogfood', 'bun check && bun check -p channel')
   }
 
   // ---- repo

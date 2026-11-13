@@ -10,7 +10,7 @@
 // Env: YUKTA_PICKUP_ONLY (hand only to the session of that name), YUKTA_PICKUP_REPO (infenia/yukta), YUKTA_PICKUP_PROJECT (5),
 // YUKTA_PICKUP_OWNER (infenia), YUKTA_DEV_HOME.
 // YUKTA_PICKUP_MODE=ticket (or the word `ticket` in $DEV_HOME/pickup-mode): no interactive session; the top issue starts `yk ticket run <n> --detach`
-// (headless, examples/dogfood) -> "PICKUP handed=#<n> to=ticket", at most one run at a time (YUKTA_PICKUP_YK: another yk, for tests).
+// (headless) -> "PICKUP handed=#<n> to=ticket", at most one run at a time (YUKTA_PICKUP_YK: another yk, for tests).
 // Filter (YUKTA_PICKUP_ISSUES, `yk pickup now --issue 12,34`; else the file $DEV_HOME/pickup-issues, one number per line): only those issues are handed out.
 // `pickup list` prints the candidates the next tick would consider, with [free] or [taken: ...].
 import {

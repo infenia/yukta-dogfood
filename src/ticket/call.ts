@@ -3,7 +3,7 @@
 // ticketkit call ROLE RUN_DIR [--step S] [--attempt N] [--worktree W]   (design 6, 7, 10, 15.1)
 //
 // One Claude call of the pipeline: builds the prompt from files (the ticket text is data, in delimited blocks), runs
-// examples/dogfood/src/heal/claude.ts --role ROLE with the model and effort of routing.json, validates the answer against its schema
+// src/heal/claude.ts --role ROLE with the model and effort of routing.json, validates the answer against its schema
 // (invalid: one retry with the validator's message, then exit 1), stores it where the next tool looks for it and appends one event line
 // (role, model, effort, tokens, cache fields, cost). Prints the answer as JSON on stdout.
 //

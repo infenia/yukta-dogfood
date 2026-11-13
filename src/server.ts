@@ -176,6 +176,7 @@ export async function serverLaunch(kind: string, id: string, label: string, rule
       SERVER_PORT: DEV_PORT,
       YUKTA_SERVER_ADDRESS: '127.0.0.1',
       YUKTA_PROCESS_ALLOW_ANY: 'true',
+      YUKTA_PLUGINS_ENABLED: 'PROCESS_EXECUTOR',
       YUKTA_CONCURRENCY_GROUPS_GRADLE: par,
       YUKTA_CONCURRENCY_GROUPS_TOOL: par,
       YUKTA_DEV_HOME: DEV_HOME,
@@ -316,13 +317,13 @@ export async function serverUp(args: string[] = []): Promise<number> {
       id = `release-${tag}`
       label = `release ${tag}`
       cmd = [bin]
-      rules = join(REPO_ROOT, 'examples/dogfood/rules.json')
+      rules = join(HERE, 'rules.json')
     } else {
       id = mainSync()
       mainBuild(id)
       label = `main@${id.slice(0, 9)}`
       cmd = ['java', '-jar', join(DEV_HOME, 'builds', id, 'yukta.jar')]
-      rules = join(DEV_HOME, 'main/examples/dogfood/rules.json')
+      rules = join(HERE, 'rules.json')
     }
     if (await healthy()) {
       if (!ours()) die(`port ${DEV_PORT} is used by a server yk did not start; stop it or set YUKTA_DEV_PORT`)

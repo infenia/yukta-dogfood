@@ -7,11 +7,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-/** examples/dogfood */
+/** this checkout */
 export const KIT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
-/** examples/dogfood */
+/** this checkout */
 export const DOGFOOD = KIT
-export const GUARD_PATHS = ['config/**', 'build-logic/**', 'gradle/**', '.github/**', '.claude/**', 'examples/dogfood/**']
+export const GUARD_PATHS = ['config/**', 'build-logic/**', 'gradle/**', '.github/**', '.claude/**']
 export const RISK = ['low', 'medium', 'high'] as const
 export type Risk = (typeof RISK)[number]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -268,7 +268,7 @@ export function run(cmd: string[], opts: { cwd?: string; input?: string; env?: R
 
 /** Runs a command line through the shell (the project's own command templates are shell lines). */
 export function sh(line: string, cwd?: string): Proc {
-  // `yk` of the templates resolves even when the server that runs the workflow has no examples/dogfood on its PATH
+  // `yk` of the templates resolves even when the server that runs the workflow has no yk on its PATH
   return run(['bash', '-c', line], { cwd, env: { PATH: `${process.env.PATH ?? ''}:${KIT}` } })
 }
 
