@@ -14,24 +14,11 @@
     "heal_stage": "yk check --stage {stage} --base {base}"
   },
   "conventions_sources": {
-    "java": [
-      ".claude/rules/coding-standards.md",
-      "build-logic/CLAUDE.md",
-      ".claude/skills/tests/rules/java"
-    ],
-    "ui": [
-      "ui/CLAUDE.md"
-    ],
-    "go": [
-      "cli/CLAUDE.md"
-    ],
-    "shell": [
-      ".github/scripts"
-    ],
-    "git": [
-      ".claude/rules/git-workflow.md",
-      ".git-commit-guide.md"
-    ]
+    "java": [".claude/rules/coding-standards.md", "build-logic/CLAUDE.md", ".claude/skills/tests/rules/java"],
+    "ui": ["ui/CLAUDE.md"],
+    "go": ["cli/CLAUDE.md"],
+    "shell": [".github/scripts"],
+    "git": [".claude/rules/git-workflow.md", ".git-commit-guide.md"]
   },
   "high_risk_paths": [
     "build-logic/**",
@@ -60,9 +47,7 @@
     "**/dogfood/session.json",
     "**/ticket-session.json"
   ],
-  "denied_write": [
-    "docs/api/openapi.json"
-  ],
+  "denied_write": ["docs/api/openapi.json"],
   "generated": [
     {
       "glob": "ui/openapi.json",
@@ -114,10 +99,7 @@
     "branch": "issue/{n}",
     "worktree": "../yukta-issue-{n}",
     "pr_draft": true,
-    "pr_body_must_contain": [
-      "Fixes #{n}",
-      "RESULT"
-    ]
+    "pr_body_must_contain": ["Fixes #{n}", "RESULT"]
   },
   "budgets_usd": {
     "S": 2,
