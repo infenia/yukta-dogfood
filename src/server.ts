@@ -177,6 +177,9 @@ export async function serverLaunch(kind: string, id: string, label: string, rule
       YUKTA_SERVER_ADDRESS: '127.0.0.1',
       YUKTA_PROCESS_ALLOW_ANY: 'true',
       YUKTA_PLUGINS_ENABLED: 'PROCESS_EXECUTOR',
+      // yukta processes start with PATH only (infenia/yukta#2327); the tools (gradle, go, pnpm,
+      // claude) need the user's environment, and this is a trusted local server
+      YUKTA_PROCESS_PASS_ENV: '*',
       YUKTA_CONCURRENCY_GROUPS_GRADLE: par,
       YUKTA_CONCURRENCY_GROUPS_TOOL: par,
       YUKTA_DEV_HOME: DEV_HOME,
