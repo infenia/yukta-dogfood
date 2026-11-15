@@ -3,15 +3,16 @@
 // The step of the `tool` workflow: runs the shell line in $YUKTA_TOOL_COMMAND (the command of `yk gradle`, `yk tool` and every stage of `yk check`)
 // in the working directory of the node, its output going straight through. Nothing to run (an empty command or "-") is a pass.
 import { spawnSync } from 'node:child_process'
+import { constants } from 'node:os'
 
 export function main(): number {
   const cmd = process.env.YUKTA_TOOL_COMMAND ?? ''
   if (cmd === '' || cmd === '-') {
-    console.log(`tool ${process.env.YUKTA_TOOL_LABEL ?? ''}: nothing to run`)
+    console.log(`tool ${process.env.YUKTA_TOOL_LABEL || '-'}: nothing to run`)
     return 0
   }
-  const r = spawnSync('sh', ['-c', 'eval "$YUKTA_TOOL_COMMAND"'], { stdio: 'inherit' })
-  return r.status ?? (r.signal ? 128 : 1)
+  const r = spawnSync('sh', ['-c', cmd], { stdio: 'inherit' })
+  return r.status ?? (r.signal ? 128 + (constants.signals[r.signal] ?? 0) : 1) // killed by a signal: the shell's 128 + signo
 }
 
 if (import.meta.main) process.exit(main())

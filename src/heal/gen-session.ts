@@ -33,6 +33,9 @@ const cmd = (file: string, ...args: string[]): string[] => [BUN, file, ...args]
 export function toolWorkflow(wf: Json): Json {
   const run = wf.nodes.find((n: Json) => n.nodeId === 'run')
   run.config.command = cmd('__DOGFOOD__/src/tool.ts')
+  // display only (palette of Yukta's canvas): input stone, the process sky, success teal, failure magenta
+  const colors: Record<string, string> = { trigger: 'stone', run: 'sky', ok: 'teal', failed: 'magenta' }
+  for (const n of wf.nodes) n.color = colors[n.nodeId]
   return wf
 }
 
