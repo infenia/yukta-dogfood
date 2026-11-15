@@ -176,7 +176,7 @@ export async function serverLaunch(kind: string, id: string, label: string, rule
       SERVER_PORT: DEV_PORT,
       YUKTA_SERVER_ADDRESS: '127.0.0.1',
       YUKTA_PROCESS_ALLOW_ANY: 'true',
-      YUKTA_PLUGINS_ENABLED: 'PROCESS_EXECUTOR',
+      YUKTA_PLUGINS_ENABLED: 'PROCESS_EXECUTOR,CLASSIFY', // the tool and check workflows also use CLASSIFY; restricted plugin types are off by default
       // yukta processes start with PATH only (infenia/yukta#2327); the tools (gradle, go, pnpm,
       // claude) need the user's environment, and this is a trusted local server
       YUKTA_PROCESS_PASS_ENV: '*',
