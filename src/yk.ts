@@ -77,6 +77,7 @@ import {
   isDir,
   isFile,
   join,
+  lock,
   lockHeld,
   mkdirp,
   need,
@@ -765,7 +766,12 @@ async function dispatch(argv: string[]): Promise<number> {
       return cmdUp(rest)
     case 'down':
       if (ours()) {
-        await serverStop()
+        const release = await lock(join(DEV_HOME, 'up.lock')) // like yk up: a stop must not interleave with a launch
+        try {
+          await serverStop()
+        } finally {
+          release()
+        }
         console.log('stopped the dev server')
       } else console.log('no dev server started by yk')
       return 0

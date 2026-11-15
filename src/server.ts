@@ -229,7 +229,8 @@ const groupAlive = (pid: number): boolean => {
   }
 }
 
-/** Stops the server yk started (whole process group). Never touches anything else. */
+/** Stops the server yk started (whole process group). Never touches anything else. Forgets it (server.pid, server.env) only if they still
+ * describe the server it stopped: a launch that came in while it waited for the old one to exit owns them now. */
 export async function serverStop(): Promise<void> {
   const pid = parseInt(text(join(DEV_HOME, 'server.pid')).trim(), 10)
   if (!Number.isNaN(pid)) {
@@ -246,8 +247,10 @@ export async function serverStop(): Promise<void> {
         /* gone */
       }
     }
-    rmSync(join(DEV_HOME, 'server.pid'), { force: true })
-    rmSync(join(DEV_HOME, 'server.env'), { force: true })
+    if (parseInt(text(join(DEV_HOME, 'server.pid')).trim(), 10) === pid) {
+      rmSync(join(DEV_HOME, 'server.pid'), { force: true })
+      rmSync(join(DEV_HOME, 'server.env'), { force: true })
+    }
   }
 }
 
