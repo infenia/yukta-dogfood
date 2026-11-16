@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// Online test of the check and heal workflows against a fake claude and a fake System One (no API cost, about a minute). Needs the dev server (yk up) and
+// Online test of the check and heal workflows against a fake claude (no API cost, about a minute; the session is generated with the claude workflow, the one that takes a stand-in binary). Needs the dev server (yk up) and
 // YK_ONLINE=1. The project is a throwaway git repo whose stages are `test -f <stage>.ok`; the fake claude creates that file (or not) as the plan says,
 // and logs when each call started and ended.
 //
@@ -10,13 +10,11 @@
 //   single attempt    a stage in heal.json singleAttempt (reuse) gets one attempt even when it changed something
 //   verify            a verify that fails goes back to heal
 //   baseline          a stage that fails the same way on origin/main gets no fixer; one that fails differently does
-//   triage            a "hard" failure starts at sonnet/low (fake Ollama)
-//   triage stop       a label in heal.json triage.stop ends the heal with no fixer (a generated session; off in the shipped one)
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test'
 import { join } from 'node:path'
 import { generate } from '../../src/heal/gen-session.ts'
 import { devKey } from '../../src/lib.ts'
-import { HERE, git, json, put, read, rm, script, sh, startOllama, tmp, ts } from '../helpers.ts'
+import { HERE, git, json, put, read, rm, script, sh, tmp, ts } from '../helpers.ts'
 
 const ONLINE = Boolean(process.env.YK_ONLINE)
 if (ONLINE) {
@@ -24,7 +22,7 @@ if (ONLINE) {
   process.env.YUKTA_SERVER_URL ||= 'http://127.0.0.1:9858'
 }
 setDefaultTimeout(600_000)
-let d: string, proj: string, healdir: string, ollama: { port: number; kill: () => void } | undefined
+let d: string, proj: string, healdir: string
 let result = ''
 const claudeLog = (): string[] => read(join(d, 'claude.log')).split('\n').filter(Boolean)
 const calls = (): number => claudeLog().filter((l) => l.startsWith('start')).length
@@ -59,7 +57,6 @@ console.log(JSON.stringify({ is_error: false, subtype: 'success', total_cost_usd
   )
 })
 afterAll(() => {
-  ollama?.kill()
   if (d && !process.env.KEEP) rm(d)
 })
 
@@ -70,7 +67,6 @@ type Opts = {
   events?: string
   autoReuse?: string
   verify?: string
-  triageUrl?: string
   budget?: string
   fast?: string
   session?: any
@@ -83,7 +79,8 @@ function scenario(name: string, plan: string[], o: Opts = {}): void {
   rm(join(d, 'claude.log'))
   sh(['mkdir', '-p', healdir])
   put(join(d, 'plan'), plan.join('\n') + '\n')
-  const sess = o.session ?? JSON.parse(read(join(HERE, 'session.json')))
+  const sess =
+    o.session ?? generate(JSON.parse(read(join(HERE, 'session.json'))), { ...json(join(HERE, 'heal.json')), claudeWorkflow: 'claude' })
   const names: string[] = sess.workflows.check.nodes
     .filter((n: any) => n.type === 'SUB_WORKFLOW' && n.config.workflowId === 'tool' && n.nodeId !== 'verify')
     .map((n: any) => n.nodeId)
@@ -104,12 +101,9 @@ function scenario(name: string, plan: string[], o: Opts = {}): void {
     modules: '-',
     models: '-',
     heal: 'on',
-    triage: o.triageUrl ? 'on' : 'off',
     rules: join(HERE, 'fixer-rules.md'),
     claudeBin: join(d, 'claude'),
     budgetCheck: o.budget ?? '-',
-    triageModel: 'fake',
-    triageUrl: o.triageUrl ?? 'http://127.0.0.1:1',
     verifyCommand: o.verify ?? 'true',
     cmd: cmds,
     auto: { ...dash, ...(o.autoReuse ? { reuse: o.autoReuse } : {}) },
@@ -138,7 +132,7 @@ test.skipIf(!ONLINE)('two stages: both are healed, one fixer after the other', (
     tests: 'test -f tests.ok',
     verify: 'test -f compile.ok && test -f tests.ok',
   })
-  for (const s of ['status=SUCCESS', 'compile:haiku/high', 'tests:haiku/high']) expectIn('two stages', s)
+  for (const s of ['status=SUCCESS', 'compile:haiku/low', 'tests:haiku/low']) expectIn('two stages', s)
   let end = 0
   for (const l of claudeLog()) {
     const f = l.split(' ')
@@ -152,15 +146,17 @@ test.skipIf(!ONLINE)('no change: an attempt that changed nothing ends the ladder
   expectIn('no change', 'failed_node=compile')
   expect(calls()).toBe(1)
 })
-test.skipIf(!ONLINE)('escalation: a change that does not fix it escalates to the next rung; a claimed fix that changed nothing', () => {
-  scenario('escalation', ['compile haiku wrong', 'compile sonnet fix'], { compile: 'test -f compile.ok' })
+test.skipIf(!ONLINE)('escalation: a change that does not fix it climbs the ladder to sonnet; a claimed fix that changed nothing', () => {
+  // a wrong change makes the failure differ each time (the output grows), so the ladder is not cut short by "no progress": three haiku rungs, then sonnet
+  const grows = 'test -f compile.ok || { echo "error-$(cat wrong.txt 2>/dev/null | tr -d \'\\n\')"; false; }'
+  scenario('escalation', ['compile haiku wrong', 'compile sonnet fix'], { compile: grows })
   expectIn('escalation', 'status=SUCCESS')
   expectIn('escalation', 'compile:sonnet/low')
-  expect(calls()).toBe(2)
+  expect(calls()).toBe(4)
   expect(json(join(healdir, 'compile-1.json')).summary).toBe(
     'NOT FIXED: the model claimed a fix but the stage still fails. The model said: fake',
   )
-  scenario('claimed fix, nothing changed', ['compile haiku lie', 'compile sonnet fix'], { compile: 'test -f compile.ok' })
+  scenario('claimed fix, nothing changed', ['compile haiku lie', 'compile sonnet fix'], { compile: grows })
   expectIn('lie', 'status=FAILED')
   expectIn('lie', 'failed_node=compile')
   expect(json(join(healdir, 'compile-1.json')).summary).toBe('NOT FIXED, guard: claimed a fix but changed nothing. The model said: fake')
@@ -188,7 +184,7 @@ test.skipIf(!ONLINE)('fast path: pass makes the chain no-ops, fail runs the chai
   expect(calls()).toBe(0)
   scenario('fast path fail', ['compile haiku fix'], { fast: 'false', compile: 'test -f compile.ok' })
   expectIn('fast fail', 'status=SUCCESS')
-  expectIn('fast fail', 'compile:haiku/high')
+  expectIn('fast fail', 'compile:haiku/low')
 })
 test.skipIf(!ONLINE)('verify: a verify that fails goes back to heal', () => {
   scenario('verify', ['compile haiku fix', 'verify haiku fix'], {
@@ -196,7 +192,7 @@ test.skipIf(!ONLINE)('verify: a verify that fails goes back to heal', () => {
     verify: 'test -f compile.ok && test -f verify.ok',
   })
   expectIn('verify', 'status=SUCCESS')
-  expectIn('verify', 'verify:haiku/high')
+  expectIn('verify', 'verify:haiku/low')
 })
 test.skipIf(!ONLINE)('baseline: a stage that fails the same way on origin/main gets no fixer; one that fails differently does', () => {
   git(proj, 'update-ref', 'refs/remotes/origin/main', 'HEAD')
@@ -207,37 +203,8 @@ test.skipIf(!ONLINE)('baseline: a stage that fails the same way on origin/main g
   // the directory name is part of the problem line, and differs between the project and the clean checkout of origin/main
   scenario('baseline failure differs', ['compile haiku fix'], { compile: 'echo "error: in $(basename "$PWD")"; test -f compile.ok' })
   expectIn('baseline differs', 'status=SUCCESS')
-  expectIn('baseline differs', 'compile:haiku/high')
+  expectIn('baseline differs', 'compile:haiku/low')
   git(proj, 'update-ref', '-d', 'refs/remotes/origin/main')
-})
-test.skipIf(!ONLINE)('triage: a hard failure starts at sonnet/low; a stop label ends the heal with no fixer', async () => {
-  ollama = await startOllama(d)
-  const url = `http://127.0.0.1:${ollama.port}`
-  scenario('triage', ['compile haiku fix', 'compile sonnet fix'], {
-    compile: 'echo error: compile failed difficulty: hard; test -f compile.ok',
-    triageUrl: url,
-  })
-  expectIn('triage', 'status=SUCCESS')
-  expectIn('triage', 'compile:sonnet/low')
-  expect(
-    claudeLog().some((l) => l.includes(' haiku ')),
-    'haiku was called for a hard failure',
-  ).toBe(false)
-  const policy = json(join(HERE, 'heal.json'))
-  policy.triage.stop = {
-    environment: {
-      describe: 'Caused by the machine or its setup, not by the change: a refused connection, a missing tool or credential.',
-      reason: 'not caused by the change, no fixer started',
-    },
-  }
-  scenario('triage stop', ['compile haiku fix'], {
-    compile: 'echo error: connection refused difficulty: environment; test -f compile.ok',
-    triageUrl: url,
-    session: generate(JSON.parse(read(join(HERE, 'session.json'))), policy),
-  })
-  expectIn('triage stop', 'status=FAILED')
-  expectIn('triage stop', 'failed_node=compile')
-  expect(calls()).toBe(0)
 })
 test.skipIf(!ONLINE)('give up, and the free fix of reuse', () => {
   // five attempts at compile in the last week, none fixed: the healer does not try again; the same five a month ago do not count
@@ -266,7 +233,7 @@ test.skipIf(!ONLINE)('give up, and the free fix of reuse', () => {
       expect(calls()).toBe(0)
     } else {
       expectIn('give up', 'status=SUCCESS')
-      expectIn('give up', 'compile:haiku/high')
+      expectIn('give up', 'compile:haiku/low')
     }
   }
   // the free fix makes reuse pass: no model is asked, and the run says healed=reuse:auto

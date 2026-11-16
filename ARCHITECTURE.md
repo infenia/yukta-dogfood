@@ -66,7 +66,7 @@ All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` 
 | `src/base.ts`                          | Paths and constants (`REPO_ROOT`, `STATE_DIR`, `DEV_HOME`, `DEV_PORT`) and `run()`, a process runner with a **binary allowlist** (refuses anything unlisted with exit 126). |
 | `src/client.ts`                        | Talking to the server: API keys, `renderSession`, `findCli` (locating `yukta-cli`), starting workflows, `--notify` delivery.                                                |
 | `src/server.ts`                        | Dev-server lifecycle: sync `main/` worktree, build, launch, swap when idle, `ensureServer`, check lock.                                                                     |
-| `src/check.ts`                         | `yk check` support: payload building, stage filtering (`filterPlan`), heal records → `healed=`, triage config, `heal-events.jsonl` path.                                    |
+| `src/check.ts`                         | `yk check` support: payload building, stage filtering (`filterPlan`), heal records → `healed=`, `heal-events.jsonl` path.                                                   |
 | `src/plan.ts`                          | `yk plan`: what changed → which stages to run.                                                                                                                              |
 | `src/runs.ts`                          | Watching runs and printing results: `watch`, `tree`, `pause/resume/stop`, `approve/reject`, `detail`, `printResult`, durations.                                             |
 | `src/tool.ts`                          | The process every `tool` workflow node runs: `sh -c "$YUKTA_TOOL_COMMAND"`.                                                                                                 |
@@ -74,7 +74,6 @@ All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` 
 | `src/release.ts`                       | `yk up --release`: download the native binary, verify with cosign.                                                                                                          |
 | `src/pickup.ts`, `src/input-bridge.ts` | Scheduled issue hand-over and the question/result bridge (§10).                                                                                                             |
 | `src/session-render.ts`, `src/lib.ts`  | Thin wrapper to render a session; `lib.ts` just re-exports base/client/server/check.                                                                                        |
-| `src/fake-ollama.ts`                   | Test stub for the triage model endpoint.                                                                                                                                    |
 
 ### Heal (`src/heal/`)
 
@@ -100,7 +99,7 @@ All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` 
 | `mod/`                               | Claude Code plugin `yukta-dogfood`: hooks (`hooks/register.tsx`, `gate.ts`, `rewrite.ts`, `plan.ts`, `panes.tsx`).   |
 | `session.json`                       | **Generated** (do not hand-edit, do not read whole; Claude's `Read` is denied). From `gen-session.ts` + `heal.json`. |
 | `ticket-session.json`                | **Generated** from `gen-ticket.ts` (about 7,500 lines).                                                              |
-| `heal.json`                          | Policy: efforts, triage model and ladders, budgets, give-up rule, extra tool variants.                               |
+| `heal.json`                          | Policy: the ladder, efforts, budgets, give-up rule, extra tool variants.                                             |
 | `rules.json`                         | Server-side supervisor rule `no-kill`: denies `StopWorkflow` with `mode == 'KILL'`.                                  |
 | `project.json`                       | Project facts for the ticket pipeline (commands per role, budgets, high-risk paths, shared files).                   |
 | `supervisor/`                        | `supervisor.json` + `assignments.json` + `session.json`: the advice supervisor (§11.8).                              |
@@ -132,12 +131,12 @@ both. `bun src/heal/gen-session.ts --check` and `bun src/ticket/gen-ticket.ts --
 
 ### 3.2 State directories
 
-| Name        | Default                                        | Scope            | Holds                                                                                                                                                                                             |
-| ----------- | ---------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `REPO_ROOT` | `$YUKTA_REPO_ROOT` or git toplevel             | checkout         | —                                                                                                                                                                                                 |
-| `STATE_DIR` | `<repo>/.yukta-dev` (`$YUKTA_DEV_STATE_DIR`)   | **per checkout** | heal records (`heal/<session>/<stage>-<n>.json`, `.prev`), `runs.tsv`, `durations.tsv`, `last-result`, `check.lock`, `notify-*.log`, baseline cache                                               |
-| `DEV_HOME`  | `~/.local/state/yukta-dev` (`$YUKTA_DEV_HOME`) | **per machine**  | `main/`, `builds/`, `server.pid/env/log`, `build.log`, `up.lock`, `sessions/`, `heal-events.jsonl`, `failures.jsonl`, `pickup.exec`, `pickup/`, `bridge.pid`, key files, `triage.json` (optional) |
-| `DEV_PORT`  | 9858 (`$YUKTA_DEV_PORT`)                       | machine          | —                                                                                                                                                                                                 |
+| Name        | Default                                        | Scope            | Holds                                                                                                                                                                   |
+| ----------- | ---------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REPO_ROOT` | `$YUKTA_REPO_ROOT` or git toplevel             | checkout         | —                                                                                                                                                                       |
+| `STATE_DIR` | `<repo>/.yukta-dev` (`$YUKTA_DEV_STATE_DIR`)   | **per checkout** | heal records (`heal/<session>/<stage>-<n>.json`, `.prev`), `runs.tsv`, `durations.tsv`, `last-result`, `check.lock`, `notify-*.log`, baseline cache                     |
+| `DEV_HOME`  | `~/.local/state/yukta-dev` (`$YUKTA_DEV_HOME`) | **per machine**  | `main/`, `builds/`, `server.pid/env/log`, `build.log`, `up.lock`, `sessions/`, `heal-events.jsonl`, `failures.jsonl`, `pickup.exec`, `pickup/`, `bridge.pid`, key files |
+| `DEV_PORT`  | 9858 (`$YUKTA_DEV_PORT`)                       | machine          | —                                                                                                                                                                       |
 
 Never edit these by hand (the yukta skill says so).
 
@@ -180,7 +179,7 @@ steering) still work but are not advertised.
 | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------- |
 | `yk gradle <args>`                                                                                                                      | `yk.ts` `cmdGradle` → `runTool`         | Runs `./gradlew <args> -q --console=plain` as the `tool` workflow.         |
 | `yk tool [-C dir] <cmd…>`                                                                                                               | `yk.ts` `cmdTool` → `runTool`           | Runs any command (Go, pnpm, bun) in `dir`. Arguments are shell-quoted.     |
-| `yk check [--full] [--base REF] [--no-heal] [--models …] [--triage off] [--detach] [--stage/--skip]`                                    | `yk.ts` `cmdCheck`                      | The scoped, self-healing gate.                                             |
+| `yk check [--full] [--base REF] [--no-heal] [--models …] [--detach] [--stage/--skip]`                                                   | `yk.ts` `cmdCheck`                      | The scoped, self-healing gate.                                             |
 | `yk plan`                                                                                                                               | `plan.ts`                               | Dry run of the same plan, prints stages (tab-separated).                   |
 | `yk up [--background] [--release]`, `down`, `status`                                                                                    | `yk.ts`, `server.ts`, `release.ts`      | Server lifecycle.                                                          |
 | `yk watch`, `tree`, `pause/resume/stop [--tree]`, `skip/unskip/retry`, `break`, `step`, `signals`, `approve/reject`, `detail`, `result` | `runs.ts`                               | Follow or steer a run (§8).                                                |
@@ -256,8 +255,7 @@ flowchart TD
 - **`fast`**: when two or more Gradle stages are planned, one combined `./gradlew --continue <all tasks>` runs first and `touch`es `fast.ok` on
   success. Then each per-stage Gradle command is a no-op. If `fast` fails, the staged chain runs so each failure is healed individually.
   `--no-fast` disables it.
-- Extra payload: `heal`, `triage`, `models`, `budgetCheck` (default 5, `heal.json` `checkBudget` or `YUKTA_BUDGET_CHECK`), `triageModel`,
-  `triageUrl`, `rules` (path of `fixer-rules.md`), `claudeBin`.
+- Extra payload: `heal`, `models`, `budgetCheck` (default 5, `heal.json` `checkBudget` or `YUKTA_BUDGET_CHECK`), `rules` (path of `fixer-rules.md`), `claudeBin`.
 - Only a **healing** check takes `check.lock` (a pid file), because only it edits the checkout. A non-healing one can run alongside.
 - Old heal records move to `heal/<session>.prev` so you can compare with the previous check.
 
@@ -266,7 +264,7 @@ flowchart TD
 ## 6. The workflows in `session.json`
 
 Generated by `src/heal/gen-session.ts` from `heal.json`. Plugin types used: `CONSTANT_SOURCE`, `PROCESS_EXECUTOR`, `SUB_WORKFLOW`, `BRANCH`
-(`SELECT_KEY` or `EXPRESSION`), `MAPPER`, `CLASSIFY`, `SCHEDULE_TRIGGER`, `CONSOLE_TERMINAL`, `OUTCOME_TERMINAL`. Start variables are written
+(`SELECT_KEY` or `EXPRESSION`), `MAPPER`, `SCHEDULE_TRIGGER`, `CONSOLE_TERMINAL`, `OUTCOME_TERMINAL`. Start variables are written
 `${start.x}` / `${start.x:int}`.
 
 Conventions worth knowing:
@@ -321,8 +319,7 @@ flowchart TD
   B -->|no| D[brief]
   D --> E{known? same failure<br/>on clean origin/main}
   E -->|yes| BASE[stop: baseline-known]
-  E -->|no| F[triage: local model CLASSIFY<br/>easy / average / hard]
-  F --> G[ladder rung: attempt workflow]
+  E -->|no| G[ladder rung: attempt workflow<br/>haiku low → … → sonnet high]
   G -->|fixed| DONE2[fixed]
   G -->|not fixed| H{carry?: changed anything<br/>and different failure?}
   H -->|no| GIVE[giveup FAILED]
@@ -335,30 +332,19 @@ flowchart TD
 1. **Free fix.** `heal.json` `extra.reuse.auto` runs `fix-reuse.ts` (`reuse lint --json`, then `reuse annotate` with Apache-2.0/Infenia,
    `.license` sidecars for types that cannot hold comments). Spotless, `make fmt`, `prettier --write`, `eslint --fix` are formatter-style
    fixes (the `auto` column of the plan). Passing the re-check ends the heal at zero model cost.
-2. **`brief`** (`heal.ts`): a 1000-character brief for the triage model (stage, ecosystem, changed-file count, command, 25 problem lines) and
-   a longer `problems` text for the fixer (60 problem lines plus the last 40 output lines).
+2. **`brief`** (`heal.ts`): the `problems` text for the fixer (60 problem lines plus the last 40 output lines) and the `known` flag; the whole output also goes
+   to `<healDir>/<stage>.log`.
 3. **Baseline-known stop.** `baselineKnown()` runs the stage command once on a clean `origin/main` worktree, cached under
    `STATE_DIR/baseline/<sha>/<stage>`. Numbers and paths are normalised. If every problem line also fails on main, the failure is not yours:
    no fixer runs, event `baseline`.
-4. **Triage.** A `CLASSIFY` node calls a local Ollama model (`tev1`) at the URL in `heal.json`. Labels: `easy`, `average`, `hard`.
-   `minProbability` is 0.3; `uncertain`, errors and `--triage off` all fall to `triage.default` = `average`. Override model/URL with
-   `YUKTA_TRIAGE_*` or `DEV_HOME/triage.json`. Every triage outcome is also logged (`triage-log.*` nodes) so `heal report` can judge whether
-   triage was right.
-5. **Ladders** (`heal.json`, one attempt per rung, effort does not climb):
+4. **Ladder** (`heal.json` `ladder`, one attempt per rung, tried in order): `haiku/low`, `haiku/medium`, `haiku/high`, `sonnet/low`, `sonnet/medium`,
+   `sonnet/high`. The `attempt` workflow takes the model and the effort from its start variables, so the `heal` workflow is the only place that decides
+   them. Efforts: `low` = 600 s / $0.50, `medium` = 1200 s / $1, `high` = 1800 s / $2.
 
-   | Level   | Rungs                   |
-   | ------- | ----------------------- |
-   | easy    | haiku/low → sonnet/low  |
-   | average | haiku/high → sonnet/low |
-   | hard    | sonnet/low              |
-
-   Efforts: `low` = 600 s / $0.50, `high` = 1800 s / $2. Rungs shared between levels share a node; the generator throws if two levels give
-   the same rung different successors.
-
-6. **Escalation guard** (`carry.<rung>?`). The ladder **gives up instead of escalating** when: the attempt changed no file; the failure digest
+5. **Escalation guard** (`carry.<rung>?`). The ladder **gives up instead of escalating** when: the attempt changed no file; the failure digest
    equals the previous attempt's (sha1 of the output with numbers normalised, stored in `<stage>.digest`); or the stage is in
    `singleAttempt` (`reuse`, `docs`, `actionlint`). Otherwise the next rung receives the previous summary and the changed-file list.
-7. **After healing**, `check` re-runs all Gradle tasks once (§6.1).
+6. **After healing**, `check` re-runs all Gradle tasks once (§6.1).
 
 ### 7.2 One attempt (`attempt` workflow, `heal.ts`)
 
@@ -385,10 +371,10 @@ flowchart TD
 
 ### 7.3 Observability
 
-- `emit()` appends JSONL to `heal-events.jsonl`: `brief`, `baseline`, `triage`, `fix`, `stage`, `recheck`, `verify`, `giveup`, `result`.
+- `emit()` appends JSONL to `heal-events.jsonl`: `brief`, `baseline`, `fix`, `stage`, `recheck`, `verify`, `giveup`, `result`.
   Errors are swallowed so monitoring never breaks a heal. Events from `heal.ts` carry `run:-` and are stamped with the next `result` of the session.
 - Per-attempt record: `STATE_DIR/heal/<session>/<stage>-<n>.json`, with `.before`, `.base`, `.claude`, `.verdict` beside it.
-- `yk heal report` findings: `under-triage` (≥5 solved and half fixed above the triage rung), `guard-hits`, `giveups`, `repeated-failure`
+- `yk heal report` findings: `guard-hits`, `giveups`, `repeated-failure`
   (same signature ≥3×), `unfinished-results`, `reuse-low-fix-rate`.
 - Diagnose one attempt:
   `jq -c 'select(.event=="fix") | {stage,model,effort,fixed,files,cost,guard,summary}' ~/.local/state/yukta-dev/heal-events.jsonl | tail -8`.
@@ -654,7 +640,6 @@ steps are too small). Offline tests use a fake `claude`, a fake `gh` and a throw
 - Stage names: `.`/`-` in plans, `_` in workflows.
 - `fast.ok` lives in the heal dir (`STATE_DIR/heal/<session>/`) and makes later Gradle stages no-ops; it is written only after a fully green `fast` run.
 - A swap of the dev server is deferred while any non-pickup workflow runs (`yk status` shows `STALE`).
-- The triage model address in `heal.json` is a LAN IP; on another network set `YUKTA_TRIAGE_URL` or `DEV_HOME/triage.json`, or use `--triage off`.
 - `heal.json` `efforts` has only `low` and `high`; `claude.ts` accepts `medium` but there is no budget row for it (README open question).
 - Do not edit files or run Gradle in the checkout while a healing `yk check` runs: a fixer is editing it.
 - `yk help` hides commands below the `// Rebuild step 1` marker in `yk.ts`.
@@ -704,7 +689,6 @@ report; `test/ticket/` covers ladder, gates, spec, step, waves, schemas, sizing,
 | Stage                    | One check in the plan (`spotless`, `compile`, `tests`, `ui.tsc`, …) and its block in `check`. |
 | Heal                     | Repair workflow for a failed stage.                                                           |
 | Rung                     | One (model, effort) attempt in a ladder.                                                      |
-| Triage                   | Local-model classification of a failure as easy/average/hard.                                 |
 | Guard                    | `judge`: checks what a fixer changed on disk.                                                 |
 | Baseline-known           | Failure that also exists on clean `origin/main`.                                              |
 | `fast`                   | Single combined Gradle run that makes per-stage Gradle commands no-ops.                       |

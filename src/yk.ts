@@ -5,7 +5,7 @@
 //
 //   yk gradle [--detach] <gradle args...>    run Gradle once, e.g. :core:test --tests X
 //   yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--detach]  the scoped, self-healing gate: yk plan's stages one after the other; a failure is
-//                                            fixed (free fix, then a System One triage picks model and effort) or stops the run (--no-heal: at once)
+//                                            fixed (free fix, then the ladder of heal.json) or stops the run (--no-heal: at once)
 //   yk plan [--full] [--base REF]            dry run: the stages a scoped check of your changes would run, nothing is executed
 //   yk stats                                 runs, failed, median wall and heal dollars per kind of run; fix rate and dollars per stage and rung (from the heal events)
 //   yk heal report|show [--since 7d] [--run ID] [--project NAME] [--json]
@@ -97,7 +97,6 @@ import {
   sq,
   statSync,
   text,
-  triageConf,
   tryJson,
   tryLock,
   useDevKey,
@@ -258,10 +257,9 @@ async function cmdTool(argv: string[]): Promise<number> {
   return runTool('tool', mode, notify, dir, rest)
 }
 
-/** yk check [--full] [--base REF] [--no-heal] [--models haiku,sonnet] [--triage off] [--detach [--notify]]
+/** yk check [--full] [--base REF] [--no-heal] [--models haiku,sonnet] [--detach [--notify]]
  * The scoped, self-healing gate. plan.ts turns the changes into stage commands; the `check` workflow (src/heal/gen-session.ts) runs them one after the other
- * through `tool`. A failing stage goes to `heal`: its free fix, then the System One triage rates the failure and picks the model and effort to start with,
- * and fresh Claude sessions climb from there. --no-heal sends heal = "off": heal ends at once, so the first failing stage ends the run. */
+ * through `tool`. A failing stage goes to `heal`: its free fix, then the ladder of heal.json (haiku low, medium, high, then sonnet), one fresh Claude session per rung. --no-heal sends heal = "off": heal ends at once, so the first failing stage ends the run. */
 async function cmdCheck(argv: string[]): Promise<number> {
   let mode: 'watch' | 'detach' = 'watch'
   let full = false,
@@ -269,12 +267,10 @@ async function cmdCheck(argv: string[]): Promise<number> {
     heal = 'on',
     fast = 'on',
     models = '',
-    triage = 'on',
     only = '',
     skip = '',
     notify = false
-  const bad =
-    'yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--no-fast] [--models ..] [--triage off] [--detach [--notify]]'
+  const bad = 'yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--no-fast] [--models ..] [--detach [--notify]]'
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
     if (a === '--detach') mode = 'detach'
@@ -286,10 +282,7 @@ async function cmdCheck(argv: string[]): Promise<number> {
     else if (a === '--stage') only = argv[++i] ?? die('--stage needs stage names, e.g. tests,style')
     else if (a === '--skip') skip = argv[++i] ?? die('--skip needs stage names, e.g. security')
     else if (a === '--models') models = argv[++i] ?? die('--models needs models, e.g. haiku,sonnet')
-    else if (a === '--triage') {
-      if (argv[++i] !== 'off') die(`invalid --triage '${argv[i] ?? ''}' (off)`)
-      triage = 'off'
-    } else die(`unknown option '${a}' (${bad})`)
+    else die(`unknown option '${a}' (${bad})`)
   }
   if (models && !/^(haiku|sonnet)(,(haiku|sonnet))*$/.test(models)) die(`invalid --models '${models}' (models from haiku, sonnet)`)
   if (notify && mode !== 'detach') die('--notify needs --detach: a run you wait for reports to you anyway')
@@ -389,12 +382,9 @@ async function cmdCheck(argv: string[]): Promise<number> {
       modules: modules || '-',
       models: models || '-',
       heal,
-      triage,
       rules: join(HERE, 'fixer-rules.md'),
       claudeBin: process.env.YUKTA_CLAUDE_BIN || '-',
       budgetCheck: process.env.YUKTA_BUDGET_CHECK || String(readJson(join(HERE, 'heal.json')).checkBudget),
-      triageModel: triageConf('model'),
-      triageUrl: triageConf('url'),
       verifyCommand,
       cmd,
       auto,

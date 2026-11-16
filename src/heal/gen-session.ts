@@ -12,9 +12,8 @@
 //   claude     L0  one headless Claude Code session (src/heal/claude.ts)
 //   agent      L0  the same session on Yukta's AGENT_SESSION plugin (harness claude-code): cost, turns and the structured answer come back in the payload
 //   attempt    L1  one repair attempt: prepare -> claude -> claimed -> format -> judge (the guard) -> recheck -> report
-//   heal       L1  free automatic fix, then the System One triage picks a level; each level of heal.json has a ladder of rungs (model/effort, one
-//                  attempt each): a failed rung hands over to the next, the end of the ladder gives up. The efforts (budget, time box), the triage
-//                  levels and the triage model come from heal.json.
+//   heal       L1  free automatic fix, then the ladder of heal.json: model/effort rungs (haiku low, medium, high, then sonnet), one attempt each; a failed
+//                  rung hands over to the next, the end of the ladder gives up. The efforts (budget, time box) come from heal.json too.
 //   pickup     a SCHEDULE_TRIGGER every INTERVAL_MS that runs `pickup tick`, which hands the next assigned, Ready issue to the yukta-pickup channel.
 //
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
@@ -70,8 +69,8 @@ export const checkGroups = (wf: Json): Json =>
     (g) => (g === 'check' ? 'stone' : ECOSYSTEM_COLOR[ecosystem(g)]!),
   )
 
-/** heal: the free fix, the triage, the ladder of rungs, and the way in and out. */
-const HEAL_GROUPS: Record<string, string> = { 'free-fix': 'teal', triage: 'violet', ladder: 'sky', start: 'stone', outcome: 'stone' }
+/** heal: the free fix, the brief, the ladder of rungs, and the way in and out. */
+const HEAL_GROUPS: Record<string, string> = { 'free-fix': 'teal', brief: 'violet', ladder: 'sky', start: 'stone', outcome: 'stone' }
 export const healGroups = (wf: Json): Json =>
   group(
     wf,
@@ -79,8 +78,8 @@ export const healGroups = (wf: Json): Json =>
       if (['trigger', 'heal?', 'disabled'].includes(id)) return 'start'
       if (id.startsWith('auto')) return 'free-fix'
       if (id.startsWith('fix-') || id.startsWith('carry.')) return 'ladder'
-      if (['done', 'logged', 'giveup'].includes(id)) return 'outcome'
-      return 'triage' // brief, first, known?, baseline-known, triage?, triage, triage-log.*
+      if (['done', 'giveup'].includes(id)) return 'outcome'
+      return 'brief' // brief, first, known?, baseline-known
     },
     (g) => HEAL_GROUPS[g]!,
   )
@@ -123,21 +122,7 @@ const STAGES = [
 ]
 const FAST_BEFORE = 'spotless' // the fast path runs in front of the first Gradle stage
 const NO_HEAL = new Set(['licenses', 'security']) // a model may not fix these
-const PASS = [
-  'project',
-  'healDir',
-  'modules',
-  'events',
-  'models',
-  'timeout',
-  'rules',
-  'claudeBin',
-  'triage',
-  'triageModel',
-  'triageUrl',
-  'heal',
-  'budgetCheck',
-]
+const PASS = ['project', 'healDir', 'modules', 'events', 'models', 'timeout', 'rules', 'claudeBin', 'heal', 'budgetCheck']
 
 function toolCall(stage: string, nodeId: string, command?: string): Json {
   return {
@@ -305,9 +290,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
   const EFFORTS: Record<string, { budget: number; timeout: number }> = Object.fromEntries(
     Object.entries<Json>(policy.efforts).map(([e, c]) => [e, { budget: c.budget, timeout: c.timeoutSeconds }]),
   )
-  const LEVELS: Record<string, Json> = policy.triage.levels
-  // optional labels that end the heal with no fixer (e.g. a failure caused by the machine, not the change): name -> {describe, reason}
-  const STOPS: Record<string, Json> = policy.triage.stop ?? {}
+  const LADDER = (policy.ladder as string[]).map((x) => x.split('/') as [string, string]) // the rungs, in order: model/effort, one attempt each
   const SINGLE: string[] = policy.singleAttempt ?? []
   const FIX_SCHEMA =
     '{"type":"object","properties":{"fixed":{"type":"boolean"},"summary":{"type":"string"}},"required":["fixed","summary"]}'
@@ -499,24 +482,9 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
 
   // ---- heal (L1)
   const rid = (m: string, e: string): string => `fix-${m}-${e}`
-  // Each level has a ladder of rungs "model/effort", one attempt each (no effort climbing): the first is where the triage starts, a failed rung hands over
-  // to the next one, and the end of the ladder gives up. Rungs shared by levels share a node (and must share the rest of the ladder).
-  const rungs = new Map<string, Json>()
-  const nxt = new Map<string, [string, string] | null>()
-  for (const c of Object.values(LEVELS)) {
-    const steps = (c.ladder as string[]).map((x) => x.split('/') as [string, string])
-    steps.forEach((st, k) => {
-      const key = st.join('/')
-      if (!rungs.has(key)) rungs.set(key, { nodeId: rid(...st), type: 'SUB_WORKFLOW', config: attemptCall(...st) })
-      const after = k + 1 < steps.length ? steps[k + 1]! : null
-      if (!nxt.has(key)) nxt.set(key, after)
-      else if ((nxt.get(key)?.join('/') ?? null) !== (after?.join('/') ?? null)) throw new Error(`rung ${key} has two different successors`)
-    })
-  }
-  const starts: Record<string, string> = Object.fromEntries(
-    Object.entries(LEVELS).map(([lvl, c]) => [lvl, rid(...((c.ladder[0] as string).split('/') as [string, string]))]),
-  )
-  const avg = starts[policy.triage.default]!
+  // The ladder is one list in heal.json, tried in order, one attempt per rung: a failed rung hands over to the next, the end of the ladder gives up. The attempt
+  // workflow takes the model and the effort from its start variables, so this workflow is the only place that decides them.
+  const rungs: Json[] = LADDER.map((st) => ({ nodeId: rid(...st), type: 'SUB_WORKFLOW', config: attemptCall(...st) }))
   const nodes: Json[] = [
     { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { stdout: S('stdout'), heal: S('heal'), auto: S('auto') } } },
     {
@@ -538,17 +506,15 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     { nodeId: 'auto-check', type: 'SUB_WORKFLOW', config: { ...toolCallCfg(S('command'), S('stage')), ...ROUTE } },
     pe('auto-record', 'record-auto', healEnv(), { timeout: 60 }),
     // the brief also runs the stage once on a clean origin/main (cached by sha), so it can take as long as a stage
-    pe('brief', 'brief', healEnv({ YUKTA_COMMAND: S('command'), YUKTA_TRIAGE: S('triage') }), { stdin: true, json: true, timeout: 3720 }),
+    pe('brief', 'brief', healEnv({ YUKTA_COMMAND: S('command') }), { stdin: true, json: true, timeout: 3720 }),
     {
       nodeId: 'first',
       type: 'MAPPER',
       config: {
         mode: 'PROJECTION',
         mapping: {
-          brief: "payload['output']['brief']",
           problems: "payload['output']['problems']",
           previous: "''",
-          triage: "payload['output']['triage']",
           known: "payload['output']['known']",
         },
       },
@@ -566,26 +532,6 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
         reason: 'the stage already fails the same way on origin/main: a known baseline failure, no fixer was started',
       },
     },
-    {
-      nodeId: 'triage?',
-      type: 'BRANCH',
-      config: { mode: 'SELECT_KEY', selector: "payload['triage']", cases: { off: 'off' }, defaultPort: 'on' },
-    },
-    {
-      nodeId: 'triage',
-      type: 'CLASSIFY',
-      config: {
-        model: S('triageModel'),
-        baseUrl: S('triageUrl'),
-        state: "payload['brief']",
-        question: policy.triage.question ?? 'How hard is it to fix this failed check?',
-        labels: Object.fromEntries(Object.entries({ ...LEVELS, ...STOPS }).map(([k, v]) => [k, v.describe])),
-        minProbability: policy.triage.minProbability,
-        routeByLabel: true,
-        timeout: policy.triage.timeoutSeconds || 55,
-        engine: { onError: 'ROUTE' },
-      },
-    },
   ]
   const e: Edge[] = []
   e.push(...edges('trigger', 'heal?'), ...edges('heal?', 'disabled', 'off'), ...edges('heal?', 'auto?', 'on'))
@@ -598,68 +544,36 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     ...edges('brief', 'first'),
     ...edges('first', 'known?'),
     ...edges('known?', 'baseline-known', 'known'),
-    ...edges('known?', 'triage?', 'unknown'),
+    ...edges('known?', rid(...LADDER[0]!), 'unknown'),
   )
-  e.push(...edges('triage?', 'triage', 'on'), ...edges('triage?', avg, 'off'))
-  // every port of the triage also feeds a log node (a dead end): its event is what heal-report reads to judge the triage
-  const TRIAGE_PORTS = [...Object.keys(LEVELS), ...Object.keys(STOPS), 'uncertain', 'error']
-  for (const port of TRIAGE_PORTS) {
-    const startRung = port in LEVELS ? starts[port]! : avg
-    nodes.push(
-      pe(
-        'triage-log.' + port,
-        'triage-log',
-        healEnv({
-          YUKTA_TRIAGE_ROUTE: port,
-          YUKTA_TRIAGE_START: port in STOPS ? '-' : startRung.replace('fix-', '').replaceAll('-', '/'),
-          YUKTA_TRIAGE_MODEL: S('triageModel'),
-        }),
-        { stdin: port !== 'error', envIn: port === 'error', timeout: 60 },
-      ),
-    )
-    e.push(...edges('triage', 'triage-log.' + port, port), ...edges('triage-log.' + port, 'logged'))
-  }
-  for (const [port, c] of Object.entries(STOPS)) {
-    nodes.push({
-      nodeId: 'stop.' + port,
-      type: 'OUTCOME_TERMINAL',
-      config: { outcome: 'FAILED', reason: `ESCALATE (${port}): ${c.reason}` },
-    })
-    e.push(...edges('triage', 'stop.' + port, port))
-  }
-  e.push(
-    ...edges('triage', starts.easy!, 'easy'),
-    ...edges('triage', avg, 'average', 'uncertain', 'error'),
-    ...edges('triage', starts.hard!, 'hard'),
-  )
-  for (const [key, after] of nxt) {
-    const st = key.split('/') as [string, string]
+  LADDER.forEach((st, k) => {
+    const after = LADDER[k + 1]
     e.push(...edges(rid(...st), 'done', 'success'))
-    if (after) {
-      const c = 'carry.' + rid(...after)
-      if (!nodes.some((n) => n.nodeId === c)) {
-        nodes.push({ nodeId: c, type: 'MAPPER', config: carry("['output']") })
-        // an attempt that changed nothing gains nothing from a stronger model asking the same question: give up. So does a second attempt on a stage in
-        // heal.json singleAttempt, which an edit to the code often cannot fix (a licence header, a docs link) nor does one that failed exactly as the
-        // attempt before it did (no progress, `same` of the report step)
-        const stop =
-          "payload['changed'] == false or payload['same'] == true" +
-          (SINGLE.length ? ` or {${SINGLE.map((x) => `'${x}'`).join(',')}}.contains(payload['stage'])` : '')
-        nodes.push({ nodeId: c + '?', type: 'BRANCH', config: { mode: 'EXPRESSION', cases: { [stop]: 'stop' }, defaultPort: 'go' } })
-        e.push(...edges(c, c + '?'), ...edges(c + '?', rid(...after), 'go'), ...edges(c + '?', 'giveup', 'stop'))
-      }
-      e.push(...edges(rid(...st), c, 'failure', 'error'))
-    } else e.push(...edges(rid(...st), 'giveup', 'failure', 'error'))
-  }
-  nodes.push(...rungs.values())
+    if (!after) {
+      e.push(...edges(rid(...st), 'giveup', 'failure', 'error'))
+      return
+    }
+    const c = 'carry.' + rid(...after)
+    nodes.push({ nodeId: c, type: 'MAPPER', config: carry("['output']") })
+    // an attempt that changed nothing gains nothing from a stronger model asking the same question: give up. So does a second attempt on a stage in
+    // heal.json singleAttempt, which an edit to the code often cannot fix (a licence header, a docs link) nor does one that failed exactly as the
+    // attempt before it did (no progress, `same` of the report step)
+    const stop =
+      "payload['changed'] == false or payload['same'] == true" +
+      (SINGLE.length ? ` or {${SINGLE.map((x) => `'${x}'`).join(',')}}.contains(payload['stage'])` : '')
+    nodes.push({ nodeId: c + '?', type: 'BRANCH', config: { mode: 'EXPRESSION', cases: { [stop]: 'stop' }, defaultPort: 'go' } })
+    e.push(...edges(c, c + '?'), ...edges(c + '?', rid(...after), 'go'), ...edges(c + '?', 'giveup', 'stop'))
+    e.push(...edges(rid(...st), c, 'failure', 'error'))
+  })
+  nodes.push(...rungs)
   nodes.push(
     { nodeId: 'done', type: 'CONSOLE_TERMINAL', config: {} },
-    { nodeId: 'logged', type: 'CONSOLE_TERMINAL', config: {} }, // the end of the log branches; they have no result to give
     { nodeId: 'giveup', type: 'OUTCOME_TERMINAL', config: { outcome: 'FAILED', reason: 'every model failed at every effort' } },
   )
   const HEAL_WF: Json = {
     workflowId: 'heal',
-    description: 'Repair a failed stage: the free automatic fix first, then triage and the model ladder, escalating on failure.',
+    description:
+      'Repair a failed stage: the free automatic fix first, then a fixed ladder of model and effort (heal.json ladder), one attempt each, until the stage passes.',
     nodes,
     edges: e,
   }

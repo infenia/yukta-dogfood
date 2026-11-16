@@ -165,15 +165,6 @@ export function failedOutput(session: string, exec: string): string {
   return (p?.results?.[0]?.stdout ?? p?.stdout ?? '') as string
 }
 
-/** The triage model of heal. YUKTA_TRIAGE_<KEY> beats $DEV_HOME/triage.json, which beats heal.json. */
-export function triageConf(key: 'url' | 'model'): string {
-  const v = process.env[`YUKTA_TRIAGE_${key.toUpperCase()}`]
-  if (v) return v
-  const local = tryJson(text(join(process.env.YUKTA_DEV_HOME || DEV_HOME, 'triage.json')))?.[key]
-  if (local) return String(local)
-  return String(readJson(join(HERE, 'heal.json')).triage[key])
-}
-
 export function parseArgs(
   argv: string[],
   spec: { value?: string[]; bool?: string[] },

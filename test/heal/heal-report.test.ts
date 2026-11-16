@@ -25,7 +25,7 @@ const e = (run: string, n: number, event: string, kw: object): void => {
 beforeAll(() => {
   d = tmp()
   ev = join(d, 'events.jsonl')
-  // run 1: tests fail, triage says moderate (sonnet/low), sonnet/low does nothing, sonnet/medium fixes
+  // run 1: tests fail, sonnet/low does nothing, sonnet/medium fixes
   e('1aaaaaaaa', 1, 'stage', {
     stage: 'tests',
     secs: 120,
@@ -33,17 +33,6 @@ beforeAll(() => {
     ok: false,
     sig: 's1',
     head: 'OrderServiceTest > shouldApplyDiscount FAILED',
-  })
-  e('1aaaaaaaa', 2, 'triage', {
-    stage: 'tests',
-    route: 'level',
-    label: 'moderate',
-    p: 0.41,
-    start: 'sonnet/low',
-    model: 'kev:4b-q4_K_M',
-    secs: 22.0,
-    chars: 3900,
-    fallback: null,
   })
   e('1aaaaaaaa', 3, 'fix', {
     stage: 'tests',
@@ -82,18 +71,8 @@ beforeAll(() => {
     scope: 'core',
     durations: { tests: 800 },
   })
-  // run 2: triage errors (fallback), haiku/low fixes a file outside the scoped module, run says healed=-
+  // run 2: haiku/low fixes a file outside the scoped module, run says healed=-
   e('2bbbbbbbb', 1, 'stage', { stage: 'compile', secs: 30, exit: 1, ok: false, sig: 's2', head: "error: ';' expected" })
-  e('2bbbbbbbb', 2, 'triage', {
-    stage: 'compile',
-    route: 'error',
-    start: 'sonnet/medium',
-    model: 'kev:4b-q4_K_M',
-    secs: 60.0,
-    chars: 900,
-    fallback: 'error',
-    error: 'HTTP 500 after 60s',
-  })
   e('2bbbbbbbb', 3, 'fix', {
     stage: 'compile',
     attempt: 1,
@@ -111,16 +90,6 @@ beforeAll(() => {
   // run 3: gives up, guard hit; same failure as run 1 twice more
   for (const r of ['3ccccccc', '4ddddddd'])
     e(r, 1, 'stage', { stage: 'tests', secs: 100, exit: 1, ok: false, sig: 's1', head: 'OrderServiceTest > shouldApplyDiscount FAILED' })
-  e('3ccccccc', 2, 'triage', {
-    stage: 'tests',
-    route: 'uncertain',
-    p: 0.2,
-    start: 'sonnet/medium',
-    model: 'kev:4b-q4_K_M',
-    secs: 20.0,
-    chars: 4000,
-    fallback: 'uncertain',
-  })
   e('3ccccccc', 3, 'fix', {
     stage: 'tests',
     attempt: 1,
@@ -150,8 +119,6 @@ test('report', () => {
   expect(out).toContain("'FAILURE': 1")
   expect(out).toMatch(/Heals: 3 started, 2 solved, 1 gave up/)
   expect(out).toContain('solved at: sonnet/medium x2')
-  expect(out).toContain("Triage: 3 call(s), routes {'level': 1, 'error': 1, 'uncertain': 1}")
-  expect(out).toContain("fallbacks {'error': 1, 'uncertain': 1}")
   expect(out).toMatch(/sonnet\/low +1 +0 +0\.20/)
   expect(out).toMatch(/opus\/high +1 +0 +1\.50/)
   expect(out).toContain('total $2.5')
@@ -159,12 +126,12 @@ test('report', () => {
   expect(out).toMatch(/tests +3 +3/)
 })
 test('filters and --json', () => {
-  expect(rep('show', '--run', '2bbb').out.trim().split('\n')).toHaveLength(5)
+  expect(rep('show', '--run', '2bbb').out.trim().split('\n')).toHaveLength(4)
   expect(rep('report', '--since', '2026-10-26').out).toContain('no heal events')
   expect(rep('report', '--project', 'other').out).toContain('no heal events')
   const j = JSON.parse(rep('report', '--json').out)
   expect(j.heals.solved).toBe(2)
-  expect(j.findings.length).toBeGreaterThanOrEqual(7)
+  expect(j.findings.length).toBeGreaterThanOrEqual(6)
 })
 test('a clean log has no findings; events without a run id take the run of the next result of their session', () => {
   put(

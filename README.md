@@ -59,8 +59,7 @@ any checkout/branch ──yk──┘  session apply → workflow start → prob
 ## Setup
 
 **Requires:** `git`, `bun` (everything here is TypeScript on Bun), `curl`, Java 25, Go (the CLI is built with the server).
-**Optional:** `opengrep`, `trivy` (stages skipped when absent), `gh` + `cosign` for `yk up --release`, `mint` (docs links), `reuse`, `actionlint`,
-Ollama with the triage model for the heal triage (without it heal starts at the average level).
+**Optional:** `opengrep`, `trivy` (stages skipped when absent), `gh` + `cosign` for `yk up --release`, `mint` (docs links), `reuse`, `actionlint`.
 
 ```bash
 yk up            # build origin/main (minutes the first time per commit) and start it
@@ -109,10 +108,10 @@ or stopped (Ctrl-C, or Claude Code stopping a background task). Add `--notify` t
 
 ### Check
 
-| Command                                                                                                                       | Does                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `yk plan [--full] [--base REF]`                                                                                               | dry run: the stages a scoped check of your changes would run (nothing executes) |
-| `yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--no-fast] [--models m,..] [--triage off] [--detach]` | the scoped, self-healing gate ([how it heals](#self-healing-check))             |
+| Command                                                                                                        | Does                                                                            |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `yk plan [--full] [--base REF]`                                                                                | dry run: the stages a scoped check of your changes would run (nothing executes) |
+| `yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--no-fast] [--models m,..] [--detach]` | the scoped, self-healing gate ([how it heals](#self-healing-check))             |
 
 | `yk check` flag              | Meaning                                                                                               |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -122,7 +121,6 @@ or stopped (Ctrl-C, or Claude Code stopping a background task). Add `--notify` t
 | `--no-heal`                  | stop at the first failing stage and show it as it is; edits nothing                                   |
 | `--no-fast`                  | skip the single combined Gradle invocation that runs first when two or more Gradle stages are planned |
 | `--models m,..`              | allow only these models (`haiku,sonnet`); others' rungs stop at once                                  |
-| `--triage off`               | skip the triage; every heal starts at the average level                                               |
 | `--detach`                   | return after `STARTED`; follow with `yk watch`                                                        |
 
 **Scope.** The plan is your changes (uncommitted and untracked included) against the merge base with `origin/main`. It narrows the tests to the
@@ -184,26 +182,24 @@ slash commands) are switched off while the loop is rebuilt; their pieces (and th
 `yk check` runs the stages of `yk plan` one after the other (cheap first). A failing stage goes to `heal`:
 
 ```
-stage fails ─▶ 1 free fix ─▶ 2 baseline? ─▶ 3 triage ─▶ 4 ladder (fixer sessions) ─▶ 5 guard ─▶ stage re-run ─▶ 6 verify all Gradle stages
-               (no model)    known failure   easy/avg/    haiku → sonnet                reject      pass: healed
-                             on main: stop   hard         edits, never commits          bad edits   fail: next rung / FAILED
+stage fails ─▶ 1 free fix ─▶ 2 baseline? ─▶ 3 ladder (fixer sessions) ─▶ 4 guard ─▶ stage re-run ─▶ 5 verify all Gradle stages
+               (no model)    known failure   haiku low/medium/high,        reject      pass: healed
+                             on main: stop   then sonnet; never commits     bad edits   fail: next rung / FAILED
 ```
 
-Steps 4 and 5 repeat per rung; the first six steps below are the order of events, not a list of options.
+Steps 3 and 4 repeat per rung; the steps below are the order of events, not a list of options.
 
 1. **Free fix**: `spotlessApply`, `make fmt`, `prettier --write`, `eslint --fix`, `make mod-tidy`. No model; the stage runs again.
 2. **Baseline**: the failing stage runs once on a clean checkout of `origin/main` (kept in `.yukta-dev/baseline/<sha>`). When it fails
    there with the same problem lines, the stage is a known baseline failure: the heal ends with no fixer. No `origin/main`, a
    timeout or any other error means "not known" and the heal goes on.
-3. **Triage**: a local model (System One, `tev1` via Ollama) rates the failure easy, average or hard. The label only picks the
-   first rung; unreachable or unsure (< 0.3) means average. `--triage off` skips it. Optional `triage.stop` in `heal.json` (off by default) adds labels such as `environment` that end the heal with no fixer (`FAILED`, reason `ESCALATE (<label>): …`); enable one only after shadow-mode calibration (#1246) shows the router agrees with what fixed the failure.
-4. **Ladder** (`heal.json`): easy `haiku/low → sonnet/low`, average `haiku/high → sonnet/low`, hard `sonnet/low`. One fresh
+3. **Ladder** (`heal.json` `ladder`): `haiku/low → haiku/medium → haiku/high → sonnet/low → sonnet/medium → sonnet/high`. One fresh
    Claude session per rung. An attempt that changed no file ends the ladder, and so does the first failed attempt on `reuse`, `docs` or `actionlint` (`heal.json` `singleAttempt`); the end of the ladder fails the stage. An attempt after which the stage fails exactly as it did after the attempt before (same problem lines, numbers aside) ends the ladder too: a stronger model would start from the same problems.
-5. **Guard**: what changed on disk decides, not what Claude says. Rejected: edits to `config/`, `build-logic/`, `gradle/`,
+4. **Guard**: what changed on disk decides, not what Claude says. Rejected: edits to `config/`, `build-logic/`, `gradle/`,
    `.github/`, `.claude/` or this folder, added suppressions, removed assertions, test expectations changed with no code
    change, a claimed fix with no change. Fixers never commit.
    **MCP for fixers**: a fixer reads more of the failed run on demand instead of being handed all of it. claude.ts gives it the server's `/mcp` with the read tools only (`get_node_output`, `get_execution_tree`, `get_execution_logs`, `get_execution_result`, `get_workflow_status`, `get_workflow_history`, `get_workflow_details`); the mutating tools are denied in `claude.ts` and the key is a named `VIEWER` key (`fixer-key` in the dev state dir, added to `server.properties` when `yk up` starts the server, so a server started before this change needs a restart), which the server enforces. `YUKTA_FIXER_MCP=off` turns it off; another server needs `YUKTA_SERVER_URL` and a `VIEWER` key in `YUKTA_FIXER_MCP_KEY`. Without a key a fixer has no MCP, as before. `test/claude-mcp.test.ts` tests the arguments.
-6. **Verify**: if anything was healed, the Gradle tasks of all stages run once more; a failure goes back to heal.
+5. **Verify**: if anything was healed, the Gradle tasks of all stages run once more; a failure goes back to heal.
 
 `licenses` and `security` are never healed. `--no-heal` ends the run at the first failing stage. With two or more Gradle stages planned, a `fast` step first runs all their tasks as one Gradle invocation (one start-up, one task graph); when it passes the Gradle stages are no-ops, when it fails the stages run one by one as before, so the failing stage, `failed_node` and the healing are unchanged. `--no-fast` skips it. `--models haiku,sonnet`
 leaves a model out (its rungs stop at once).
@@ -216,8 +212,8 @@ a per-effort budget and time box. `YK_ADVISOR=sonnet` (experimental, off by defa
 
 ### Configuration
 
-- `heal.json`: ladders per level, efforts (budget, time box), triage model and URL, the healable stages with their free fixes,
-  the extra tools (ui, docs, reuse, actionlint). `YUKTA_TRIAGE_MODEL` and `YUKTA_TRIAGE_URL` override the triage model and URL.
+- `heal.json`: the ladder (model/effort per rung), the efforts (budget, time box), the healable stages with their free fixes,
+  the extra tools (ui, docs, reuse, actionlint).
 - `fixer-rules.md`: the common system prompt of every fixer. `fixer-rules/<kind>.md` is appended for the failed stage (`style` → `pmd`, `spotbugs`, `tests` → `junit`, `coverage`, `compile`, `ui_vitest` → `vitest`, other `ui_*` → `ui`, `cli_*` → `go`); any other stage gets the common prompt alone. One constant file per kind, so the prompt cache holds. To add a role, add the file and a line in the `case` of `src/heal/claude.ts`.
 - `session.json` is **generated**: after editing `heal.json`, run `bun src/heal/gen-session.ts` (through `bun src/heal/gen-session.ts`), then commit it.
 - Events of every heal step: `~/.local/state/yukta-dev/heal-events.jsonl`; records of one run: `<checkout>/.yukta-dev/heal/`.
@@ -402,7 +398,6 @@ issue ─▶ init ─▶ route ─▶ architect ─▶ validate-spec ─▶ test
 | Test writer      | Claude (cheaper)  | test code from stubs and the case table; never sees the ticket                                                   |
 | Implementer      | Claude            | one step, constrained to the step's files                                                                        |
 | Reviewer         | Claude            | fresh-context review against the acceptance criteria                                                             |
-| Triage / cause   | local Ollama      | fuzzy classification only                                                                                        |
 
 ### Quick start
 
@@ -732,11 +727,11 @@ Day-to-day running, tuning and repair of the dogfood loop.
 
 ### Where things are
 
-| What                                                       | Where                                                                            |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| the events log (all runs, all checkouts)                   | `$DEV_HOME/heal-events.jsonl` (`~/.local/state/yukta-dev/`), `YUKTA_HEAL_EVENTS` |
-| the records of one run (attempts, outputs, exit codes)     | `<checkout>/.yukta-dev/heal/<session>/` (wiped by the next `yk check`)           |
-| the heal policy (models, efforts, triage prompt, `giveUp`) | `heal.json`                                                                      |
+| What                                                   | Where                                                                            |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| the events log (all runs, all checkouts)               | `$DEV_HOME/heal-events.jsonl` (`~/.local/state/yukta-dev/`), `YUKTA_HEAL_EVENTS` |
+| the records of one run (attempts, outputs, exit codes) | `<checkout>/.yukta-dev/heal/<session>/` (wiped by the next `yk check`)           |
+| the heal policy (the ladder, efforts, `giveUp`)        | `heal.json`                                                                      |
 
 ### What costs money, what touches the outside
 
@@ -750,35 +745,29 @@ Day-to-day running, tuning and repair of the dogfood loop.
 
 1. **Run it.** `yk check` (or let the Stop hook do it). Nothing to configure: events are on by default.
 2. **Look.** `yk heal report --since 7d`. Read it top to bottom: _where the time goes_, the stage table (a slow stage is a slow
-   check, not a heal problem), the heals (solved at which rung), the triage block, the cost per rung, the failures that came back.
+   check, not a heal problem), the heals (solved at which rung), the cost per rung, the failures that came back.
 3. **File what failed.** The Stop hook runs `yk report scan` (turn it off with `yk report off`, back on with `yk report on`, or `YUKTA_REPORT=off`). `yk report` lists the failures yk captured (a RESULT that was not SUCCESS, a yk crash); `yk report file` drafts one GitHub issue per new fingerprint, `--yes` files it (a repeat comments on the open issue, a closed one is filed again as a regression).
 4. **Fix it, and measure.**
-   - triage falls back or is slow: `yk heal show | jq 'select(.event == "triage")'` (`error`, `raw`), `ollama ps`, `journalctl -u ollama`;
-     shorten the brief (`src/heal/heal.ts brief`);
-   - triage rates too low or too high: change the prompt in `heal.json` and watch the `triage` events (`p`, the level and what fixed the stage) in `yk heal report`;
    - a fixer wastes money or wanders: read its `fix` events (`summary`, `files`, `guard`), fix `fixer-rules.md` or the guard;
    - the same failure keeps coming: fix the cause, or its check.
 
 ### Knobs
 
 `heal.json` `giveUp` {`minAttempts`, `maxFixRate`, `days`}: a stage whose model attempts in the last `days` days were fixed at most `maxFixRate` of the time, after at least `minAttempts` of them, is not tried again (the check reports the failure; attempts that never started do not count; the free `auto` fix still runs); read from `YUKTA_HEAL_EVENTS`.
-`YUKTA_HEAL_EVENTS` (file, or `off`), `YUKTA_HEAL_BUDGET` (USD per attempt, set per effort by `heal.json`), `YUKTA_TRIAGE=off` (skip the
-System One call: heal starts at the default level), `YUKTA_TRIAGE_URL` (another Ollama, default `http://localhost:11434`), `YUKTA_TRIAGE_MODEL` (another System One model, default `heal.json` `triage.model`; see "Self-healing check" above), `YUKTA_BUDGET_ISSUE` (USD per issue run),
-`yk check --models sonnet,opus`, `yk check --triage off`, `yk check --pause before-opus`.
+`YUKTA_HEAL_EVENTS` (file, or `off`), `YUKTA_HEAL_BUDGET` (USD per attempt, set per effort by `heal.json`), `YUKTA_BUDGET_ISSUE` (USD per issue run),
+`yk check --models sonnet,opus`, `yk check --pause before-opus`.
 For issue runs: `YUKTA_IMPL_MODEL` (opus), `YUKTA_IMPL_BUDGET` (5), `YUKTA_BUDGET_EPIC`, `YUKTA_WARM_DELAY`, `YUKTA_NAV_BACKENDS`,
 `YUKTA_NAV_IDE`, `YUKTA_NAV_IDE_URL`, `YUKTA_NAV_CBM_BIN`, `YUKTA_NAV_CBM_CACHE`, `YUKTA_NAV_INDEX_TIMEOUT`.
 
 ### Troubleshooting
 
-| Symptom                                            | Cause and fix                                                                                                                                                                                                                                                                   |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `triage-fallbacks` with `error`                    | the model is missing or in an unsupported format (`ollama list`, `ollama pull`), Ollama is down, or the call took over 60 s: Ollama cuts a System One call off at 60 s and the machine reads about 50 tokens a second without a big GPU, so keep the brief near 5000 characters |
-| the triage always answers `average`                | the confidence floor (`minProbability` 0.3) sends vague answers to the default: look at `p` in the triage events                                                                                                                                                                |
-| `yk check` says another healing check is running   | the watcher of the last run holds the lock for a few seconds; wait or `yk stop`                                                                                                                                                                                                 |
-| no events                                          | `YUKTA_HEAL_EVENTS=off` is set, or the dev server was started before this change: `yk up`                                                                                                                                                                                       |
-| `yk heal report` says no events for this selection | `--since`, `--run` or `--project` filter everything out                                                                                                                                                                                                                         |
-| a fixer hit a guard (`guard-hits`)                 | it touched `config/`, `build-logic/`, `gradle/`, `.github/`, `.claude/`, the dogfood tooling, added a suppression or removed assertions; its edits stay in the tree: `git diff`                                                                                                 |
-| the dev server runs old code                       | `yk up` rebuilds from `origin/main`; the workflows come from your checkout, the plugins from the server                                                                                                                                                                         |
+| Symptom                                            | Cause and fix                                                                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yk check` says another healing check is running   | the watcher of the last run holds the lock for a few seconds; wait or `yk stop`                                                                                                 |
+| no events                                          | `YUKTA_HEAL_EVENTS=off` is set, or the dev server was started before this change: `yk up`                                                                                       |
+| `yk heal report` says no events for this selection | `--since`, `--run` or `--project` filter everything out                                                                                                                         |
+| a fixer hit a guard (`guard-hits`)                 | it touched `config/`, `build-logic/`, `gradle/`, `.github/`, `.claude/`, the dogfood tooling, added a suppression or removed assertions; its edits stay in the tree: `git diff` |
+| the dev server runs old code                       | `yk up` rebuilds from `origin/main`; the workflows come from your checkout, the plugins from the server                                                                         |
 
 ### Gradle start-up (measured 2026-10-28, #1224)
 
@@ -822,16 +811,16 @@ Changing `yk`, heal, pickup or the ticket pipeline itself.
 ### Tests
 
 ```bash
-bun test            # offline: plan, heal steps, events, stats, notify, pickup, claude launcher, heal report, triage evaluation
+bun test            # offline: plan, heal steps, events, stats, notify, pickup, claude launcher, heal report
 bun test             # offline: the ticket pipeline (schemas, spec, steps, gate, ladder, waves, decisions, the walked workflows)
 yk tool -C .claude/hooks bun test                  # offline: the Claude Code hook (what is denied, what passes)
 ../../.github/scripts/plan-vs-ci.test.sh           # offline, also in CI: plan.ts and ci-tasks.sh pick the same modules
 YK_ONLINE=1 bun test heal.online yk.online   # on the dev server (yk up): a stopped foreground yk stops its run, --detach outlives, --stages;
-                                                   # check and heal against a fake claude and a fake Ollama (about a minute, no API cost)
+                                                   # check and heal against a fake claude (about a minute, no API cost)
 ```
 
 `test/heal/heal.online.test.ts` runs the scenarios through the real `check` workflow: two failing stages healed one after the other, a no-change attempt that
-ends the ladder, an escalation, a failed verify that goes back to heal, and a triage that starts at `sonnet/low`. The tests of the switched-off
+ends the ladder, an escalation, and a failed verify that goes back to heal. The tests of the switched-off
 pieces (issue, epic, nav, steer) are in git history.
 
 ### Format and type check
