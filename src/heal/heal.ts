@@ -22,6 +22,7 @@
 import { mkdtempSync } from 'node:fs'
 import { stageRules, writeMcpConfig } from './claude.ts'
 import { tmpdir } from 'node:os'
+import { resolve, sep } from 'node:path'
 import {
   HERE,
   type Json,
@@ -189,7 +190,11 @@ export function excerpts(problems: string): string {
 
 /** {path: hash} of every modified or untracked file, to tell what a step changed. */
 function snapshot(): Map<string, string> {
-  const files = git(['ls-files', '-m', '-o', '--exclude-standard', '-z']).stdout.split('\0').filter(Boolean)
+  // the heal folder (records, rules, logs) is ours, not the attempt's: a project that does not ignore .yukta-dev must not have the guard judge it
+  const mine = resolve(process.env.YUKTA_HEAL_DIR ?? '/nonexistent') + sep
+  const files = git(['ls-files', '-m', '-o', '--exclude-standard', '-z'])
+    .stdout.split('\0')
+    .filter((f) => f && !resolve(f).startsWith(mine))
   const m = new Map<string, string>()
   for (const f of files) {
     const r = git(['hash-object', '--', f])
