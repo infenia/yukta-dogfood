@@ -3,10 +3,8 @@
 // The script steps of heal and attempt (workflows heal, fix-from and attempt in session.json, see src/gen-heal.ts). Each is run by a
 // PROCESS_EXECUTOR node; they are usable by hand too.
 //
-//   brief           heal: stdin {stdout, ...} (the failed stage's output) or a tool result {results: [{stdout}]}; prints
-//                   {brief, problems, triage, known}: the short text the triage model reads, the problem lines the fixer reads, and whether
-//                   the stage fails the same way on a clean origin/main (run once per base commit; the heal then stops, with no fixer)
-//   triage-log      heal: a side branch of every port of the triage: writes the triage event (route, label, probability, seconds)
+//   brief           heal: stdin {stdout, ...} (the failed stage's output) or a tool result {results: [{stdout}]}; prints {problems, known}: the problem lines the
+//                   fixer reads, and whether the stage fails the same way on a clean origin/main (run once per base commit; the heal then stops, with no fixer)
 //   record-auto     heal: the free fix made the stage pass: writes the record behind healed=<stage>:auto
 //   healed          check: exit 0 when anything was healed (so verify runs), else 1
 //   prepare         attempt: stdin {problems, previous}; numbers the attempt, snapshots the tree, prints {prompt, attempt};
@@ -17,7 +15,7 @@
 //                   {stage, model, effort, attempt, fixed, cost, summary, problems}; always exit 0 (the workflow branches on fixed)
 //
 // Environment: YUKTA_HEAL_DIR (the records of the run, required), YUKTA_STAGE, YUKTA_MODEL, YUKTA_EFFORT, YUKTA_MODELS, YUKTA_MODULE,
-// YUKTA_COMMAND (the command that proves the stage), YUKTA_PROBLEMS, YUKTA_TRIAGE, YUKTA_HEAL_TIMEOUT, YUKTA_HEAL_EVENTS (a file;
+// YUKTA_COMMAND (the command that proves the stage), YUKTA_PROBLEMS, YUKTA_HEAL_TIMEOUT, YUKTA_HEAL_EVENTS (a file;
 // every step appends one JSON line).
 // A value of "-" means empty: a start variable of a workflow cannot be.
 // Nothing here commits or reverts.
@@ -58,7 +56,7 @@ const lines = (s: string): string[] => (s.length ? s.replace(/\n$/, '').split('\
 // eslint-disable-next-line no-control-regex
 export const plain = (s: string): string => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '\n')
 
-/** what the stage checks, from its name (plan names the stages), so the triage question can stay neutral */
+/** what the stage checks, from its name (plan names the stages) */
 /** The result of the claude workflow is claude's JSON; the agent workflow's is AGENT_SESSION's payload ({status, text, structured, costUsd, ...}): the same JSON. */
 export function fromAgent(o: Json): Json {
   if (typeof o?.status !== 'string') return o
@@ -238,14 +236,10 @@ export async function main(argv: string[], stdin?: () => string): Promise<number
     'YUKTA_STAGE',
     'YUKTA_MODEL',
     'YUKTA_EFFORT',
-    'YUKTA_TRIAGE_ROUTE',
-    'YUKTA_TRIAGE_START',
-    'YUKTA_TRIAGE_MODEL',
     'YUKTA_MODELS',
     'YUKTA_MODULE',
     'YUKTA_COMMAND',
     'YUKTA_PROBLEMS',
-    'YUKTA_TRIAGE',
     'YUKTA_HEAL_TIMEOUT',
     'YUKTA_HEAL_EVENTS',
     'YUKTA_BUDGET_CHECK',
@@ -353,18 +347,6 @@ export async function main(argv: string[], stdin?: () => string): Promise<number
       const msg = tryJson(read()) ?? {}
       const out = msg.stdout ?? msg.results?.[0]?.stdout ?? ''
       const failing = (): string => (stage === 'tests' ? `failing test classes: ${failingTests().join(' ')}` : '')
-      const briefLines = [
-        `stage: ${stage}`,
-        `ecosystem: ${ecosystem(stage)}`,
-        `files changed so far: ${lines(git(['ls-files', '-m', '-o', '--exclude-standard']).stdout).length}`,
-        `command: ${env.YUKTA_COMMAND ?? ''}`,
-        ...problemLines(out, 25),
-        ...(failing() ? [failing()] : []),
-      ]
-      const brief = briefLines
-        .map((l) => l.slice(0, 300))
-        .join('\n')
-        .slice(0, 1000)
       // the keyword lines do not say it for every tool (reuse lists the files without a licence): the end of the output too
       const problems = [
         ...problemLines(out, 60),
@@ -382,36 +364,8 @@ export async function main(argv: string[], stdin?: () => string): Promise<number
         emit('baseline', { stage, known: true })
       }
       if (out) saveLog(dir, stage, out)
-      writeFileSync(join(dir, `${stage}.triage-t0`), `${tStart}\n`)
-      emit('brief', { stage, chars: brief.length, secs: secsSince(tStart) })
-      console.log(JSON.stringify({ brief, problems, triage: env.YUKTA_TRIAGE ?? 'on', known }))
-      return 0
-    }
-    case 'triage-log': {
-      // stdin: the message the triage routed. The classification is in its metadata; where a step sees it is not documented, so look in the
-      // places it can be and keep the raw text of the first 300 characters for the report when none has it.
-      const msg = env.YUKTA_PAYLOAD || read()
-      const t0 = parseFloat(text(join(dir, `${stage}.triage-t0`)).trim()) || tStart
-      const route = env.YUKTA_TRIAGE_ROUTE ?? ''
-      const m = tryJson(msg) ?? null
-      const c = m?.metadata?.classification ?? m?.classification ?? m?.results?.[0]?.metadata?.classification ?? {}
-      const fallback = route === 'error' || route === 'uncertain'
-      const seen = Object.keys(c).length > 0
-      const why = env.YUKTA_METADATA_FAILURE_MESSAGE ?? ''
-      emit('triage', {
-        stage,
-        route: fallback ? route : 'level',
-        label: c.label ?? (fallback ? null : route),
-        p: c.probability ?? null,
-        start: env.YUKTA_TRIAGE_START ?? '',
-        model: env.YUKTA_TRIAGE_MODEL ?? '',
-        secs: secsSince(t0),
-        chars: (m?.brief ?? '').length,
-        fallback: fallback ? route : null,
-        classification_seen: seen,
-        raw: seen ? null : msg.slice(0, 300),
-        why: why === '' ? null : why.slice(0, 500),
-      })
+      emit('brief', { stage, chars: problems.length, secs: secsSince(tStart) })
+      console.log(JSON.stringify({ problems, known }))
       return 0
     }
     case 'record-auto': {

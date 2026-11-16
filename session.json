@@ -146,9 +146,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -216,9 +213,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -286,9 +280,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -373,9 +364,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -443,9 +431,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -513,9 +498,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -583,9 +565,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -653,9 +632,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -723,9 +699,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -793,9 +766,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -863,9 +833,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -933,9 +900,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1003,9 +967,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1073,9 +1034,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1143,9 +1101,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1213,9 +1168,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1283,9 +1235,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1353,9 +1302,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1423,9 +1369,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1493,9 +1436,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1563,9 +1503,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1633,9 +1570,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1703,9 +1637,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1827,9 +1758,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1919,9 +1847,6 @@
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
-              "triage": "${start.triage}",
-              "triageModel": "${start.triageModel}",
-              "triageUrl": "${start.triageUrl}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -3014,7 +2939,7 @@
     },
     "heal": {
       "workflowId": "heal",
-      "description": "Repair a failed stage: the free automatic fix first, then triage and the model ladder, escalating on failure.",
+      "description": "Repair a failed stage: the free automatic fix first, then a fixed ladder of model and effort (heal.json ladder), one attempt each, until the stage passes.",
       "nodes": [
         {
           "nodeId": "trigger",
@@ -3144,8 +3069,7 @@
               "YUKTA_STAGE": "${start.stage}",
               "YUKTA_MODULE": "${start.modules}",
               "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_COMMAND": "${start.command}",
-              "YUKTA_TRIAGE": "${start.triage}"
+              "YUKTA_COMMAND": "${start.command}"
             },
             "timeout": 3720,
             "timeoutSeconds": 3720,
@@ -3154,7 +3078,7 @@
             "failureMode": "CONTINUE"
           },
           "color": "sky",
-          "group": "triage"
+          "group": "brief"
         },
         {
           "nodeId": "first",
@@ -3162,15 +3086,13 @@
           "config": {
             "mode": "PROJECTION",
             "mapping": {
-              "brief": "payload['output']['brief']",
               "problems": "payload['output']['problems']",
               "previous": "''",
-              "triage": "payload['output']['triage']",
               "known": "payload['output']['known']"
             }
           },
           "color": "stone",
-          "group": "triage"
+          "group": "brief"
         },
         {
           "nodeId": "known?",
@@ -3184,7 +3106,7 @@
             "defaultPort": "unknown"
           },
           "color": "stone",
-          "group": "triage"
+          "group": "brief"
         },
         {
           "nodeId": "baseline-known",
@@ -3194,179 +3116,65 @@
             "reason": "the stage already fails the same way on origin/main: a known baseline failure, no fixer was started"
           },
           "color": "magenta",
-          "group": "triage"
+          "group": "brief"
         },
         {
-          "nodeId": "triage?",
-          "type": "BRANCH",
+          "nodeId": "carry.fix-haiku-medium",
+          "type": "MAPPER",
           "config": {
-            "mode": "SELECT_KEY",
-            "selector": "payload['triage']",
-            "cases": {
-              "off": "off"
-            },
-            "defaultPort": "on"
-          },
-          "color": "stone",
-          "group": "triage"
-        },
-        {
-          "nodeId": "triage",
-          "type": "CLASSIFY",
-          "config": {
-            "model": "${start.triageModel}",
-            "baseUrl": "${start.triageUrl}",
-            "state": "payload['brief']",
-            "question": "How hard is it to fix this failed check of a software project? Judge the work a fix needs, not how scary the message looks.",
-            "labels": {
-              "easy": "A mechanical or small obvious fix: formatting, an import, a license header, a typo, a missing semicolon, a style or analyzer finding in one file, a type or signature change at a few call sites.",
-              "average": "One failing test or runtime error whose cause is visible, or a few classes and tests to change together, or tests to add (a coverage threshold missed).",
-              "hard": "Needs investigation: many failing tests with one shared cause, concurrency, flaky or timing or order-dependent failures, memory, a migration or a build-wide change."
-            },
-            "minProbability": 0.3,
-            "routeByLabel": true,
-            "timeout": 55,
-            "engine": {
-              "onError": "ROUTE"
+            "mode": "PROJECTION",
+            "mapping": {
+              "problems": "payload['results'] == null ? payload['problems'] : (payload['results'].size() > 0 ? payload['results'][0]['output']['problems'] : 'The previous attempt did not finish: ' + payload['reason'])",
+              "previous": "payload['results'] == null ? 'The previous attempt ran out of time.' : (payload['results'].size() > 0 ? payload['results'][0]['output']['summary'] : '')",
+              "changed": "payload['results'] == null ? true : (payload['results'].size() > 0 ? payload['results'][0]['output']['changed'] : true)",
+              "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
+              "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
-          "color": "sky",
-          "group": "triage"
+          "color": "stone",
+          "group": "ladder"
         },
         {
-          "nodeId": "triage-log.easy",
-          "type": "PROCESS_EXECUTOR",
+          "nodeId": "carry.fix-haiku-medium?",
+          "type": "BRANCH",
           "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/heal.ts",
-              "triage-log"
-            ],
-            "workingDir": "${start.project}",
-            "env": {
-              "YUKTA_HEAL_DIR": "${start.healDir}",
-              "YUKTA_STAGE": "${start.stage}",
-              "YUKTA_MODULE": "${start.modules}",
-              "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_TRIAGE_ROUTE": "easy",
-              "YUKTA_TRIAGE_START": "haiku/low",
-              "YUKTA_TRIAGE_MODEL": "${start.triageModel}"
+            "mode": "EXPRESSION",
+            "cases": {
+              "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
             },
-            "timeout": 60,
-            "timeoutSeconds": 60,
-            "inputMode": "STDIN",
-            "failureMode": "CONTINUE"
+            "defaultPort": "go"
           },
-          "color": "sky",
-          "group": "triage"
+          "color": "stone",
+          "group": "ladder"
         },
         {
-          "nodeId": "triage-log.average",
-          "type": "PROCESS_EXECUTOR",
+          "nodeId": "carry.fix-haiku-high",
+          "type": "MAPPER",
           "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/heal.ts",
-              "triage-log"
-            ],
-            "workingDir": "${start.project}",
-            "env": {
-              "YUKTA_HEAL_DIR": "${start.healDir}",
-              "YUKTA_STAGE": "${start.stage}",
-              "YUKTA_MODULE": "${start.modules}",
-              "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_TRIAGE_ROUTE": "average",
-              "YUKTA_TRIAGE_START": "haiku/high",
-              "YUKTA_TRIAGE_MODEL": "${start.triageModel}"
-            },
-            "timeout": 60,
-            "timeoutSeconds": 60,
-            "inputMode": "STDIN",
-            "failureMode": "CONTINUE"
+            "mode": "PROJECTION",
+            "mapping": {
+              "problems": "payload['results'] == null ? payload['problems'] : (payload['results'].size() > 0 ? payload['results'][0]['output']['problems'] : 'The previous attempt did not finish: ' + payload['reason'])",
+              "previous": "payload['results'] == null ? 'The previous attempt ran out of time.' : (payload['results'].size() > 0 ? payload['results'][0]['output']['summary'] : '')",
+              "changed": "payload['results'] == null ? true : (payload['results'].size() > 0 ? payload['results'][0]['output']['changed'] : true)",
+              "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
+              "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
+            }
           },
-          "color": "sky",
-          "group": "triage"
+          "color": "stone",
+          "group": "ladder"
         },
         {
-          "nodeId": "triage-log.hard",
-          "type": "PROCESS_EXECUTOR",
+          "nodeId": "carry.fix-haiku-high?",
+          "type": "BRANCH",
           "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/heal.ts",
-              "triage-log"
-            ],
-            "workingDir": "${start.project}",
-            "env": {
-              "YUKTA_HEAL_DIR": "${start.healDir}",
-              "YUKTA_STAGE": "${start.stage}",
-              "YUKTA_MODULE": "${start.modules}",
-              "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_TRIAGE_ROUTE": "hard",
-              "YUKTA_TRIAGE_START": "sonnet/low",
-              "YUKTA_TRIAGE_MODEL": "${start.triageModel}"
+            "mode": "EXPRESSION",
+            "cases": {
+              "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
             },
-            "timeout": 60,
-            "timeoutSeconds": 60,
-            "inputMode": "STDIN",
-            "failureMode": "CONTINUE"
+            "defaultPort": "go"
           },
-          "color": "sky",
-          "group": "triage"
-        },
-        {
-          "nodeId": "triage-log.uncertain",
-          "type": "PROCESS_EXECUTOR",
-          "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/heal.ts",
-              "triage-log"
-            ],
-            "workingDir": "${start.project}",
-            "env": {
-              "YUKTA_HEAL_DIR": "${start.healDir}",
-              "YUKTA_STAGE": "${start.stage}",
-              "YUKTA_MODULE": "${start.modules}",
-              "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_TRIAGE_ROUTE": "uncertain",
-              "YUKTA_TRIAGE_START": "haiku/high",
-              "YUKTA_TRIAGE_MODEL": "${start.triageModel}"
-            },
-            "timeout": 60,
-            "timeoutSeconds": 60,
-            "inputMode": "STDIN",
-            "failureMode": "CONTINUE"
-          },
-          "color": "sky",
-          "group": "triage"
-        },
-        {
-          "nodeId": "triage-log.error",
-          "type": "PROCESS_EXECUTOR",
-          "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/heal.ts",
-              "triage-log"
-            ],
-            "workingDir": "${start.project}",
-            "env": {
-              "YUKTA_HEAL_DIR": "${start.healDir}",
-              "YUKTA_STAGE": "${start.stage}",
-              "YUKTA_MODULE": "${start.modules}",
-              "YUKTA_HEAL_EVENTS": "${start.events}",
-              "YUKTA_TRIAGE_ROUTE": "error",
-              "YUKTA_TRIAGE_START": "haiku/high",
-              "YUKTA_TRIAGE_MODEL": "${start.triageModel}"
-            },
-            "timeout": 60,
-            "timeoutSeconds": 60,
-            "inputMode": "ENV",
-            "failureMode": "CONTINUE"
-          },
-          "color": "sky",
-          "group": "triage"
+          "color": "stone",
+          "group": "ladder"
         },
         {
           "nodeId": "carry.fix-sonnet-low",
@@ -3386,6 +3194,64 @@
         },
         {
           "nodeId": "carry.fix-sonnet-low?",
+          "type": "BRANCH",
+          "config": {
+            "mode": "EXPRESSION",
+            "cases": {
+              "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
+            },
+            "defaultPort": "go"
+          },
+          "color": "stone",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "carry.fix-sonnet-medium",
+          "type": "MAPPER",
+          "config": {
+            "mode": "PROJECTION",
+            "mapping": {
+              "problems": "payload['results'] == null ? payload['problems'] : (payload['results'].size() > 0 ? payload['results'][0]['output']['problems'] : 'The previous attempt did not finish: ' + payload['reason'])",
+              "previous": "payload['results'] == null ? 'The previous attempt ran out of time.' : (payload['results'].size() > 0 ? payload['results'][0]['output']['summary'] : '')",
+              "changed": "payload['results'] == null ? true : (payload['results'].size() > 0 ? payload['results'][0]['output']['changed'] : true)",
+              "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
+              "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
+            }
+          },
+          "color": "stone",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "carry.fix-sonnet-medium?",
+          "type": "BRANCH",
+          "config": {
+            "mode": "EXPRESSION",
+            "cases": {
+              "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
+            },
+            "defaultPort": "go"
+          },
+          "color": "stone",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "carry.fix-sonnet-high",
+          "type": "MAPPER",
+          "config": {
+            "mode": "PROJECTION",
+            "mapping": {
+              "problems": "payload['results'] == null ? payload['problems'] : (payload['results'].size() > 0 ? payload['results'][0]['output']['problems'] : 'The previous attempt did not finish: ' + payload['reason'])",
+              "previous": "payload['results'] == null ? 'The previous attempt ran out of time.' : (payload['results'].size() > 0 ? payload['results'][0]['output']['summary'] : '')",
+              "changed": "payload['results'] == null ? true : (payload['results'].size() > 0 ? payload['results'][0]['output']['changed'] : true)",
+              "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
+              "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
+            }
+          },
+          "color": "stone",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "carry.fix-sonnet-high?",
           "type": "BRANCH",
           "config": {
             "mode": "EXPRESSION",
@@ -3432,7 +3298,7 @@
           "group": "ladder"
         },
         {
-          "nodeId": "fix-sonnet-low",
+          "nodeId": "fix-haiku-medium",
           "type": "SUB_WORKFLOW",
           "config": {
             "workflowId": "attempt",
@@ -3454,10 +3320,10 @@
               "rules": "${start.rules}",
               "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
-              "model": "sonnet",
-              "effort": "low",
-              "budget": 0.5,
-              "claudeTimeout": 600,
+              "model": "haiku",
+              "effort": "medium",
+              "budget": 1,
+              "claudeTimeout": 1200,
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
@@ -3500,14 +3366,109 @@
           "group": "ladder"
         },
         {
-          "nodeId": "done",
-          "type": "CONSOLE_TERMINAL",
-          "config": {},
-          "color": "teal",
-          "group": "outcome"
+          "nodeId": "fix-sonnet-low",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "attempt",
+            "timeoutSeconds": 7200,
+            "routeByOutcome": true,
+            "engine": {
+              "onError": "ROUTE"
+            },
+            "payload": {
+              "project": "${start.project}",
+              "stage": "${start.stage}",
+              "command": "${start.command}",
+              "format": "${start.format}",
+              "modules": "${start.modules}",
+              "healDir": "${start.healDir}",
+              "events": "${start.events}",
+              "models": "${start.models}",
+              "timeout": "${start.timeout}",
+              "rules": "${start.rules}",
+              "claudeBin": "${start.claudeBin}",
+              "budgetCheck": "${start.budgetCheck}",
+              "model": "sonnet",
+              "effort": "low",
+              "budget": 0.5,
+              "claudeTimeout": 600,
+              "problems": "${payload.problems}",
+              "previous": "${payload.previous}"
+            }
+          },
+          "color": "violet",
+          "group": "ladder"
         },
         {
-          "nodeId": "logged",
+          "nodeId": "fix-sonnet-medium",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "attempt",
+            "timeoutSeconds": 7200,
+            "routeByOutcome": true,
+            "engine": {
+              "onError": "ROUTE"
+            },
+            "payload": {
+              "project": "${start.project}",
+              "stage": "${start.stage}",
+              "command": "${start.command}",
+              "format": "${start.format}",
+              "modules": "${start.modules}",
+              "healDir": "${start.healDir}",
+              "events": "${start.events}",
+              "models": "${start.models}",
+              "timeout": "${start.timeout}",
+              "rules": "${start.rules}",
+              "claudeBin": "${start.claudeBin}",
+              "budgetCheck": "${start.budgetCheck}",
+              "model": "sonnet",
+              "effort": "medium",
+              "budget": 1,
+              "claudeTimeout": 1200,
+              "problems": "${payload.problems}",
+              "previous": "${payload.previous}"
+            }
+          },
+          "color": "violet",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "fix-sonnet-high",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "attempt",
+            "timeoutSeconds": 7200,
+            "routeByOutcome": true,
+            "engine": {
+              "onError": "ROUTE"
+            },
+            "payload": {
+              "project": "${start.project}",
+              "stage": "${start.stage}",
+              "command": "${start.command}",
+              "format": "${start.format}",
+              "modules": "${start.modules}",
+              "healDir": "${start.healDir}",
+              "events": "${start.events}",
+              "models": "${start.models}",
+              "timeout": "${start.timeout}",
+              "rules": "${start.rules}",
+              "claudeBin": "${start.claudeBin}",
+              "budgetCheck": "${start.budgetCheck}",
+              "model": "sonnet",
+              "effort": "high",
+              "budget": 2,
+              "claudeTimeout": 1800,
+              "problems": "${payload.problems}",
+              "previous": "${payload.previous}"
+            }
+          },
+          "color": "violet",
+          "group": "ladder"
+        },
+        {
+          "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
           "config": {},
           "color": "teal",
@@ -3598,91 +3559,69 @@
         },
         {
           "source": "known?",
-          "target": "triage?",
+          "target": "fix-haiku-low",
           "sourcePort": "unknown"
         },
         {
-          "source": "triage?",
-          "target": "triage",
-          "sourcePort": "on"
+          "source": "fix-haiku-low",
+          "target": "done",
+          "sourcePort": "success"
         },
         {
-          "source": "triage?",
-          "target": "fix-haiku-high",
-          "sourcePort": "off"
+          "source": "carry.fix-haiku-medium",
+          "target": "carry.fix-haiku-medium?"
         },
         {
-          "source": "triage",
-          "target": "triage-log.easy",
-          "sourcePort": "easy"
+          "source": "carry.fix-haiku-medium?",
+          "target": "fix-haiku-medium",
+          "sourcePort": "go"
         },
         {
-          "source": "triage-log.easy",
-          "target": "logged"
-        },
-        {
-          "source": "triage",
-          "target": "triage-log.average",
-          "sourcePort": "average"
-        },
-        {
-          "source": "triage-log.average",
-          "target": "logged"
-        },
-        {
-          "source": "triage",
-          "target": "triage-log.hard",
-          "sourcePort": "hard"
-        },
-        {
-          "source": "triage-log.hard",
-          "target": "logged"
-        },
-        {
-          "source": "triage",
-          "target": "triage-log.uncertain",
-          "sourcePort": "uncertain"
-        },
-        {
-          "source": "triage-log.uncertain",
-          "target": "logged"
-        },
-        {
-          "source": "triage",
-          "target": "triage-log.error",
-          "sourcePort": "error"
-        },
-        {
-          "source": "triage-log.error",
-          "target": "logged"
-        },
-        {
-          "source": "triage",
-          "target": "fix-haiku-low",
-          "sourcePort": "easy"
-        },
-        {
-          "source": "triage",
-          "target": "fix-haiku-high",
-          "sourcePort": "average"
-        },
-        {
-          "source": "triage",
-          "target": "fix-haiku-high",
-          "sourcePort": "uncertain"
-        },
-        {
-          "source": "triage",
-          "target": "fix-haiku-high",
-          "sourcePort": "error"
-        },
-        {
-          "source": "triage",
-          "target": "fix-sonnet-low",
-          "sourcePort": "hard"
+          "source": "carry.fix-haiku-medium?",
+          "target": "giveup",
+          "sourcePort": "stop"
         },
         {
           "source": "fix-haiku-low",
+          "target": "carry.fix-haiku-medium",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "fix-haiku-low",
+          "target": "carry.fix-haiku-medium",
+          "sourcePort": "error"
+        },
+        {
+          "source": "fix-haiku-medium",
+          "target": "done",
+          "sourcePort": "success"
+        },
+        {
+          "source": "carry.fix-haiku-high",
+          "target": "carry.fix-haiku-high?"
+        },
+        {
+          "source": "carry.fix-haiku-high?",
+          "target": "fix-haiku-high",
+          "sourcePort": "go"
+        },
+        {
+          "source": "carry.fix-haiku-high?",
+          "target": "giveup",
+          "sourcePort": "stop"
+        },
+        {
+          "source": "fix-haiku-medium",
+          "target": "carry.fix-haiku-high",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "fix-haiku-medium",
+          "target": "carry.fix-haiku-high",
+          "sourcePort": "error"
+        },
+        {
+          "source": "fix-haiku-high",
           "target": "done",
           "sourcePort": "success"
         },
@@ -3701,12 +3640,12 @@
           "sourcePort": "stop"
         },
         {
-          "source": "fix-haiku-low",
+          "source": "fix-haiku-high",
           "target": "carry.fix-sonnet-low",
           "sourcePort": "failure"
         },
         {
-          "source": "fix-haiku-low",
+          "source": "fix-haiku-high",
           "target": "carry.fix-sonnet-low",
           "sourcePort": "error"
         },
@@ -3716,35 +3655,78 @@
           "sourcePort": "success"
         },
         {
-          "source": "fix-sonnet-low",
+          "source": "carry.fix-sonnet-medium",
+          "target": "carry.fix-sonnet-medium?"
+        },
+        {
+          "source": "carry.fix-sonnet-medium?",
+          "target": "fix-sonnet-medium",
+          "sourcePort": "go"
+        },
+        {
+          "source": "carry.fix-sonnet-medium?",
           "target": "giveup",
+          "sourcePort": "stop"
+        },
+        {
+          "source": "fix-sonnet-low",
+          "target": "carry.fix-sonnet-medium",
           "sourcePort": "failure"
         },
         {
           "source": "fix-sonnet-low",
-          "target": "giveup",
+          "target": "carry.fix-sonnet-medium",
           "sourcePort": "error"
         },
         {
-          "source": "fix-haiku-high",
+          "source": "fix-sonnet-medium",
           "target": "done",
           "sourcePort": "success"
         },
         {
-          "source": "fix-haiku-high",
-          "target": "carry.fix-sonnet-low",
+          "source": "carry.fix-sonnet-high",
+          "target": "carry.fix-sonnet-high?"
+        },
+        {
+          "source": "carry.fix-sonnet-high?",
+          "target": "fix-sonnet-high",
+          "sourcePort": "go"
+        },
+        {
+          "source": "carry.fix-sonnet-high?",
+          "target": "giveup",
+          "sourcePort": "stop"
+        },
+        {
+          "source": "fix-sonnet-medium",
+          "target": "carry.fix-sonnet-high",
           "sourcePort": "failure"
         },
         {
-          "source": "fix-haiku-high",
-          "target": "carry.fix-sonnet-low",
+          "source": "fix-sonnet-medium",
+          "target": "carry.fix-sonnet-high",
+          "sourcePort": "error"
+        },
+        {
+          "source": "fix-sonnet-high",
+          "target": "done",
+          "sourcePort": "success"
+        },
+        {
+          "source": "fix-sonnet-high",
+          "target": "giveup",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "fix-sonnet-high",
+          "target": "giveup",
           "sourcePort": "error"
         }
       ],
       "groupColors": {
         "start": "stone",
         "free-fix": "teal",
-        "triage": "violet",
+        "brief": "violet",
         "ladder": "sky",
         "outcome": "stone"
       }

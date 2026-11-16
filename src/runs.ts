@@ -431,7 +431,7 @@ export function recordDurations(session: string, exec: string, scope: string): v
 const NOISE = new RegExp(
   [
     '^NODE [^ ]+ (SKIPPED|UPSTREAM_FAILED|CANCELLED)$',
-    '^(ERROR|WARN) (heal|attempt|claude|fix-from)/(trigger|heal\\?|auto\\?|brief|prepare|first|triage\\?|report|fixed\\?|carry\\.[a-z]+):',
+    '^(ERROR|WARN) (heal|attempt|claude|fix-from)/(trigger|heal\\?|auto\\?|brief|prepare|first|report|fixed\\?|carry\\.[a-z]+):',
     '^(ERROR|WARN) [^ ]+: (BUILD FAILED in .*|Process failed with exit code [0-9]+|WARNING: .*(sun\\.misc\\.Unsafe|Unsafe).*)$',
     '^WARN [^ ]+: (\\* Deprecated licenses: 0|Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true`.*)$',
   ].join('|'),

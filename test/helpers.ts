@@ -50,13 +50,6 @@ export function initRepo(dir: string, files: Record<string, string> = {}): void 
   sh(['git', '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', 'init', '--allow-empty'], { cwd: dir })
 }
 
-/** The fake Ollama in a child process; resolves with the port. */
-export async function startOllama(dir: string): Promise<{ port: number; kill: () => void }> {
-  const proc = Bun.spawn([process.execPath, join(HERE, 'src/fake-ollama.ts'), join(dir, 'port')], { stdout: 'ignore', stderr: 'ignore' })
-  for (let i = 0; i < 80 && !read(join(dir, 'port')); i++) await Bun.sleep(100)
-  return { port: Number(read(join(dir, 'port'))), kill: () => proc.kill() }
-}
-
 /** An executable TypeScript script (a fake `claude`, `gh`, `yk`). */
 export function script(path: string, body: string): string {
   put(path, `#!/usr/bin/env bun\n${body}\n`)

@@ -34,8 +34,8 @@ CI (`.github/workflows/ci.yml`) runs exactly these. `yk` itself must be run from
 ## Layout
 
 - `src/yk.ts` — CLI dispatcher; `src/{base,client,server,check,plan,runs}.ts` — paths/allowlist, server API, dev-server lifecycle, check payload and scoping, run watching and `RESULT` printing.
-- `src/heal/` — self-heal (free fix → baseline → triage → fixer ladder → guard → verify) and the generator for `session.json`; config in `heal.json`.
+- `src/heal/` — self-heal (free fix → baseline → fixer ladder → guard → verify) and the generator for `session.json`; config in `heal.json`.
 - `src/ticket/` — spec-to-PR ticket pipeline (architect/implementer/test-writer/reviewer roles) and generator for `ticket-session.json`.
 - `src/pickup.ts`, `src/input-bridge.ts`, `channel/` — hands GitHub issues to open Claude sessions via an MCP channel server with an HTTP API.
 - `mod/` — Claude Code plugin (hooks: gate, plan, rewrite, panes, slash commands); `hooks/` — standalone yk-hook.
-- `test/` mirrors `src/`; fakes in `test/ticket/fake/`, `src/fake-ollama.ts` stubs the triage model.
+- `test/` mirrors `src/`; fakes in `test/ticket/fake/`.

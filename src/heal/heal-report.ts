@@ -8,7 +8,6 @@
 // The log is README.md "Monitoring heal": one JSON object per line, written by heal.ts and yk (run is "-" in the first; the report
 // stamps it from the session's next result). Every event has v, ts, run (the root execution id), session, project and event; the rest depends on the event:
 //   stage    stage, secs, exit, ok, cmd, and on a failure sig and head (a stable hash of the failure and its first lines)
-//   triage   stage, route (level | uncertain | error), label, p, start, model, secs (since the brief), chars, fallback, error
 //   fix      stage, attempt, model, effort, fixed, claimed, files, cost, usage, secs, guard, summary
 //   recheck  stage, secs, ok          verify  secs, ok          giveup  stage
 //   result   workflow, status, failed_node, healed, secs, scope, durations (seconds per stage), sha, branch
@@ -17,7 +16,6 @@ import { homedir } from 'node:os'
 import { type Json, dumps, isFile, join, parseArgs, readFileSync, tryJson } from '../lib.ts'
 
 const DEFAULT = join(process.env.YUKTA_DEV_STATE_DIR ?? join(homedir(), '.local/state/yukta-dev'), 'heal-events.jsonl')
-const MODELS = ['haiku', 'sonnet', 'opus']
 
 export function load(path: string): Json[] {
   if (!isFile(path)) return []
@@ -88,7 +86,7 @@ const pyDict = (o: Json): string =>
 const pad = (s: string | number, n: number): string => String(s).padEnd(n)
 const rpad = (s: string | number, n: number): string => String(s).padStart(n)
 
-type Heal = { fix: Json[]; triage: Json | null; recheck: Json[]; giveup: boolean }
+type Heal = { fix: Json[]; recheck: Json[]; giveup: boolean }
 function analyse(ev: Json[]): { runs: Map<string, Json[]>; heals: Map<string, Heal> } {
   const runs = new Map<string, Json[]>()
   for (const e of ev) {
@@ -98,12 +96,11 @@ function analyse(ev: Json[]): { runs: Map<string, Json[]>; heals: Map<string, He
   const heals = new Map<string, Heal>() // run\0stage; only heal events open an entry
   const entry = (r: string, stage: string): Heal => {
     const k = `${r}\0${stage}`
-    return heals.get(k) ?? heals.set(k, { fix: [], triage: null, recheck: [], giveup: false }).get(k)!
+    return heals.get(k) ?? heals.set(k, { fix: [], recheck: [], giveup: false }).get(k)!
   }
   for (const [r, es] of runs) {
     for (const e of es) {
       if (e.event === 'fix' && e.model !== 'auto') entry(r, e.stage).fix.push(e)
-      else if (e.event === 'triage') entry(r, e.stage).triage = e
       else if (e.event === 'recheck') entry(r, e.stage).recheck.push(e)
       else if (e.event === 'giveup') entry(r, e.stage).giveup = true
     }
@@ -129,7 +126,6 @@ export function report(ev: Json[]): Json {
   const tot = new Map<string, number>()
   const label: Record<string, string> = {
     stage: 'stage runs',
-    triage: 'triage',
     fix: 'fix attempts',
     recheck: 'rechecks',
     verify: 'verify',
@@ -151,7 +147,7 @@ export function report(ev: Json[]): Json {
   R.stages = Object.fromEntries(
     [...stages].map(([k, v]) => [k, { runs: v.runs, failed: v.failed, mean_s: mean(v.secs), p95_s: pct(v.secs, 0.95) }]),
   )
-  const hs = [...heals.values()].filter((h) => h.fix.length || h.triage || h.giveup)
+  const hs = [...heals.values()].filter((h) => h.fix.length || h.giveup)
   const solved = hs.filter((h) => h.fix.some((f) => f.fixed))
   const fixedAt = counter(solved.map((h) => rung(h.fix.find((f) => f.fixed)!)))
   R.heals = {
@@ -161,27 +157,6 @@ export function report(ev: Json[]): Json {
     attempts_per_heal: hs.length ? mean(hs.map((h) => h.fix.length)) : 0,
     fixed_at: Object.fromEntries(mostCommon(fixedAt)),
   }
-  const tr = ev.filter((e) => e.event === 'triage')
-  const lat = tr.filter((e) => e.secs !== undefined && e.secs !== null).map((e) => e.secs as number)
-  const ps = tr.filter((e) => e.p).map((e) => e.p as number)
-  R.triage = {
-    calls: tr.length,
-    routes: obj(counter(tr.map((e) => e.route))),
-    fallbacks: obj(counter(tr.filter((e) => e.fallback).map((e) => e.fallback))),
-    latency_p50_s: pct(lat, 0.5),
-    latency_p95_s: pct(lat, 0.95),
-    confidence_median: median(ps.length ? ps : [0]),
-    start: Object.fromEntries(mostCommon(counter(tr.map((e) => e.start)))),
-  }
-  let under = 0
-  for (const h of solved) {
-    if (h.triage?.start && h.triage.route === 'level') {
-      const s = String(h.triage.start).split('/')[0]!
-      const f = h.fix.find((x) => x.fixed)!.model
-      if (MODELS.includes(s) && MODELS.includes(f)) under += MODELS.indexOf(f) > MODELS.indexOf(s) ? 1 : 0
-    }
-  }
-  R.triage.fixed_by_a_higher_model_than_it_started_at = under
   const cost = new Map<string, { attempts: number; fixed: number; usd: number; secs: number; cache: number; tokens: number }>()
   for (const e of ev) {
     if (e.event === 'fix' && e.model !== 'auto') {
@@ -277,32 +252,6 @@ export function findings(ev: Json[]): [string, string][] {
         .map((m) => m.slice(0, 8))
         .join(', ')}`,
     ])
-  const tr = ev.filter((e) => e.event === 'triage')
-  const fb = tr.filter((e) => e.fallback)
-  if (tr.length >= 3 && fb.length / tr.length > 0.2) {
-    const why = [...counter(fb.map((e) => e.fallback))].map(([k, v]) => `${k}: ${v}`).join(', ')
-    out.push([
-      'triage-fallbacks',
-      `${fb.length} of ${tr.length} triage call(s) fell back to the default level (${why}); the first error: ${String(fb.find((e) => e.error)?.error ?? 'none').slice(0, 160)}`,
-    ])
-  }
-  const lat = tr.filter((e) => e.secs !== undefined && e.secs !== null).map((e) => e.secs as number)
-  if (lat.length >= 3 && pct(lat, 0.95) > 45)
-    out.push([
-      'triage-slow',
-      `triage p95 latency is ${pct(lat, 0.95).toFixed(0)}s (Ollama cuts a System One call off at 60s): shorten the brief or the level descriptions`,
-    ])
-  const solved = [...heals.values()].filter((h) => h.fix.some((f) => f.fixed) && h.triage && h.triage.route === 'level')
-  const under = solved.filter((h) => {
-    const s = String(h.triage!.start ?? '/').split('/')[0]!
-    const f = h.fix.find((x) => x.fixed)!.model
-    return MODELS.includes(s) && MODELS.includes(f) && MODELS.indexOf(f) > MODELS.indexOf(String(h.triage!.start).split('/')[0]!)
-  })
-  if (solved.length >= 5 && under.length / solved.length >= 0.5)
-    out.push([
-      'under-triage',
-      `${under.length} of ${solved.length} triaged heals were fixed by a stronger model than the triage started at: the levels are rated too low`,
-    ])
   const guard = fx.filter((e) => e.guard)
   if (guard.length)
     out.push([
@@ -371,20 +320,6 @@ export function text(R: Json): string {
     L.push(
       '  solved at: ' +
         Object.entries(h.fixed_at)
-          .map(([k, v]) => `${k} x${v}`)
-          .join(', '),
-    )
-  const tr = R.triage
-  L.push(
-    `\nTriage: ${tr.calls} call(s), routes ${pyDict(tr.routes)}, fallbacks ${Object.keys(tr.fallbacks).length ? pyDict(tr.fallbacks) : 'none'}`,
-  )
-  L.push(
-    `  latency p50 ${fmtS(tr.latency_p50_s)}, p95 ${fmtS(tr.latency_p95_s)}; median confidence ${tr.confidence_median.toFixed(2)}; ${tr.fixed_by_a_higher_model_than_it_started_at} heal(s) needed a stronger model than the start`,
-  )
-  if (Object.keys(tr.start).length)
-    L.push(
-      '  started at: ' +
-        Object.entries(tr.start)
           .map(([k, v]) => `${k} x${v}`)
           .join(', '),
     )
