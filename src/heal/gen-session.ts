@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// Writes the generated workflows of session.json: tool, claude, attempt, heal, check and pickup (the hand-written rest stays as it is).
+// Writes the generated workflows of session.json: tool, agent, attempt, heal, check and pickup (the hand-written rest stays as it is).
 //
 //   tool       run one shell command in one project (src/tool.ts)
 //   check      one SUB_WORKFLOW call of `tool` per stage, in STAGES order (cheap first). `yk check` puts each stage's command in the start payload
@@ -9,9 +9,8 @@
 //              no-op (start.chain.<stage>), when it fails they run as usual. A failed stage goes to the `heal` workflow; a healed stage goes on
 //              with the next one; a failed heal ends the run with outcome FAILED, reason = the stage (failed_node). licenses and security are never
 //              healed. After the last stage, when anything was healed, `verify` runs the Gradle tasks of the stages again.
-//   claude     L0  one headless Claude Code session (src/heal/claude.ts)
-//   agent      L0  the same session on Yukta's AGENT_SESSION plugin (harness claude-code): cost, turns and the structured answer come back in the payload
-//   attempt    L1  one repair attempt: prepare -> claude -> claimed -> format -> judge (the guard) -> recheck -> report
+//   agent      L0  one headless Claude Code session on Yukta's AGENT_SESSION plugin (harness claude-code, the flags of src/heal/claude.ts): cost, turns and the structured answer come back in the payload
+//   attempt    L1  one repair attempt: prepare -> agent -> claimed -> format -> judge (the guard) -> recheck -> report
 //   heal       L1  free automatic fix, then the ladder of heal.json: model/effort rungs (haiku low, medium, high, then sonnet), one attempt each; a failed
 //                  rung hands over to the next, the end of the ladder gives up. The efforts (budget, time box) come from heal.json too.
 //   pickup     a SCHEDULE_TRIGGER every INTERVAL_MS that runs `pickup tick`, which hands the next assigned, Ready issue to the yukta-pickup channel.
@@ -122,7 +121,7 @@ const STAGES = [
 ]
 const FAST_BEFORE = 'spotless' // the fast path runs in front of the first Gradle stage
 const NO_HEAL = new Set(['licenses', 'security']) // a model may not fix these
-const PASS = ['project', 'healDir', 'modules', 'events', 'models', 'timeout', 'rules', 'claudeBin', 'heal', 'budgetCheck']
+const PASS = ['project', 'healDir', 'modules', 'events', 'models', 'timeout', 'rules', 'heal', 'budgetCheck']
 
 function toolCall(stage: string, nodeId: string, command?: string): Json {
   return {
@@ -285,8 +284,8 @@ export function pickupWorkflow(): Json {
   }
 }
 
-// ---------------------------------------------------------------- claude, attempt, heal
-export function healWorkflows(policy: Json): { claude: Json; agent: Json; attempt: Json; heal: Json } {
+// ---------------------------------------------------------------- attempt, heal
+export function healWorkflows(policy: Json): { agent: Json; attempt: Json; heal: Json } {
   const EFFORTS: Record<string, { budget: number; timeout: number }> = Object.fromEntries(
     Object.entries<Json>(policy.efforts).map(([e, c]) => [e, { budget: c.budget, timeout: c.timeoutSeconds }]),
   )
@@ -295,20 +294,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
   const FIX_SCHEMA =
     '{"type":"object","properties":{"fixed":{"type":"boolean"},"summary":{"type":"string"}},"required":["fixed","summary"]}'
   // what every layer passes on to the next: heal -> attempt
-  const KEYS = [
-    'project',
-    'stage',
-    'command',
-    'format',
-    'modules',
-    'healDir',
-    'events',
-    'models',
-    'timeout',
-    'rules',
-    'claudeBin',
-    'budgetCheck',
-  ]
+  const KEYS = ['project', 'stage', 'command', 'format', 'modules', 'healDir', 'events', 'models', 'timeout', 'rules', 'budgetCheck']
   const passed = (keys: string[]): Json => Object.fromEntries(keys.map((k) => [k, S(k)]))
   const ROUTE = { engine: { onError: 'ROUTE' } }
 
@@ -355,49 +341,9 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     },
   })
 
-  // ---- claude (L0)
-  const CLAUDE_WF: Json = {
-    workflowId: 'claude',
-    description: 'One headless Claude Code session in a project; returns its JSON answer and what it cost.',
-    nodes: [
-      { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { prompt: S('prompt') } } },
-      {
-        nodeId: 'run',
-        type: 'PROCESS_EXECUTOR',
-        config: {
-          command: cmd('__DOGFOOD__/src/heal/claude.ts'),
-          workingDir: S('project'),
-          inputMode: 'STDIN',
-          outputFormat: 'JSON',
-          env: {
-            YK_MODEL: S('model'),
-            YK_EFFORT: S('effort'),
-            YK_BUDGET: S('budget'),
-            YK_RULES: S('rules'),
-            YK_SCHEMA: S('schema'),
-            YK_SESSION: S('sessionId'),
-            YK_CLAUDE_BIN: S('claudeBin'),
-            YK_STAGE: S('stage'),
-          },
-          timeout: '${start.timeout:int}',
-          failureMode: 'CONTINUE',
-          routeByExitCode: true,
-          engine: { concurrencyGroup: 'claude' },
-        },
-      },
-      { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: {} },
-      {
-        nodeId: 'failed',
-        type: 'OUTCOME_TERMINAL',
-        config: { outcome: 'FAILED', reason: 'the claude session failed, ran out of budget or ran out of time' },
-      },
-    ],
-    edges: [...edges('trigger', 'run'), ...edges('run', 'ok', 'success'), ...edges('run', 'failed', 'failure')],
-  }
-
   // ---- attempt (L1)
-  const claudeCall: Json = {
-    workflowId: policy.claudeWorkflow ?? 'claude', // 'agent': the AGENT_SESSION plugin; 'claude': the process executor (the one with a stand-in binary for tests)
+  const agentCall: Json = {
+    workflowId: 'agent',
     timeoutSeconds: 7200,
     routeByOutcome: true,
     engine: { onError: 'ROUTE' },
@@ -407,12 +353,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
       model: S('model'),
       effort: S('effort'),
       budget: S('budget'),
-      timeout: S('claudeTimeout'),
-      rules: S('rules'),
       schema: FIX_SCHEMA,
-      sessionId: '-',
-      claudeBin: S('claudeBin'),
-      stage: S('stage'),
       rulesFile: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.rules`,
       mcpConfig: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.mcp.json`,
     },
@@ -435,7 +376,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
         }),
         { stdin: true, json: true, routed: true },
       ),
-      { nodeId: 'claude', type: 'SUB_WORKFLOW', config: claudeCall },
+      { nodeId: 'agent', type: 'SUB_WORKFLOW', config: agentCall },
       pe('claimed', 'claimed', healEnv(aEnv), { stdin: true, timeout: 60 }),
       { nodeId: 'format', type: 'SUB_WORKFLOW', config: { ...toolCallCfg(S('format'), 'format'), ...ROUTE } },
       pe('judge', 'judge', healEnv({ ...aEnv, YUKTA_PROBLEMS: S('problems') }), { routed: true }),
@@ -451,9 +392,9 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     ],
     edges: [
       ...edges('trigger', 'prepare'),
-      ...edges('prepare', 'claude', 'success'),
+      ...edges('prepare', 'agent', 'success'),
       ...edges('prepare', 'report', 'failure'),
-      ...edges('claude', 'claimed', 'success', 'failure', 'error'),
+      ...edges('agent', 'claimed', 'success', 'failure', 'error'),
       ...edges('claimed', 'format'),
       ...edges('format', 'judge', 'success', 'failure', 'error'),
       ...edges('judge', 'recheck', 'success'),
@@ -577,8 +518,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     nodes,
     edges: e,
   }
-  paint(CLAUDE_WF)
-  return { claude: CLAUDE_WF, agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
+  return { agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
 }
 
 /**
@@ -652,8 +592,9 @@ export function generate(session: Json, policy: Json): Json {
   const d = JSON.parse(JSON.stringify(session))
   d.workflows.tool = toolWorkflow(d.workflows.tool)
   delete d.workflows['fix-from']
+  delete d.workflows.claude // replaced by `agent`
   const h = healWorkflows(policy)
-  for (const wf of [h.claude, h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = paint(wf)
+  for (const wf of [h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = paint(wf)
   healGroups(d.workflows.heal)
   delete d.workflows['check-plain']
   d.workflows.check = checkGroups(paint(checkWorkflow()))
@@ -679,10 +620,7 @@ export function main(argv: string[]): number {
   }
   writeFileSync(PATH, out)
   const d = JSON.parse(out)
-  console.log(
-    ['tool', 'claude', 'agent', 'attempt', 'heal', 'check', 'pickup'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '),
-    'nodes',
-  )
+  console.log(['tool', 'agent', 'attempt', 'heal', 'check', 'pickup'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '), 'nodes')
   return 0
 }
 

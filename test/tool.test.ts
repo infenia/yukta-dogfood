@@ -36,7 +36,7 @@ test('a command killed by a signal fails with 128 + signo', () => {
 
 test('every node of every generated workflow has a color', () => {
   const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
-  for (const k of ['tool', 'claude', 'agent', 'attempt', 'heal', 'check', 'pickup']) {
+  for (const k of ['tool', 'agent', 'attempt', 'heal', 'check', 'pickup']) {
     for (const n of s.workflows[k].nodes) expect([k, n.nodeId, n.color]).not.toEqual([k, n.nodeId, undefined])
   }
 })
