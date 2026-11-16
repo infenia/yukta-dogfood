@@ -196,6 +196,12 @@ steering) still work but are not advertised.
 
 ---
 
+`yk throttle` (`throttle.ts`) is the load supervisor. It is a loop of `yk`, not a Yukta supervisor: the session `dogfood` is already owned by the
+ticket-advice supervisor, and Yukta gives a session to one supervisor only (`409 OWNERSHIP_CONFLICT`). It uses the run controls instead, so every workflow
+of the session is covered. `ensureServer` (`server.ts`) starts it, detached, if `throttle.lock` is not held; it ends when the server is unreachable.
+Each tick (`tick`) takes a sample (1-minute load per core; `MemAvailable` over total RAM), `decide` applies the hysteresis, and the runs it paused are kept in
+`throttle.json`. If the advice supervisor refuses an operator pause (`409 CONTROLLED_BY_SUPERVISOR`) the error is logged and the run keeps going.
+
 ## 5. Walkthroughs of one run
 
 ### 5.1 `yk gradle :core:test --tests X` and `yk tool`

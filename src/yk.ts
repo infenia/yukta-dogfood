@@ -6,6 +6,7 @@
 //   yk gradle [--detach] <gradle args...>    run Gradle once, e.g. :core:test --tests X
 //   yk check [--full] [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--detach]  the scoped, self-healing gate: yk plan's stages one after the other; a failure is
 //                                            fixed (free fix, then the ladder of heal.json) or stops the run (--no-heal: at once)
+//   yk throttle [--once]                      the load supervisor: pauses the live runs while CPU or RAM is short, resumes them after (starts with the first run; YK_THROTTLE=off)
 //   yk plan [--full] [--base REF]            dry run: the stages a scoped check of your changes would run, nothing is executed
 //   yk stats                                 runs, failed, median wall and heal dollars per kind of run; fix rate and dollars per stage and rung (from the heal events)
 //   yk heal report|show [--since 7d] [--run ID] [--project NAME] [--json]
@@ -35,6 +36,7 @@ import { readFileSync as readSelf } from 'node:fs'
 import { main as reportMain, recordFailure } from './failures.ts'
 import { main as healReport } from './heal/heal-report.ts'
 import { plan, main as planMain } from './plan.ts'
+import { cmdThrottle } from './throttle.ts'
 import {
   api,
   cmdAnswer,
@@ -791,6 +793,9 @@ async function dispatch(argv: string[]): Promise<number> {
     }
     case '_notify':
       return cmdNotifyRun(rest[0] ?? die('session'), rest[1] ?? die('execution'))
+    case 'throttle': // yk throttle [--once]: the load supervisor in the foreground (it starts by itself with the first run)
+    case '_throttle':
+      return cmdThrottle(rest)
     case '_refresh-activity':
       await refreshActivity()
       return 0

@@ -152,6 +152,14 @@ stops a teammate from completing a task while `yk check --no-heal` fails ([Agent
 `yk tree|pause|resume|stop|skip|retry|break|step|signals|approve|reject`. `stop` is a drain of up to 30 s; add `--tree` to reach the runs below.
 `pause` lets the running node finish and holds the next one. `approve|reject` answer a pending approval.
 
+### Load supervisor (`yk throttle`)
+
+While the machine is short of CPU or RAM, the live runs of the `dogfood` session are paused (`pause --tree`: the running node finishes, the next one waits), and
+the ones it paused are resumed when the load is gone. A run you paused yourself is never resumed by it. It starts in the background with the first run
+(any `yk` command that starts one) and ends when the server stops; `yk throttle [--once]` runs it in the foreground, `YK_THROTTLE=off` opts out.
+Pause at 1.5 load per core or under 10% available RAM, resume under 0.9 and over 20%, each after 3 samples in a row (10 s apart); tune with
+`YK_THROTTLE_PAUSE_CPU|RESUME_CPU|PAUSE_RAM|RESUME_RAM|HOLD|INTERVAL`. State: `.yukta-dev/throttle.json` (the runs it paused), `throttle.lock`.
+
 ### Other
 
 `yk pickup …` ([Pickup](#pickup)), `yk ticket …` ([Ticket pipeline](#ticket-pipeline-work-in-progress)). The older commands (`yk run issue|epic`, the
