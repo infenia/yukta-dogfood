@@ -19,6 +19,7 @@
 //
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
 // HEAL_SESSION and HEAL_POLICY point the generator at another session file and policy (the tests do). Edit this file or heal.json, run it, commit session.json.
+import { FIXER_ALLOW, MCP_DENY, MCP_READ, CLAUDE_SESSION_ENV } from './claude.ts'
 import { HERE, type Json, existsSync, join, readFileSync, writeFileSync } from '../lib.ts'
 
 const PATH = process.env.HEAL_SESSION || join(HERE, 'session.json')
@@ -363,7 +364,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
 
   // ---- attempt (L1)
   const claudeCall: Json = {
-    workflowId: 'claude',
+    workflowId: policy.claudeWorkflow ?? 'claude', // 'agent': the AGENT_SESSION plugin; 'claude': the process executor (the one with a stand-in binary for tests)
     timeoutSeconds: 7200,
     routeByOutcome: true,
     engine: { onError: 'ROUTE' },
@@ -379,6 +380,8 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
       sessionId: '-',
       claudeBin: S('claudeBin'),
       stage: S('stage'),
+      rulesFile: '${payload.output.rulesFile}',
+      mcpConfig: '${payload.output.mcpConfig}',
     },
   }
   const aEnv = { YUKTA_MODEL: S('model'), YUKTA_EFFORT: S('effort'), YUKTA_COMMAND: S('command') }
@@ -390,7 +393,13 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
       pe(
         'prepare',
         'prepare',
-        healEnv({ ...aEnv, YUKTA_MODELS: S('models'), YUKTA_BUDGET_CHECK: S('budgetCheck'), YUKTA_HEAL_TIMEOUT: S('claudeTimeout') }),
+        healEnv({
+          ...aEnv,
+          YUKTA_MODELS: S('models'),
+          YUKTA_BUDGET_CHECK: S('budgetCheck'),
+          YUKTA_HEAL_TIMEOUT: S('claudeTimeout'),
+          YUKTA_RULES: S('rules'),
+        }),
         { stdin: true, json: true, routed: true },
       ),
       { nodeId: 'claude', type: 'SUB_WORKFLOW', config: claudeCall },
@@ -606,11 +615,33 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
   return { claude: CLAUDE_WF, agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
 }
 
-/** The `agent` workflow: one Claude Code session through AGENT_SESSION; the answer carries costUsd, numTurns and structured (yukta agent-session extras). */
+/**
+ * The `agent` workflow: one fixer-grade Claude Code session on the AGENT_SESSION plugin, the same flags as src/heal/claude.ts. Per call (start variables): prompt, project, model,
+ * effort, budget, schema, rulesFile (the system prompt) and mcpConfig (a file: the key stays out of arguments). The three exits all end in a CONSOLE_TERMINAL so the payload
+ * ({status, text, structured, costUsd, numTurns, reason, ...}) reaches the caller whatever the outcome; `status` says which.
+ */
 export function agentWorkflow(): Json {
+  const mcp = (t: string): string => `mcp__yukta__${t}`
+  const args = [
+    ...['--setting-sources', 'project', '--strict-mcp-config', '--mcp-config', S('mcpConfig')],
+    ...['--disable-slash-commands', '--exclude-dynamic-system-prompt-sections', '--no-session-persistence'],
+    ...['--tools', 'Read,Edit,Write,Grep,Glob,Bash', '--permission-mode', 'auto', '--permission-prompts', 'none'],
+    ...['--allowedTools', ...FIXER_ALLOW, ...MCP_READ.map(mcp)],
+    ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)', ...MCP_DENY.map(mcp)],
+    ...[
+      '--append-system-prompt-file',
+      S('rulesFile'),
+      '--max-budget-usd',
+      S('budget'),
+      '--effort',
+      S('effort'),
+      '--json-schema',
+      S('schema'),
+    ],
+  ]
   const wf: Json = {
     workflowId: 'agent',
-    description: 'One headless Claude Code session in a project on the AGENT_SESSION plugin; returns its answer, its cost and its turns.',
+    description: 'One fixer-grade Claude Code session on the AGENT_SESSION plugin; the payload carries the answer, its cost and its turns.',
     nodes: [
       { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { prompt: S('prompt') } } },
       {
@@ -621,17 +652,24 @@ export function agentWorkflow(): Json {
           prompt: '${payload.prompt}',
           model: S('model'),
           workingDir: S('project'),
-          args: ['--permission-mode', 'auto', '--allowedTools', 'Read,Edit,Write,Grep,Glob', '--max-budget-usd', S('budget')],
+          args,
+          // a fixer reads no CLAUDE.md, runs on pinned models and may call ./gradlew (the project hooks check YUKTA_HEAL_FIXER); the unset ones keep it from
+          // thinking it is the session that started the server
+          env: {
+            CLAUDE_CODE_DISABLE_CLAUDE_MDS: '1',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
+            YUKTA_HEAL_FIXER: '1',
+            ...Object.fromEntries(CLAUDE_SESSION_ENV.map((k) => [k, ''])),
+          },
           timeout: 1800, // ponytail: AGENT_SESSION's timeout is a fixed number, not a start variable; the longest effort of heal.json, per-effort when it matters
+          engine: { concurrencyGroup: 'claude' },
         },
       },
       { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: {} },
-      { nodeId: 'failed', type: 'OUTCOME_TERMINAL', config: { outcome: 'FAILED', reason: 'the claude session failed or ran out of time' } },
-      {
-        nodeId: 'early',
-        type: 'OUTCOME_TERMINAL',
-        config: { outcome: 'RETRY', reason: 'the claude session stopped early (out of turns or budget)' },
-      },
+      { nodeId: 'failed', type: 'CONSOLE_TERMINAL', config: {} },
+      { nodeId: 'early', type: 'CONSOLE_TERMINAL', config: {} },
     ],
     edges: [
       ...edges('trigger', 'agent'),

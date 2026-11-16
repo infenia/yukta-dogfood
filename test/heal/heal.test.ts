@@ -4,6 +4,7 @@
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test'
 import { join } from 'node:path'
 import { ts, initRepo, json, put, read, rm, tmp } from '../helpers.ts'
+import { fromAgent } from '../../src/heal/heal.ts'
 
 setDefaultTimeout(120_000)
 let d: string, proj: string
@@ -57,4 +58,13 @@ test('no progress: an attempt after which the stage fails exactly as before (num
   expect(report(2, 'src/A.java:21: error: boom'), 'the same failure (line number aside) was not seen').toBe(true)
   expect(report(3, 'src/B.java:5: error: other'), 'a different failure counted as the same').toBe(false)
   expect(report(4, 'src/B.java:5: error: other'), 'the repeat of a new failure was not seen').toBe(true)
+})
+
+test('fromAgent maps the AGENT_SESSION payload to claude JSON and leaves claude JSON alone', () => {
+  const ok = fromAgent({ status: 'success', text: 'done', structured: { fixed: true, summary: 's' }, costUsd: 0.12 })
+  expect(ok).toMatchObject({ is_error: false, subtype: 'success', structured_output: { fixed: true }, total_cost_usd: 0.12 })
+  const out = fromAgent({ status: 'incomplete', reason: 'error_max_turns', text: '', costUsd: 0.5 })
+  expect(out).toMatchObject({ is_error: true, subtype: 'error_max_turns', total_cost_usd: 0.5 })
+  const claude = { is_error: false, total_cost_usd: 0.01 }
+  expect(fromAgent(claude)).toBe(claude)
 })

@@ -2486,7 +2486,8 @@
               "YUKTA_COMMAND": "${start.command}",
               "YUKTA_MODELS": "${start.models}",
               "YUKTA_BUDGET_CHECK": "${start.budgetCheck}",
-              "YUKTA_HEAL_TIMEOUT": "${start.claudeTimeout}"
+              "YUKTA_HEAL_TIMEOUT": "${start.claudeTimeout}",
+              "YUKTA_RULES": "${start.rules}"
             },
             "timeout": 120,
             "timeoutSeconds": 120,
@@ -2500,7 +2501,7 @@
           "nodeId": "claude",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "claude",
+            "workflowId": "agent",
             "timeoutSeconds": 7200,
             "routeByOutcome": true,
             "engine": {
@@ -2517,7 +2518,9 @@
               "schema": "{\"type\":\"object\",\"properties\":{\"fixed\":{\"type\":\"boolean\"},\"summary\":{\"type\":\"string\"}},\"required\":[\"fixed\",\"summary\"]}",
               "sessionId": "-",
               "claudeBin": "${start.claudeBin}",
-              "stage": "${start.stage}"
+              "stage": "${start.stage}",
+              "rulesFile": "${payload.output.rulesFile}",
+              "mcpConfig": "${payload.output.mcpConfig}"
             }
           }
         },
@@ -3490,7 +3493,7 @@
     },
     "agent": {
       "workflowId": "agent",
-      "description": "One headless Claude Code session in a project on the AGENT_SESSION plugin; returns its answer, its cost and its turns.",
+      "description": "One fixer-grade Claude Code session on the AGENT_SESSION plugin; the payload carries the answer, its cost and its turns.",
       "nodes": [
         {
           "nodeId": "trigger",
@@ -3511,14 +3514,83 @@
             "model": "${start.model}",
             "workingDir": "${start.project}",
             "args": [
+              "--setting-sources",
+              "project",
+              "--strict-mcp-config",
+              "--mcp-config",
+              "${start.mcpConfig}",
+              "--disable-slash-commands",
+              "--exclude-dynamic-system-prompt-sections",
+              "--no-session-persistence",
+              "--tools",
+              "Read,Edit,Write,Grep,Glob,Bash",
               "--permission-mode",
               "auto",
+              "--permission-prompts",
+              "none",
               "--allowedTools",
-              "Read,Edit,Write,Grep,Glob",
+              "Read",
+              "Edit",
+              "Write",
+              "Grep",
+              "Glob",
+              "Bash(./gradlew:*)",
+              "Bash(make:*)",
+              "Bash(go test:*)",
+              "Bash(go vet:*)",
+              "Bash(node_modules/.bin/*:*)",
+              "Bash(reuse:*)",
+              "Bash(actionlint:*)",
+              "Bash(mint:*)",
+              "Bash(cd:*)",
+              "mcp__yukta__get_node_output",
+              "mcp__yukta__get_execution_tree",
+              "mcp__yukta__get_execution_logs",
+              "mcp__yukta__get_execution_result",
+              "mcp__yukta__get_workflow_status",
+              "mcp__yukta__get_workflow_history",
+              "mcp__yukta__get_workflow_details",
+              "--disallowedTools",
+              "Bash(git commit:*)",
+              "Bash(git push:*)",
+              "mcp__yukta__start_workflow",
+              "mcp__yukta__control_workflow",
+              "mcp__yukta__control_node",
+              "mcp__yukta__set_node_breakpoint",
+              "mcp__yukta__signal_node",
+              "mcp__yukta__rollback_workflow",
+              "mcp__yukta__note_workflow_version",
+              "mcp__yukta__set_scheduler_limits",
+              "mcp__yukta__create_session",
+              "--append-system-prompt-file",
+              "${start.rulesFile}",
               "--max-budget-usd",
-              "${start.budget}"
+              "${start.budget}",
+              "--effort",
+              "${start.effort}",
+              "--json-schema",
+              "${start.schema}"
             ],
-            "timeout": 1800
+            "env": {
+              "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1",
+              "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+              "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+              "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+              "YUKTA_HEAL_FIXER": "1",
+              "CLAUDECODE": "",
+              "CLAUDE_CODE_SESSION_ID": "",
+              "CLAUDE_CODE_ENTRYPOINT": "",
+              "CLAUDE_CODE_SSE_PORT": "",
+              "CLAUDE_CODE_MESSAGING_SOCKET": "",
+              "CLAUDE_CODE_MESSAGING_TOKEN": "",
+              "CLAUDE_CODE_CHILD_SESSION": "",
+              "CLAUDE_CODE_SESSION_ATTENDED": "",
+              "CLAUDE_PID": ""
+            },
+            "timeout": 1800,
+            "engine": {
+              "concurrencyGroup": "claude"
+            }
           },
           "color": "sky"
         },
@@ -3530,20 +3602,14 @@
         },
         {
           "nodeId": "failed",
-          "type": "OUTCOME_TERMINAL",
-          "config": {
-            "outcome": "FAILED",
-            "reason": "the claude session failed or ran out of time"
-          },
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
           "color": "magenta"
         },
         {
           "nodeId": "early",
-          "type": "OUTCOME_TERMINAL",
-          "config": {
-            "outcome": "RETRY",
-            "reason": "the claude session stopped early (out of turns or budget)"
-          },
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
           "color": "violet"
         }
       ],

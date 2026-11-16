@@ -22,6 +22,7 @@
 // A value of "-" means empty: a start variable of a workflow cannot be.
 // Nothing here commits or reverts.
 import { mkdtempSync } from 'node:fs'
+import { fixerMcp, stageRules } from './claude.ts'
 import { tmpdir } from 'node:os'
 import {
   HERE,
@@ -58,6 +59,20 @@ const lines = (s: string): string[] => (s.length ? s.replace(/\n$/, '').split('\
 export const plain = (s: string): string => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '\n')
 
 /** what the stage checks, from its name (plan names the stages), so the triage question can stay neutral */
+/** The result of the claude workflow is claude's JSON; the agent workflow's is AGENT_SESSION's payload ({status, text, structured, costUsd, ...}): the same JSON. */
+export function fromAgent(o: Json): Json {
+  if (typeof o?.status !== 'string') return o
+  const ok = o.status === 'success'
+  return {
+    is_error: !ok,
+    subtype: ok ? 'success' : (o.reason ?? o.status),
+    result: o.text ?? '',
+    structured_output: o.structured,
+    total_cost_usd: o.costUsd ?? 0,
+    usage: o.usage ?? null,
+  }
+}
+
 export function ecosystem(stage: string): string {
   if (stage.startsWith('cli_')) return 'go (cli)'
   if (stage.startsWith('ui_')) return 'typescript (ui)'
@@ -444,14 +459,23 @@ ${stat || 'none'}
 Verify with only:
 ${env.YUKTA_COMMAND || 'the failing command'}
 ${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TIMEOUT) / 60)} minutes at ${effort || 'this'} effort. If you cannot fix it in that time, stop and answer fixed=false with what you learned.\n` : ''}Then answer with the JSON object only.`
-      console.log(JSON.stringify({ prompt, attempt: n }))
+      // for the `agent` workflow (AGENT_SESSION takes files, not environment): the system prompt of the stage and the MCP config of the fixer (the key is
+      // in a file only the user reads, never in an argument or the payload)
+      const rulesFile = join(dir, `${stage}-${n}.rules`)
+      const mcpConfig = join(dir, `${stage}-${n}.mcp.json`)
+      writeFileSync(rulesFile, env.YUKTA_RULES ? stageRules(env.YUKTA_RULES, stage) : '')
+      const mcp = fixerMcp(env)
+      const server = { type: 'http', url: mcp?.url, headers: { 'X-API-Key': mcp?.key } }
+      writeFileSync(mcpConfig, JSON.stringify({ mcpServers: mcp ? { yukta: server } : {} }), { mode: 0o600 })
+      console.log(JSON.stringify({ prompt, attempt: n, rulesFile, mcpConfig }))
       return 0
     }
     case 'claimed': {
       const n = attemptNo()
       const msg = tryJson(read()) ?? {}
-      // the claude workflow's result: {results: [{output: <claude's JSON>}]}
-      const r: Json = msg.results?.[0]?.output ?? msg.output ?? {}
+      // the claude workflow's result: {results: [{output: <claude's JSON>}]}; the agent workflow's is AGENT_SESSION's payload itself ({results: [{status, text, structured, costUsd, ...}]}), mapped to the same shape
+      const raw: Json = msg.results?.[0]?.output ?? msg.output ?? msg.results?.[0] ?? {}
+      const r: Json = fromAgent(raw)
       let answer: Json = r.structured_output ?? (typeof r.result === 'string' ? tryJson(r.result) : undefined) ?? {}
       if (answer === null || typeof answer !== 'object') answer = {}
       const bad = r.is_error === true || (r.subtype ?? 'success') !== 'success'
