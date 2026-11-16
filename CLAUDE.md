@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Tooling (TypeScript on Bun) that develops the sibling [yukta](https://github.com/infenia/yukta) repo *with* Yukta: `yk` runs builds, tests and checks as workflows on a local dev server (`127.0.0.1:9858`, built from yukta `origin/main`) and prints one `RESULT` line. A failing check goes to a self-healing ladder of Claude fixers. See `README.md` (how to run) and `ARCHITECTURE.md` (how it works inside); read those before changing workflows, heal, pickup or ticket code.
+Tooling (TypeScript on Bun) that develops the sibling [yukta](https://github.com/infenia/yukta) repo _with_ Yukta: `yk` runs builds, tests and checks as workflows on a local dev server (`127.0.0.1:9858`, built from yukta `origin/main`) and prints one `RESULT` line. A failing check goes to a self-healing ladder of Claude fixers. See `README.md` (how to run) and `ARCHITECTURE.md` (how it works inside); read those before changing workflows, heal, pickup or ticket code.
 
 ## Commands
 
@@ -25,7 +25,7 @@ CI (`.github/workflows/ci.yml`) runs exactly these. `yk` itself must be run from
 ## Gotchas
 
 - `session.json` and `ticket-session.json` are **generated** — never hand-edit. After changing `heal.json` or `src/heal/gen-session.ts`, run `bun src/heal/gen-session.ts`; after changing the ticket flow, `bun src/ticket/gen-ticket.ts`; commit the result. Claude's `Read` of `session.json` is denied in `.claude/settings.json` (huge).
-- Workflows come from this checkout (changes apply at once); *plugins* come from the server build, so a plugin change needs a merged yukta commit and `yk up`.
+- Workflows come from this checkout (changes apply at once); _plugins_ come from the server build, so a plugin change needs a merged yukta commit and `yk up`.
 - Process execution goes through `run()` in `src/base.ts`, which has a **binary allowlist** (exit 126 for unlisted binaries); new external tools must be added there (`test/allowlist.test.ts`).
 - The mod and `hooks/yk-hook.ts` deny direct `./gradlew`, `go`, `pnpm|npm|npx` and point to `yk`; `YUKTA_DOGFOOD=off` bypasses the hooks.
 - Fixer prompts are constant files (`fixer-rules.md` + `fixer-rules/<kind>.md`, chosen in the `case` of `src/heal/claude.ts`) so the prompt cache holds; heal guard rejects fixer edits to `config/`, `build-logic/`, `gradle/`, `.github/`, `.claude/` and this folder.
