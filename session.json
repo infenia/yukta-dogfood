@@ -87,7 +87,8 @@
         {
           "nodeId": "trigger",
           "type": "CONSTANT_SOURCE",
-          "config": {}
+          "config": {},
+          "color": "stone"
         },
         {
           "nodeId": "reuse",
@@ -102,7 +103,8 @@
               "timeout": "${start.timeout}",
               "label": "reuse"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "reuse.failed",
@@ -110,7 +112,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "reuse"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "reuse.fail",
@@ -120,7 +123,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "reuse.heal",
@@ -149,7 +153,8 @@
               "format": "${start.fmt.reuse}",
               "auto": "${start.auto.reuse}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "actionlint",
@@ -164,7 +169,8 @@
               "timeout": "${start.timeout}",
               "label": "actionlint"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "actionlint.failed",
@@ -172,7 +178,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "actionlint"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "actionlint.fail",
@@ -182,7 +189,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "actionlint.heal",
@@ -211,7 +219,8 @@
               "format": "${start.fmt.actionlint}",
               "auto": "${start.auto.actionlint}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "docs",
@@ -226,7 +235,8 @@
               "timeout": "${start.timeout}",
               "label": "docs"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "docs.failed",
@@ -234,7 +244,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "docs"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "docs.fail",
@@ -244,7 +255,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "docs.heal",
@@ -273,7 +285,8 @@
               "format": "${start.fmt.docs}",
               "auto": "${start.auto.docs}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "fast",
@@ -288,7 +301,8 @@
               "timeout": "${start.timeout}",
               "label": "fast"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "spotless",
@@ -303,7 +317,8 @@
               "timeout": "${start.timeout}",
               "label": "spotless"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "spotless.failed",
@@ -311,7 +326,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "spotless"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "spotless.fail",
@@ -321,7 +337,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "spotless.heal",
@@ -350,7 +367,8 @@
               "format": "${start.fmt.spotless}",
               "auto": "${start.auto.spotless}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_fmt_check",
@@ -365,7 +383,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_fmt_check"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_fmt_check.failed",
@@ -373,7 +392,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_fmt_check"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_fmt_check.fail",
@@ -383,7 +403,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_fmt_check.heal",
@@ -412,7 +433,8 @@
               "format": "${start.fmt.cli_fmt_check}",
               "auto": "${start.auto.cli_fmt_check}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_mod_verify",
@@ -427,7 +449,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_mod_verify"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_mod_verify.failed",
@@ -435,7 +458,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_mod_verify"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_mod_verify.fail",
@@ -445,7 +469,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_mod_verify.heal",
@@ -474,7 +499,8 @@
               "format": "${start.fmt.cli_mod_verify}",
               "auto": "${start.auto.cli_mod_verify}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_prettier",
@@ -489,7 +515,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_prettier"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_prettier.failed",
@@ -497,7 +524,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_prettier"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_prettier.fail",
@@ -507,7 +535,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_prettier.heal",
@@ -536,7 +565,8 @@
               "format": "${start.fmt.ui_prettier}",
               "auto": "${start.auto.ui_prettier}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "dogfood_fmt",
@@ -551,7 +581,8 @@
               "timeout": "${start.timeout}",
               "label": "dogfood_fmt"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "dogfood_fmt.failed",
@@ -559,7 +590,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "dogfood_fmt"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "dogfood_fmt.fail",
@@ -569,7 +601,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "dogfood_fmt.heal",
@@ -598,7 +631,8 @@
               "format": "${start.fmt.dogfood_fmt}",
               "auto": "${start.auto.dogfood_fmt}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "dogfood_check",
@@ -613,7 +647,8 @@
               "timeout": "${start.timeout}",
               "label": "dogfood_check"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "dogfood_check.failed",
@@ -621,7 +656,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "dogfood_check"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "dogfood_check.fail",
@@ -631,7 +667,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "dogfood_check.heal",
@@ -660,7 +697,8 @@
               "format": "${start.fmt.dogfood_check}",
               "auto": "${start.auto.dogfood_check}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "compile",
@@ -675,7 +713,8 @@
               "timeout": "${start.timeout}",
               "label": "compile"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "compile.failed",
@@ -683,7 +722,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "compile"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "compile.fail",
@@ -693,7 +733,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "compile.heal",
@@ -722,7 +763,8 @@
               "format": "${start.fmt.compile}",
               "auto": "${start.auto.compile}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_vet",
@@ -737,7 +779,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_vet"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_vet.failed",
@@ -745,7 +788,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_vet"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_vet.fail",
@@ -755,7 +799,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_vet.heal",
@@ -784,7 +829,8 @@
               "format": "${start.fmt.cli_vet}",
               "auto": "${start.auto.cli_vet}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_tsc",
@@ -799,7 +845,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_tsc"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_tsc.failed",
@@ -807,7 +854,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_tsc"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_tsc.fail",
@@ -817,7 +865,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_tsc.heal",
@@ -846,7 +895,8 @@
               "format": "${start.fmt.ui_tsc}",
               "auto": "${start.auto.ui_tsc}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_eslint",
@@ -861,7 +911,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_eslint"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_eslint.failed",
@@ -869,7 +920,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_eslint"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_eslint.fail",
@@ -879,7 +931,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_eslint.heal",
@@ -908,7 +961,8 @@
               "format": "${start.fmt.ui_eslint}",
               "auto": "${start.auto.ui_eslint}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_headers",
@@ -923,7 +977,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_headers"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_headers.failed",
@@ -931,7 +986,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_headers"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_headers.fail",
@@ -941,7 +997,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_headers.heal",
@@ -970,7 +1027,8 @@
               "format": "${start.fmt.ui_headers}",
               "auto": "${start.auto.ui_headers}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "style",
@@ -985,7 +1043,8 @@
               "timeout": "${start.timeout}",
               "label": "style"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "style.failed",
@@ -993,7 +1052,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "style"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "style.fail",
@@ -1003,7 +1063,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "style.heal",
@@ -1032,7 +1093,8 @@
               "format": "${start.fmt.style}",
               "auto": "${start.auto.style}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "spotbugs",
@@ -1047,7 +1109,8 @@
               "timeout": "${start.timeout}",
               "label": "spotbugs"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "spotbugs.failed",
@@ -1055,7 +1118,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "spotbugs"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "spotbugs.fail",
@@ -1065,7 +1129,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "spotbugs.heal",
@@ -1094,7 +1159,8 @@
               "format": "${start.fmt.spotbugs}",
               "auto": "${start.auto.spotbugs}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_lint",
@@ -1109,7 +1175,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_lint"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_lint.failed",
@@ -1117,7 +1184,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_lint"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_lint.fail",
@@ -1127,7 +1195,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_lint.heal",
@@ -1156,7 +1225,8 @@
               "format": "${start.fmt.cli_lint}",
               "auto": "${start.auto.cli_lint}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_sec",
@@ -1171,7 +1241,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_sec"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_sec.failed",
@@ -1179,7 +1250,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_sec"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_sec.fail",
@@ -1189,7 +1261,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_sec.heal",
@@ -1218,7 +1291,8 @@
               "format": "${start.fmt.cli_sec}",
               "auto": "${start.auto.cli_sec}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "tests",
@@ -1233,7 +1307,8 @@
               "timeout": "${start.timeout}",
               "label": "tests"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "tests.failed",
@@ -1241,7 +1316,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "tests"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "tests.fail",
@@ -1251,7 +1327,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "tests.heal",
@@ -1280,7 +1357,8 @@
               "format": "${start.fmt.tests}",
               "auto": "${start.auto.tests}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_vitest",
@@ -1295,7 +1373,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_vitest"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_vitest.failed",
@@ -1303,7 +1382,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_vitest"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_vitest.fail",
@@ -1313,7 +1393,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_vitest.heal",
@@ -1342,7 +1423,8 @@
               "format": "${start.fmt.ui_vitest}",
               "auto": "${start.auto.ui_vitest}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "coverage",
@@ -1357,7 +1439,8 @@
               "timeout": "${start.timeout}",
               "label": "coverage"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "coverage.failed",
@@ -1365,7 +1448,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "coverage"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "coverage.fail",
@@ -1375,7 +1459,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "coverage.heal",
@@ -1404,7 +1489,8 @@
               "format": "${start.fmt.coverage}",
               "auto": "${start.auto.coverage}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_cover_check",
@@ -1419,7 +1505,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_cover_check"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_cover_check.failed",
@@ -1427,7 +1514,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_cover_check"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_cover_check.fail",
@@ -1437,7 +1525,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_cover_check.heal",
@@ -1466,7 +1555,8 @@
               "format": "${start.fmt.cli_cover_check}",
               "auto": "${start.auto.cli_cover_check}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_vuln",
@@ -1481,7 +1571,8 @@
               "timeout": "${start.timeout}",
               "label": "cli_vuln"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "cli_vuln.failed",
@@ -1489,7 +1580,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_vuln"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "cli_vuln.fail",
@@ -1499,7 +1591,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "cli_vuln.heal",
@@ -1528,7 +1621,8 @@
               "format": "${start.fmt.cli_vuln}",
               "auto": "${start.auto.cli_vuln}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "licenses",
@@ -1543,7 +1637,8 @@
               "timeout": "${start.timeout}",
               "label": "licenses"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "licenses.failed",
@@ -1551,7 +1646,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "licenses"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "security",
@@ -1566,7 +1662,8 @@
               "timeout": "${start.timeout}",
               "label": "security"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "security.failed",
@@ -1574,7 +1671,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "security"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_build",
@@ -1589,7 +1687,8 @@
               "timeout": "${start.timeout}",
               "label": "ui_build"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "ui_build.failed",
@@ -1597,7 +1696,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_build"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "ui_build.fail",
@@ -1607,7 +1707,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ui_build.heal",
@@ -1636,7 +1737,8 @@
               "format": "${start.fmt.ui_build}",
               "auto": "${start.auto.ui_build}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "healed?",
@@ -1656,7 +1758,8 @@
             "timeoutSeconds": 60,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "verify",
@@ -1671,7 +1774,8 @@
               "timeout": "${start.timeout}",
               "label": "verify"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "verify.failed",
@@ -1679,7 +1783,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "verify"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "verify.fail",
@@ -1689,7 +1794,8 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "verify.heal",
@@ -1718,14 +1824,16 @@
               "format": "${start.fmt.spotless}",
               "auto": "-"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "teal"
         }
       ],
       "edges": [
@@ -2464,7 +2572,8 @@
               "problems": "${start.problems}",
               "previous": "${start.previous}"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "prepare",
@@ -2495,7 +2604,8 @@
             "outputFormat": "JSON",
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "claude",
@@ -2519,10 +2629,11 @@
               "sessionId": "-",
               "claudeBin": "${start.claudeBin}",
               "stage": "${start.stage}",
-              "rulesFile": "${payload.output.rulesFile}",
-              "mcpConfig": "${payload.output.mcpConfig}"
+              "rulesFile": "${start.healDir}/${start.stage}-${payload.output.attempt}.rules",
+              "mcpConfig": "${start.healDir}/${start.stage}-${payload.output.attempt}.mcp.json"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "claimed",
@@ -2547,7 +2658,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "format",
@@ -2565,7 +2677,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "judge",
@@ -2591,7 +2704,8 @@
             "timeoutSeconds": 120,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "recheck",
@@ -2609,7 +2723,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "report",
@@ -2636,7 +2751,8 @@
             "inputMode": "STDIN",
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "fixed?",
@@ -2648,12 +2764,14 @@
               "true": "fixed"
             },
             "defaultPort": "notfixed"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "failed",
@@ -2661,7 +2779,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the attempt did not fix the stage"
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -2767,7 +2886,8 @@
               "heal": "${start.heal}",
               "auto": "${start.auto}"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "heal?",
@@ -2779,7 +2899,8 @@
               "off": "off"
             },
             "defaultPort": "on"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "disabled",
@@ -2787,7 +2908,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "healing is off (yk check --no-heal)"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "auto?",
@@ -2798,7 +2920,8 @@
               "payload['auto'] != null and payload['auto'] != '' and payload['auto'] != '-'": "auto"
             },
             "defaultPort": "model"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "auto-fix",
@@ -2816,7 +2939,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "auto-check",
@@ -2834,7 +2958,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "auto-record",
@@ -2855,7 +2980,8 @@
             "timeout": 60,
             "timeoutSeconds": 60,
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "brief",
@@ -2880,7 +3006,8 @@
             "inputMode": "STDIN",
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "first",
@@ -2894,7 +3021,8 @@
               "triage": "payload['output']['triage']",
               "known": "payload['output']['known']"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "known?",
@@ -2906,7 +3034,8 @@
               "true": "known"
             },
             "defaultPort": "unknown"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "baseline-known",
@@ -2914,7 +3043,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the stage already fails the same way on origin/main: a known baseline failure, no fixer was started"
-          }
+          },
+          "color": "magenta"
         },
         {
           "nodeId": "triage?",
@@ -2926,7 +3056,8 @@
               "off": "off"
             },
             "defaultPort": "on"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "triage",
@@ -2947,7 +3078,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "triage-log.easy",
@@ -2972,7 +3104,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "triage-log.average",
@@ -2997,7 +3130,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "triage-log.hard",
@@ -3022,7 +3156,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "triage-log.uncertain",
@@ -3047,7 +3182,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "triage-log.error",
@@ -3072,7 +3208,8 @@
             "timeoutSeconds": 60,
             "inputMode": "ENV",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "carry.fix-sonnet-low",
@@ -3086,7 +3223,8 @@
               "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "carry.fix-sonnet-low?",
@@ -3097,7 +3235,8 @@
               "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
             },
             "defaultPort": "go"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "fix-haiku-low",
@@ -3129,7 +3268,8 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "fix-sonnet-low",
@@ -3161,7 +3301,8 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "fix-haiku-high",
@@ -3193,17 +3334,20 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "logged",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "giveup",
@@ -3211,7 +3355,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "every model failed at every effort"
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -3442,7 +3587,8 @@
           "config": {
             "intervalMs": 1800000,
             "timeoutSeconds": 2400
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "tick",
@@ -3457,21 +3603,24 @@
             "timeout": 120,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "teal"
         },
         {
           "nodeId": "failed",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [

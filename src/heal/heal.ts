@@ -459,13 +459,13 @@ ${stat || 'none'}
 Verify with only:
 ${env.YUKTA_COMMAND || 'the failing command'}
 ${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TIMEOUT) / 60)} minutes at ${effort || 'this'} effort. If you cannot fix it in that time, stop and answer fixed=false with what you learned.\n` : ''}Then answer with the JSON object only.`
-      // for the `agent` workflow (AGENT_SESSION takes files, not environment): the system prompt of the stage and the MCP config of the fixer (the key is
+      // for the `agent` workflow (AGENT_SESSION takes files, not environment; it finds them as <healDir>/<stage>-<attempt>.rules and .mcp.json): the system prompt of the stage and the MCP config of the fixer (the key is
       // in a file only the user reads, never in an argument or the payload)
       const rulesFile = join(dir, `${stage}-${n}.rules`)
       const mcpConfig = join(dir, `${stage}-${n}.mcp.json`)
       writeFileSync(rulesFile, env.YUKTA_RULES ? stageRules(env.YUKTA_RULES, stage) : '')
       writeMcpConfig(mcpConfig, env)
-      console.log(JSON.stringify({ prompt, attempt: n, rulesFile, mcpConfig }))
+      console.log(JSON.stringify({ prompt, attempt: n }))
       return 0
     }
     case 'claimed': {

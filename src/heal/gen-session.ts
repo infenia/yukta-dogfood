@@ -34,12 +34,25 @@ const cmd = (file: string, ...args: string[]): string[] => [BUN, file, ...args]
 // display only (palette of Yukta's canvas: teal, sky, violet, magenta, stone): input stone, the process sky, success teal, failure magenta, stopped early violet
 const COLORS: Record<string, string> = { trigger: 'stone', run: 'sky', agent: 'sky', ok: 'teal', failed: 'magenta', early: 'violet' }
 
+/** Colors every node of a workflow by what it is: inputs stone, process and agent steps sky, calls of another workflow violet, a failure magenta, a pass teal. */
+export function paint(wf: Json): Json {
+  const kind = (n: Json): string => {
+    if (/TRIGGER|SOURCE/.test(n.type)) return 'stone'
+    if (n.type === 'SUB_WORKFLOW') return 'violet'
+    if (n.type === 'PROCESS_EXECUTOR' || n.type === 'AGENT_SESSION' || n.type === 'CLASSIFY') return 'sky'
+    if (n.type === 'CONSOLE_TERMINAL') return 'teal'
+    if (n.type === 'OUTCOME_TERMINAL') return n.config?.outcome === 'FAILED' ? 'magenta' : n.config?.outcome === 'RETRY' ? 'violet' : 'teal'
+    return 'stone' // BRANCH and the rest
+  }
+  for (const n of wf.nodes) n.color = COLORS[n.nodeId] ?? kind(n)
+  return wf
+}
+
 // ---------------------------------------------------------------- tool
 export function toolWorkflow(wf: Json): Json {
   const run = wf.nodes.find((n: Json) => n.nodeId === 'run')
   run.config.command = cmd('__DOGFOOD__/src/tool.ts')
-  for (const n of wf.nodes) n.color = COLORS[n.nodeId]
-  return wf
+  return paint(wf)
 }
 
 // ---------------------------------------------------------------- check
@@ -380,8 +393,8 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
       sessionId: '-',
       claudeBin: S('claudeBin'),
       stage: S('stage'),
-      rulesFile: '${payload.output.rulesFile}',
-      mcpConfig: '${payload.output.mcpConfig}',
+      rulesFile: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.rules`,
+      mcpConfig: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.mcp.json`,
     },
   }
   const aEnv = { YUKTA_MODEL: S('model'), YUKTA_EFFORT: S('effort'), YUKTA_COMMAND: S('command') }
@@ -611,7 +624,7 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
     nodes,
     edges: e,
   }
-  for (const n of CLAUDE_WF.nodes) n.color = COLORS[n.nodeId]
+  paint(CLAUDE_WF)
   return { claude: CLAUDE_WF, agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
 }
 
@@ -678,8 +691,7 @@ export function agentWorkflow(): Json {
       ...edges('agent', 'early', 'incomplete'),
     ],
   }
-  for (const n of wf.nodes) n.color = COLORS[n.nodeId]
-  return wf
+  return paint(wf)
 }
 
 /** The session with every generated workflow rewritten. */
@@ -688,10 +700,10 @@ export function generate(session: Json, policy: Json): Json {
   d.workflows.tool = toolWorkflow(d.workflows.tool)
   delete d.workflows['fix-from']
   const h = healWorkflows(policy)
-  for (const wf of [h.claude, h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = wf
+  for (const wf of [h.claude, h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = paint(wf)
   delete d.workflows['check-plain']
-  d.workflows.check = checkWorkflow()
-  d.workflows.pickup = pickupWorkflow()
+  d.workflows.check = paint(checkWorkflow())
+  d.workflows.pickup = paint(pickupWorkflow())
   return d
 }
 
