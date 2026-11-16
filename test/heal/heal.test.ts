@@ -100,3 +100,24 @@ test('fromAgent keeps the token usage, in the shape the attempt record reads', (
   expect(fromAgent({ status: 'success', text: '', costUsd: 0.1, usage }).usage).toEqual(usage)
   expect(fromAgent({ status: 'success', text: '' }).usage).toBeNull() // a server without the preset's usage extra
 })
+
+test('judge: the heal folder inside a project that does not ignore it is not judged', () => {
+  const p = join(d, 'inside')
+  initRepo(p, { 'core/A.java': 'int a;\n' })
+  const heal = join(p, '.yukta-dev/heal')
+  const env = {
+    YUKTA_HEAL_DIR: heal,
+    YUKTA_STAGE: 'compile',
+    YUKTA_MODEL: 'haiku',
+    YUKTA_EFFORT: 'low',
+    YUKTA_DEV_STATE_DIR: join(d, 'state'),
+  }
+  put(join(heal, 'compile.attempt'), '1\n')
+  put(join(heal, 'compile-1.claude'), '{"claimed": true}\n')
+  put(join(heal, 'compile-1.base'), 'HEAD\n')
+  put(join(heal, 'compile-1.before'), '')
+  put(join(heal, 'compile-1.rules'), 'no @SuppressWarnings("PMD"), no NOPMD\n') // what the fixer's system prompt says
+  put(join(p, 'core/A.java'), 'int a = 1;\n')
+  expect(ts('src/heal/heal.ts', ['judge'], { cwd: p, env: { ...env, YUKTA_PROBLEMS: 'x' } }).code).toBe(0)
+  expect((json(join(heal, 'compile-1.verdict')) as any).violations).toBe('')
+})
