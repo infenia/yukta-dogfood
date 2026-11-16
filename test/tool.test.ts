@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // src/tool.ts: the step of the `tool` workflow runs $YUKTA_TOOL_COMMAND and its exit code picks the port.
 import { expect, test } from 'bun:test'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { ts } from './helpers.ts'
 
 const run = (command: string | undefined, label = 'x') =>
@@ -30,4 +32,11 @@ test('output goes straight through, and quotes, && and pipes run as written', ()
 
 test('a command killed by a signal fails with 128 + signo', () => {
   expect(run('kill -TERM $$ ; sleep 5').code).toBe(143)
+})
+
+test('every node of the generated tool workflow has a color', () => {
+  const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
+  const wf = s.workflows.tool
+  expect(wf.nodes.length).toBeGreaterThan(0)
+  for (const n of wf.nodes) expect([n.nodeId, n.color]).not.toEqual([n.nodeId, undefined])
 })
