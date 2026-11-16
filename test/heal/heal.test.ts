@@ -94,3 +94,9 @@ test('saveLog keeps the tail of a huge output, masked, in a file only the user r
   expect(body.length).toBeLessThan(LOG_CAP + 100)
   expect(statSync(file).mode & 0o777).toBe(0o600)
 })
+
+test('fromAgent keeps the token usage, in the shape the attempt record reads', () => {
+  const usage = { input_tokens: 10, cache_creation_input_tokens: 20, cache_read_input_tokens: 30, output_tokens: 40 }
+  expect(fromAgent({ status: 'success', text: '', costUsd: 0.1, usage }).usage).toEqual(usage)
+  expect(fromAgent({ status: 'success', text: '' }).usage).toBeNull() // a server without the preset's usage extra
+})
