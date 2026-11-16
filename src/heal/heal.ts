@@ -9,7 +9,7 @@
 //   healed          check: exit 0 when anything was healed (so verify runs), else 1
 //   prepare         attempt: stdin {problems, previous}; numbers the attempt, snapshots the tree, prints {prompt, attempt};
 //                   exit 4 when the model is not in YUKTA_MODELS
-//   claimed         attempt: stdin = the claude workflow's result; keeps its cost, usage and claim
+//   claimed         attempt: stdin = the agent workflow's result; keeps its cost, usage and claim
 //   judge           attempt: the guard. Decides from what changed on disk, not from what Claude said; exit 0 = a clean change
 //   report          attempt: stdin = the last node's result; writes the attempt's record and prints
 //                   {stage, model, effort, attempt, fixed, cost, summary, problems}; always exit 0 (the workflow branches on fixed)
@@ -57,7 +57,7 @@ const lines = (s: string): string[] => (s.length ? s.replace(/\n$/, '').split('\
 export const plain = (s: string): string => s.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '').replace(/\r/g, '\n')
 
 /** what the stage checks, from its name (plan names the stages) */
-/** The result of the claude workflow is claude's JSON; the agent workflow's is AGENT_SESSION's payload ({status, text, structured, costUsd, ...}): the same JSON. */
+/** AGENT_SESSION's payload ({status, text, structured, costUsd, usage, ...}) as claude's own JSON (is_error, result, structured_output, total_cost_usd, usage). */
 export function fromAgent(o: Json): Json {
   if (typeof o?.status !== 'string') return o
   const ok = o.status === 'success'
@@ -445,7 +445,7 @@ ${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TI
     case 'claimed': {
       const n = attemptNo()
       const msg = tryJson(read()) ?? {}
-      // the claude workflow's result: {results: [{output: <claude's JSON>}]}; the agent workflow's is AGENT_SESSION's payload itself ({results: [{status, text, structured, costUsd, ...}]}), mapped to the same shape
+      // the agent workflow's result is AGENT_SESSION's payload itself ({results: [{status, text, structured, costUsd, ...}]}), mapped to the same shape
       const raw: Json = msg.results?.[0]?.output ?? msg.output ?? msg.results?.[0] ?? {}
       const r: Json = fromAgent(raw)
       let answer: Json = r.structured_output ?? (typeof r.result === 'string' ? tryJson(r.result) : undefined) ?? {}

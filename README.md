@@ -48,7 +48,7 @@ any checkout/branch ──yk──┘  session apply → workflow start → prob
 ```
 
 - **One dev server per machine**, built from `origin/main` (`yk up`), listening on `127.0.0.1:9858`. It is a normal Yukta server that runs the `tool`,
-  `check`, `heal`, `attempt`, `claude`, `pickup` and `ticket` workflows from `session.json`.
+  `check`, `heal`, `attempt`, `agent`, `pickup` and `ticket` workflows from `session.json`.
 - **`yk` is the client** (`yk`, TypeScript on Bun). It applies the workflow library to a session for your checkout, starts a workflow
   with your working directory in the payload, watches it (problems only) and prints a single `RESULT` line.
 - **Workflows come from your checkout, plugins from the server.** Editing `heal.json` or the generators changes what runs at once; a plugin
@@ -792,7 +792,7 @@ Changing `yk`, heal, pickup or the ticket pipeline itself.
 | Path                                       | What                                                                                                                                                                                                                                                               |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `yk`                                       | the one entry point                                                                                                                                                                                                                                                |
-| `session.json`                             | the five workflows: `tool`, `claude`, `attempt`, `heal`, `check` (generated)                                                                                                                                                                                       |
+| `session.json`                             | the workflows `tool`, `agent`, `attempt`, `heal`, `check`, `pickup` (generated)                                                                                                                                                                                    |
 | `src/plan.ts`                              | the changes → stages, commands and free fixes                                                                                                                                                                                                                      |
 | `src/heal/gen-session.ts`                  | generate the workflows into `session.json`                                                                                                                                                                                                                         |
 | `src/heal/heal.ts`                         | the script steps of heal and attempt, and the guard                                                                                                                                                                                                                |

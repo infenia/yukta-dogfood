@@ -145,7 +145,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -212,7 +211,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -279,7 +277,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -363,7 +360,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -430,7 +426,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -497,7 +492,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -564,7 +558,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -631,7 +624,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -698,7 +690,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -765,7 +756,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -832,7 +822,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -899,7 +888,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -966,7 +954,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1033,7 +1020,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1100,7 +1086,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1167,7 +1152,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1234,7 +1218,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1301,7 +1284,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1368,7 +1350,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1435,7 +1416,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1502,7 +1482,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1569,7 +1548,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1636,7 +1614,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1757,7 +1734,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -1846,7 +1822,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "heal": "${start.heal}",
               "budgetCheck": "${start.budgetCheck}",
               "stdout": "${payload.stdout}",
@@ -2547,83 +2522,6 @@
         "verify": "sky"
       }
     },
-    "claude": {
-      "workflowId": "claude",
-      "description": "One headless Claude Code session in a project; returns its JSON answer and what it cost.",
-      "nodes": [
-        {
-          "nodeId": "trigger",
-          "type": "CONSTANT_SOURCE",
-          "config": {
-            "variables": {
-              "prompt": "${start.prompt}"
-            }
-          },
-          "color": "stone"
-        },
-        {
-          "nodeId": "run",
-          "type": "PROCESS_EXECUTOR",
-          "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/heal/claude.ts"
-            ],
-            "workingDir": "${start.project}",
-            "inputMode": "STDIN",
-            "outputFormat": "JSON",
-            "env": {
-              "YK_MODEL": "${start.model}",
-              "YK_EFFORT": "${start.effort}",
-              "YK_BUDGET": "${start.budget}",
-              "YK_RULES": "${start.rules}",
-              "YK_SCHEMA": "${start.schema}",
-              "YK_SESSION": "${start.sessionId}",
-              "YK_CLAUDE_BIN": "${start.claudeBin}",
-              "YK_STAGE": "${start.stage}"
-            },
-            "timeout": "${start.timeout:int}",
-            "failureMode": "CONTINUE",
-            "routeByExitCode": true,
-            "engine": {
-              "concurrencyGroup": "claude"
-            }
-          },
-          "color": "sky"
-        },
-        {
-          "nodeId": "ok",
-          "type": "CONSOLE_TERMINAL",
-          "config": {},
-          "color": "teal"
-        },
-        {
-          "nodeId": "failed",
-          "type": "OUTCOME_TERMINAL",
-          "config": {
-            "outcome": "FAILED",
-            "reason": "the claude session failed, ran out of budget or ran out of time"
-          },
-          "color": "magenta"
-        }
-      ],
-      "edges": [
-        {
-          "source": "trigger",
-          "target": "run"
-        },
-        {
-          "source": "run",
-          "target": "ok",
-          "sourcePort": "success"
-        },
-        {
-          "source": "run",
-          "target": "failed",
-          "sourcePort": "failure"
-        }
-      ]
-    },
     "attempt": {
       "workflowId": "attempt",
       "description": "One repair attempt: one Claude session at one model and effort, judged by re-running the failed stage.",
@@ -2672,7 +2570,7 @@
           "color": "sky"
         },
         {
-          "nodeId": "claude",
+          "nodeId": "agent",
           "type": "SUB_WORKFLOW",
           "config": {
             "workflowId": "agent",
@@ -2687,17 +2585,12 @@
               "model": "${start.model}",
               "effort": "${start.effort}",
               "budget": "${start.budget}",
-              "timeout": "${start.claudeTimeout}",
-              "rules": "${start.rules}",
               "schema": "{\"type\":\"object\",\"properties\":{\"fixed\":{\"type\":\"boolean\"},\"summary\":{\"type\":\"string\"}},\"required\":[\"fixed\",\"summary\"]}",
-              "sessionId": "-",
-              "claudeBin": "${start.claudeBin}",
-              "stage": "${start.stage}",
               "rulesFile": "${start.healDir}/${start.stage}-${payload.output.attempt}.rules",
               "mcpConfig": "${start.healDir}/${start.stage}-${payload.output.attempt}.mcp.json"
             }
           },
-          "color": "violet"
+          "color": "sky"
         },
         {
           "nodeId": "claimed",
@@ -2854,7 +2747,7 @@
         },
         {
           "source": "prepare",
-          "target": "claude",
+          "target": "agent",
           "sourcePort": "success"
         },
         {
@@ -2863,17 +2756,17 @@
           "sourcePort": "failure"
         },
         {
-          "source": "claude",
+          "source": "agent",
           "target": "claimed",
           "sourcePort": "success"
         },
         {
-          "source": "claude",
+          "source": "agent",
           "target": "claimed",
           "sourcePort": "failure"
         },
         {
-          "source": "claude",
+          "source": "agent",
           "target": "claimed",
           "sourcePort": "error"
         },
@@ -3284,7 +3177,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "haiku",
               "effort": "low",
@@ -3318,7 +3210,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "haiku",
               "effort": "medium",
@@ -3352,7 +3243,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "haiku",
               "effort": "high",
@@ -3386,7 +3276,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "sonnet",
               "effort": "low",
@@ -3420,7 +3309,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "sonnet",
               "effort": "medium",
@@ -3454,7 +3342,6 @@
               "models": "${start.models}",
               "timeout": "${start.timeout}",
               "rules": "${start.rules}",
-              "claudeBin": "${start.claudeBin}",
               "budgetCheck": "${start.budgetCheck}",
               "model": "sonnet",
               "effort": "high",

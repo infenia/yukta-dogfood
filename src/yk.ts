@@ -383,7 +383,6 @@ async function cmdCheck(argv: string[]): Promise<number> {
       models: models || '-',
       heal,
       rules: join(HERE, 'fixer-rules.md'),
-      claudeBin: process.env.YUKTA_CLAUDE_BIN || '-',
       budgetCheck: process.env.YUKTA_BUDGET_CHECK || String(readJson(join(HERE, 'heal.json')).checkBudget),
       verifyCommand,
       cmd,

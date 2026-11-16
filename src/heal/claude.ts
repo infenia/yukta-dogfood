@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// The step of the `claude` workflow: one headless Claude Code session. The message on stdin is {"prompt": "..."}; the answer is claude's JSON
-// result on stdout; a non-zero exit is the workflow's failure port. The one launcher of every headless Claude of the dev loop (the fixers and the
-// implementer).
+// The launcher of the ticket pipeline's headless Claude Code sessions (the heal's fixers run on AGENT_SESSION, workflow `agent`, with the same flags: claudeArgs). The message on stdin is {"prompt": "..."}; the answer is claude's JSON
+// result on stdout; a non-zero exit is the workflow's failure port. The one launcher of the headless Claude sessions of the ticket roles
+// (architect, test writer, implementer, reviewer).
 //
 // Environment (a value of "-" is unset; the workflow cannot pass an empty one):
 //   YK_MODEL haiku|sonnet|opus   YK_EFFORT low|medium|high   YK_BUDGET USD   YK_RULES system prompt file   YK_SCHEMA JSON schema of the answer
