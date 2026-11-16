@@ -73,6 +73,25 @@ export function fromAgent(o: Json): Json {
   }
 }
 
+/** The common ways a tool echoes a credential, masked: Bearer tokens, key=/token=/password=/secret= pairs, X-API-Key headers, user:password@ in a URL. */
+export function redact(t: string): string {
+  return t
+    .replace(/(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}/gi, '$1***')
+    .replace(/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key)["']?\s*[=:]\s*["']?)[^\s"',;&]+/gi, '$1***')
+    .replace(/(x-api-key:\s*)\S+/gi, '$1***')
+    .replace(/(:\/\/[^\s/:@]+:)[^\s/@]+@/g, '$1***@')
+}
+
+export const LOG_CAP = 2_000_000
+
+/** The tail (LOG_CAP bytes at most) of the full output of a failed stage, redacted, in the heal directory (mode 0600): the fixer greps it for what the brief cut. */
+export function saveLog(dir: string, stage: string, out: string): string {
+  const file = join(dir, `${stage}.log`)
+  const t = redact(plain(out))
+  writeFileSync(file, t.length > LOG_CAP ? `... (cut: the last ${LOG_CAP} characters)\n${t.slice(-LOG_CAP)}` : t, { mode: 0o600 })
+  return file
+}
+
 export function ecosystem(stage: string): string {
   if (stage.startsWith('cli_')) return 'go (cli)'
   if (stage.startsWith('ui_')) return 'typescript (ui)'
@@ -362,6 +381,7 @@ export async function main(argv: string[], stdin?: () => string): Promise<number
         console.error(`stage ${stage} already fails the same way on origin/main: a known baseline failure, no fixer started`)
         emit('baseline', { stage, known: true })
       }
+      if (out) saveLog(dir, stage, out)
       writeFileSync(join(dir, `${stage}.triage-t0`), `${tStart}\n`)
       emit('brief', { stage, chars: brief.length, secs: secsSince(tStart) })
       console.log(JSON.stringify({ brief, problems, triage: env.YUKTA_TRIAGE ?? 'on', known }))
@@ -458,7 +478,7 @@ ${ex ? `The code around the failures (file:line, a few lines either side):\n${ex
 ${stat || 'none'}
 Verify with only:
 ${env.YUKTA_COMMAND || 'the failing command'}
-${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TIMEOUT) / 60)} minutes at ${effort || 'this'} effort. If you cannot fix it in that time, stop and answer fixed=false with what you learned.\n` : ''}Then answer with the JSON object only.`
+${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TIMEOUT) / 60)} minutes at ${effort || 'this'} effort. If you cannot fix it in that time, stop and answer fixed=false with what you learned.\n` : ''}${isFile(join(dir, `${stage}.log`)) ? `The full output of the failed run is in ${join(dir, `${stage}.log`)} (secrets masked): Grep it for what the problems above leave out.\n` : ''}Then answer with the JSON object only.`
       // for the `agent` workflow (AGENT_SESSION takes files, not environment; it finds them as <healDir>/<stage>-<attempt>.rules and .mcp.json): the system prompt of the stage and the MCP config of the fixer (the key is
       // in a file only the user reads, never in an argument or the payload)
       const rulesFile = join(dir, `${stage}-${n}.rules`)

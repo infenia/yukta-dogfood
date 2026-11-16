@@ -2,9 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // Offline test of the steps of heal: the decision-model gate of `judge` (fake Ollama), and the no-progress check of `report`.
 import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test'
+import { statSync } from 'node:fs'
 import { join } from 'node:path'
 import { ts, initRepo, json, put, read, rm, tmp } from '../helpers.ts'
-import { fromAgent } from '../../src/heal/heal.ts'
+import { fromAgent, redact, saveLog, LOG_CAP } from '../../src/heal/heal.ts'
 
 setDefaultTimeout(120_000)
 let d: string, proj: string
@@ -67,4 +68,29 @@ test('fromAgent maps the AGENT_SESSION payload to claude JSON and leaves claude 
   expect(out).toMatchObject({ is_error: true, subtype: 'error_max_turns', total_cost_usd: 0.5 })
   const claude = { is_error: false, total_cost_usd: 0.01 }
   expect(fromAgent(claude)).toBe(claude)
+})
+
+test('redact masks the usual ways a tool echoes a credential and leaves the rest', () => {
+  const t = [
+    'Authorization: Bearer abcdef1234567890',
+    'token=ghp_abc123 password: "hunter2" API_KEY=xyz',
+    'X-API-Key: sk-live-1',
+    'https://user:pw123@host/path',
+    'src/A.java:20: error: cannot find symbol',
+  ].join('\n')
+  const r = redact(t)
+  for (const secret of ['abcdef1234567890', 'ghp_abc123', 'hunter2', 'xyz', 'sk-live-1', 'pw123']) expect(r).not.toContain(secret)
+  expect(r).toContain('src/A.java:20: error: cannot find symbol')
+  expect(r).toContain('https://user:***@host/path')
+})
+
+test('saveLog keeps the tail of a huge output, masked, in a file only the user reads', () => {
+  const dir = join(d, 'log')
+  put(join(dir, 'x'), '')
+  const file = saveLog(dir, 'tests', 'token=SECRET\n' + 'x'.repeat(LOG_CAP) + '\nlast line')
+  const body = read(file)
+  expect(body).toContain('last line')
+  expect(body).not.toContain('SECRET')
+  expect(body.length).toBeLessThan(LOG_CAP + 100)
+  expect(statSync(file).mode & 0o777).toBe(0o600)
 })

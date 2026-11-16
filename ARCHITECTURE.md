@@ -365,6 +365,7 @@ flowchart TD
 - **`prepare`** exits 4 ("not started") when: the model is not in `--models`; the whole-check budget (`checkBudget`, $5, summed from record
   `cost`s) is spent; or the **give-up policy** applies (at least 5 attempts in 7 days with a fix rate ≤ 10%, from `fix` events; auto fixes
   and non-started attempts excluded). It snapshots the tree with `git stash create`.
+- **Full log.** `brief` saves the whole output of the failed stage to `<healDir>/<stage>.log` (ANSI stripped, credentials masked by `redact()`, the last 2 MB, mode 0600), and the prompt points the fixer at it ("Grep it for what the problems above leave out"). Whether it opens it is not measured yet.
 - **Prompt.** The user prompt has: stage, session id, problems, `excerpts()` (up to 6 tracked-file spots with ±6 lines), the earlier attempt,
   `git diff --stat` of the developer's own edits to keep, the single verify command, the time box, and "answer with JSON only". The **system
   prompt is the constant `fixer-rules.md`** (13 lines: fix the cause, no suppressions, no weakened tests, no config edits, no commit/push,
