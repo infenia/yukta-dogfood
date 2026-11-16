@@ -156,6 +156,13 @@ export function fixerMcp(env: NodeJS.ProcessEnv): { url: string; key: string } |
   return key ? { url: `${url.replace(/\/$/, '')}/mcp`, key } : null
 }
 
+/** Writes the claude --mcp-config file of a fixer (mode 0600; the key stays in the file): its MCP server, or none without a key. */
+export function writeMcpConfig(file: string, env: NodeJS.ProcessEnv): void {
+  const m = fixerMcp(env)
+  const cfg = m ? { yukta: { type: 'http', url: m.url, headers: { 'X-API-Key': m.key } } } : {}
+  writeFileSync(file, JSON.stringify({ mcpServers: cfg }), { mode: 0o600 })
+}
+
 /** The system prompt of a stage: the common rules plus fixer-rules/<kind>.md when the stage has one. Returns the text. */
 export function stageRules(base: string, stage: string | undefined): string {
   const kind = roleKind(stage, undefined)
