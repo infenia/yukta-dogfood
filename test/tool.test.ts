@@ -34,9 +34,19 @@ test('a command killed by a signal fails with 128 + signo', () => {
   expect(run('kill -TERM $$ ; sleep 5').code).toBe(143)
 })
 
-test('every node of the generated tool workflow has a color', () => {
+test('every node of every generated workflow has a color', () => {
   const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
-  const wf = s.workflows.tool
-  expect(wf.nodes.length).toBeGreaterThan(0)
-  for (const n of wf.nodes) expect([n.nodeId, n.color]).not.toEqual([n.nodeId, undefined])
+  for (const k of ['tool', 'claude', 'agent', 'attempt', 'heal', 'check', 'pickup']) {
+    for (const n of s.workflows[k].nodes) expect([k, n.nodeId, n.color]).not.toEqual([k, n.nodeId, undefined])
+  }
+})
+
+test('the nodes of check and heal are grouped and every group has a color', () => {
+  const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
+  for (const k of ['check', 'heal']) {
+    const wf = s.workflows[k]
+    for (const n of wf.nodes) expect([k, n.nodeId, typeof n.group]).toEqual([k, n.nodeId, 'string'])
+    for (const g of new Set(wf.nodes.map((n: { group: string }) => n.group)))
+      expect([k, g, typeof wf.groupColors[g as string]]).toEqual([k, g, 'string'])
+  }
 })

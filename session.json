@@ -87,7 +87,9 @@
         {
           "nodeId": "trigger",
           "type": "CONSTANT_SOURCE",
-          "config": {}
+          "config": {},
+          "color": "stone",
+          "group": "check"
         },
         {
           "nodeId": "reuse",
@@ -102,7 +104,9 @@
               "timeout": "${start.timeout}",
               "label": "reuse"
             }
-          }
+          },
+          "color": "violet",
+          "group": "reuse"
         },
         {
           "nodeId": "reuse.failed",
@@ -110,7 +114,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "reuse"
-          }
+          },
+          "color": "magenta",
+          "group": "reuse"
         },
         {
           "nodeId": "reuse.fail",
@@ -120,7 +126,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "reuse"
         },
         {
           "nodeId": "reuse.heal",
@@ -149,7 +157,9 @@
               "format": "${start.fmt.reuse}",
               "auto": "${start.auto.reuse}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "reuse"
         },
         {
           "nodeId": "actionlint",
@@ -164,7 +174,9 @@
               "timeout": "${start.timeout}",
               "label": "actionlint"
             }
-          }
+          },
+          "color": "violet",
+          "group": "actionlint"
         },
         {
           "nodeId": "actionlint.failed",
@@ -172,7 +184,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "actionlint"
-          }
+          },
+          "color": "magenta",
+          "group": "actionlint"
         },
         {
           "nodeId": "actionlint.fail",
@@ -182,7 +196,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "actionlint"
         },
         {
           "nodeId": "actionlint.heal",
@@ -211,7 +227,9 @@
               "format": "${start.fmt.actionlint}",
               "auto": "${start.auto.actionlint}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "actionlint"
         },
         {
           "nodeId": "docs",
@@ -226,7 +244,9 @@
               "timeout": "${start.timeout}",
               "label": "docs"
             }
-          }
+          },
+          "color": "violet",
+          "group": "docs"
         },
         {
           "nodeId": "docs.failed",
@@ -234,7 +254,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "docs"
-          }
+          },
+          "color": "magenta",
+          "group": "docs"
         },
         {
           "nodeId": "docs.fail",
@@ -244,7 +266,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "docs"
         },
         {
           "nodeId": "docs.heal",
@@ -273,7 +297,9 @@
               "format": "${start.fmt.docs}",
               "auto": "${start.auto.docs}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "docs"
         },
         {
           "nodeId": "fast",
@@ -288,7 +314,9 @@
               "timeout": "${start.timeout}",
               "label": "fast"
             }
-          }
+          },
+          "color": "violet",
+          "group": "fast"
         },
         {
           "nodeId": "spotless",
@@ -303,7 +331,9 @@
               "timeout": "${start.timeout}",
               "label": "spotless"
             }
-          }
+          },
+          "color": "violet",
+          "group": "spotless"
         },
         {
           "nodeId": "spotless.failed",
@@ -311,7 +341,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "spotless"
-          }
+          },
+          "color": "magenta",
+          "group": "spotless"
         },
         {
           "nodeId": "spotless.fail",
@@ -321,7 +353,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "spotless"
         },
         {
           "nodeId": "spotless.heal",
@@ -350,7 +384,9 @@
               "format": "${start.fmt.spotless}",
               "auto": "${start.auto.spotless}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "spotless"
         },
         {
           "nodeId": "cli_fmt_check",
@@ -365,7 +401,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_fmt_check"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_fmt_check"
         },
         {
           "nodeId": "cli_fmt_check.failed",
@@ -373,7 +411,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_fmt_check"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_fmt_check"
         },
         {
           "nodeId": "cli_fmt_check.fail",
@@ -383,7 +423,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_fmt_check"
         },
         {
           "nodeId": "cli_fmt_check.heal",
@@ -412,7 +454,9 @@
               "format": "${start.fmt.cli_fmt_check}",
               "auto": "${start.auto.cli_fmt_check}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_fmt_check"
         },
         {
           "nodeId": "cli_mod_verify",
@@ -427,7 +471,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_mod_verify"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_mod_verify"
         },
         {
           "nodeId": "cli_mod_verify.failed",
@@ -435,7 +481,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_mod_verify"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_mod_verify"
         },
         {
           "nodeId": "cli_mod_verify.fail",
@@ -445,7 +493,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_mod_verify"
         },
         {
           "nodeId": "cli_mod_verify.heal",
@@ -474,7 +524,9 @@
               "format": "${start.fmt.cli_mod_verify}",
               "auto": "${start.auto.cli_mod_verify}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_mod_verify"
         },
         {
           "nodeId": "ui_prettier",
@@ -489,7 +541,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_prettier"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_prettier"
         },
         {
           "nodeId": "ui_prettier.failed",
@@ -497,7 +551,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_prettier"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_prettier"
         },
         {
           "nodeId": "ui_prettier.fail",
@@ -507,7 +563,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_prettier"
         },
         {
           "nodeId": "ui_prettier.heal",
@@ -536,7 +594,9 @@
               "format": "${start.fmt.ui_prettier}",
               "auto": "${start.auto.ui_prettier}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_prettier"
         },
         {
           "nodeId": "dogfood_fmt",
@@ -551,7 +611,9 @@
               "timeout": "${start.timeout}",
               "label": "dogfood_fmt"
             }
-          }
+          },
+          "color": "violet",
+          "group": "dogfood_fmt"
         },
         {
           "nodeId": "dogfood_fmt.failed",
@@ -559,7 +621,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "dogfood_fmt"
-          }
+          },
+          "color": "magenta",
+          "group": "dogfood_fmt"
         },
         {
           "nodeId": "dogfood_fmt.fail",
@@ -569,7 +633,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "dogfood_fmt"
         },
         {
           "nodeId": "dogfood_fmt.heal",
@@ -598,7 +664,9 @@
               "format": "${start.fmt.dogfood_fmt}",
               "auto": "${start.auto.dogfood_fmt}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "dogfood_fmt"
         },
         {
           "nodeId": "dogfood_check",
@@ -613,7 +681,9 @@
               "timeout": "${start.timeout}",
               "label": "dogfood_check"
             }
-          }
+          },
+          "color": "violet",
+          "group": "dogfood_check"
         },
         {
           "nodeId": "dogfood_check.failed",
@@ -621,7 +691,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "dogfood_check"
-          }
+          },
+          "color": "magenta",
+          "group": "dogfood_check"
         },
         {
           "nodeId": "dogfood_check.fail",
@@ -631,7 +703,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "dogfood_check"
         },
         {
           "nodeId": "dogfood_check.heal",
@@ -660,7 +734,9 @@
               "format": "${start.fmt.dogfood_check}",
               "auto": "${start.auto.dogfood_check}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "dogfood_check"
         },
         {
           "nodeId": "compile",
@@ -675,7 +751,9 @@
               "timeout": "${start.timeout}",
               "label": "compile"
             }
-          }
+          },
+          "color": "violet",
+          "group": "compile"
         },
         {
           "nodeId": "compile.failed",
@@ -683,7 +761,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "compile"
-          }
+          },
+          "color": "magenta",
+          "group": "compile"
         },
         {
           "nodeId": "compile.fail",
@@ -693,7 +773,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "compile"
         },
         {
           "nodeId": "compile.heal",
@@ -722,7 +804,9 @@
               "format": "${start.fmt.compile}",
               "auto": "${start.auto.compile}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "compile"
         },
         {
           "nodeId": "cli_vet",
@@ -737,7 +821,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_vet"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_vet"
         },
         {
           "nodeId": "cli_vet.failed",
@@ -745,7 +831,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_vet"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_vet"
         },
         {
           "nodeId": "cli_vet.fail",
@@ -755,7 +843,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_vet"
         },
         {
           "nodeId": "cli_vet.heal",
@@ -784,7 +874,9 @@
               "format": "${start.fmt.cli_vet}",
               "auto": "${start.auto.cli_vet}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_vet"
         },
         {
           "nodeId": "ui_tsc",
@@ -799,7 +891,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_tsc"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_tsc"
         },
         {
           "nodeId": "ui_tsc.failed",
@@ -807,7 +901,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_tsc"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_tsc"
         },
         {
           "nodeId": "ui_tsc.fail",
@@ -817,7 +913,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_tsc"
         },
         {
           "nodeId": "ui_tsc.heal",
@@ -846,7 +944,9 @@
               "format": "${start.fmt.ui_tsc}",
               "auto": "${start.auto.ui_tsc}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_tsc"
         },
         {
           "nodeId": "ui_eslint",
@@ -861,7 +961,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_eslint"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_eslint"
         },
         {
           "nodeId": "ui_eslint.failed",
@@ -869,7 +971,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_eslint"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_eslint"
         },
         {
           "nodeId": "ui_eslint.fail",
@@ -879,7 +983,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_eslint"
         },
         {
           "nodeId": "ui_eslint.heal",
@@ -908,7 +1014,9 @@
               "format": "${start.fmt.ui_eslint}",
               "auto": "${start.auto.ui_eslint}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_eslint"
         },
         {
           "nodeId": "ui_headers",
@@ -923,7 +1031,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_headers"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_headers"
         },
         {
           "nodeId": "ui_headers.failed",
@@ -931,7 +1041,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_headers"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_headers"
         },
         {
           "nodeId": "ui_headers.fail",
@@ -941,7 +1053,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_headers"
         },
         {
           "nodeId": "ui_headers.heal",
@@ -970,7 +1084,9 @@
               "format": "${start.fmt.ui_headers}",
               "auto": "${start.auto.ui_headers}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_headers"
         },
         {
           "nodeId": "style",
@@ -985,7 +1101,9 @@
               "timeout": "${start.timeout}",
               "label": "style"
             }
-          }
+          },
+          "color": "violet",
+          "group": "style"
         },
         {
           "nodeId": "style.failed",
@@ -993,7 +1111,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "style"
-          }
+          },
+          "color": "magenta",
+          "group": "style"
         },
         {
           "nodeId": "style.fail",
@@ -1003,7 +1123,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "style"
         },
         {
           "nodeId": "style.heal",
@@ -1032,7 +1154,9 @@
               "format": "${start.fmt.style}",
               "auto": "${start.auto.style}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "style"
         },
         {
           "nodeId": "spotbugs",
@@ -1047,7 +1171,9 @@
               "timeout": "${start.timeout}",
               "label": "spotbugs"
             }
-          }
+          },
+          "color": "violet",
+          "group": "spotbugs"
         },
         {
           "nodeId": "spotbugs.failed",
@@ -1055,7 +1181,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "spotbugs"
-          }
+          },
+          "color": "magenta",
+          "group": "spotbugs"
         },
         {
           "nodeId": "spotbugs.fail",
@@ -1065,7 +1193,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "spotbugs"
         },
         {
           "nodeId": "spotbugs.heal",
@@ -1094,7 +1224,9 @@
               "format": "${start.fmt.spotbugs}",
               "auto": "${start.auto.spotbugs}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "spotbugs"
         },
         {
           "nodeId": "cli_lint",
@@ -1109,7 +1241,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_lint"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_lint"
         },
         {
           "nodeId": "cli_lint.failed",
@@ -1117,7 +1251,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_lint"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_lint"
         },
         {
           "nodeId": "cli_lint.fail",
@@ -1127,7 +1263,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_lint"
         },
         {
           "nodeId": "cli_lint.heal",
@@ -1156,7 +1294,9 @@
               "format": "${start.fmt.cli_lint}",
               "auto": "${start.auto.cli_lint}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_lint"
         },
         {
           "nodeId": "cli_sec",
@@ -1171,7 +1311,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_sec"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_sec"
         },
         {
           "nodeId": "cli_sec.failed",
@@ -1179,7 +1321,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_sec"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_sec"
         },
         {
           "nodeId": "cli_sec.fail",
@@ -1189,7 +1333,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_sec"
         },
         {
           "nodeId": "cli_sec.heal",
@@ -1218,7 +1364,9 @@
               "format": "${start.fmt.cli_sec}",
               "auto": "${start.auto.cli_sec}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_sec"
         },
         {
           "nodeId": "tests",
@@ -1233,7 +1381,9 @@
               "timeout": "${start.timeout}",
               "label": "tests"
             }
-          }
+          },
+          "color": "violet",
+          "group": "tests"
         },
         {
           "nodeId": "tests.failed",
@@ -1241,7 +1391,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "tests"
-          }
+          },
+          "color": "magenta",
+          "group": "tests"
         },
         {
           "nodeId": "tests.fail",
@@ -1251,7 +1403,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "tests"
         },
         {
           "nodeId": "tests.heal",
@@ -1280,7 +1434,9 @@
               "format": "${start.fmt.tests}",
               "auto": "${start.auto.tests}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "tests"
         },
         {
           "nodeId": "ui_vitest",
@@ -1295,7 +1451,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_vitest"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_vitest"
         },
         {
           "nodeId": "ui_vitest.failed",
@@ -1303,7 +1461,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_vitest"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_vitest"
         },
         {
           "nodeId": "ui_vitest.fail",
@@ -1313,7 +1473,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_vitest"
         },
         {
           "nodeId": "ui_vitest.heal",
@@ -1342,7 +1504,9 @@
               "format": "${start.fmt.ui_vitest}",
               "auto": "${start.auto.ui_vitest}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_vitest"
         },
         {
           "nodeId": "coverage",
@@ -1357,7 +1521,9 @@
               "timeout": "${start.timeout}",
               "label": "coverage"
             }
-          }
+          },
+          "color": "violet",
+          "group": "coverage"
         },
         {
           "nodeId": "coverage.failed",
@@ -1365,7 +1531,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "coverage"
-          }
+          },
+          "color": "magenta",
+          "group": "coverage"
         },
         {
           "nodeId": "coverage.fail",
@@ -1375,7 +1543,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "coverage"
         },
         {
           "nodeId": "coverage.heal",
@@ -1404,7 +1574,9 @@
               "format": "${start.fmt.coverage}",
               "auto": "${start.auto.coverage}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "coverage"
         },
         {
           "nodeId": "cli_cover_check",
@@ -1419,7 +1591,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_cover_check"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_cover_check"
         },
         {
           "nodeId": "cli_cover_check.failed",
@@ -1427,7 +1601,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_cover_check"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_cover_check"
         },
         {
           "nodeId": "cli_cover_check.fail",
@@ -1437,7 +1613,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_cover_check"
         },
         {
           "nodeId": "cli_cover_check.heal",
@@ -1466,7 +1644,9 @@
               "format": "${start.fmt.cli_cover_check}",
               "auto": "${start.auto.cli_cover_check}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_cover_check"
         },
         {
           "nodeId": "cli_vuln",
@@ -1481,7 +1661,9 @@
               "timeout": "${start.timeout}",
               "label": "cli_vuln"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_vuln"
         },
         {
           "nodeId": "cli_vuln.failed",
@@ -1489,7 +1671,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "cli_vuln"
-          }
+          },
+          "color": "magenta",
+          "group": "cli_vuln"
         },
         {
           "nodeId": "cli_vuln.fail",
@@ -1499,7 +1683,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "cli_vuln"
         },
         {
           "nodeId": "cli_vuln.heal",
@@ -1528,7 +1714,9 @@
               "format": "${start.fmt.cli_vuln}",
               "auto": "${start.auto.cli_vuln}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "cli_vuln"
         },
         {
           "nodeId": "licenses",
@@ -1543,7 +1731,9 @@
               "timeout": "${start.timeout}",
               "label": "licenses"
             }
-          }
+          },
+          "color": "violet",
+          "group": "licenses"
         },
         {
           "nodeId": "licenses.failed",
@@ -1551,7 +1741,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "licenses"
-          }
+          },
+          "color": "magenta",
+          "group": "licenses"
         },
         {
           "nodeId": "security",
@@ -1566,7 +1758,9 @@
               "timeout": "${start.timeout}",
               "label": "security"
             }
-          }
+          },
+          "color": "violet",
+          "group": "security"
         },
         {
           "nodeId": "security.failed",
@@ -1574,7 +1768,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "security"
-          }
+          },
+          "color": "magenta",
+          "group": "security"
         },
         {
           "nodeId": "ui_build",
@@ -1589,7 +1785,9 @@
               "timeout": "${start.timeout}",
               "label": "ui_build"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_build"
         },
         {
           "nodeId": "ui_build.failed",
@@ -1597,7 +1795,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "ui_build"
-          }
+          },
+          "color": "magenta",
+          "group": "ui_build"
         },
         {
           "nodeId": "ui_build.fail",
@@ -1607,7 +1807,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ui_build"
         },
         {
           "nodeId": "ui_build.heal",
@@ -1636,7 +1838,9 @@
               "format": "${start.fmt.ui_build}",
               "auto": "${start.auto.ui_build}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ui_build"
         },
         {
           "nodeId": "healed?",
@@ -1656,7 +1860,9 @@
             "timeoutSeconds": 60,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky",
+          "group": "check"
         },
         {
           "nodeId": "verify",
@@ -1671,7 +1877,9 @@
               "timeout": "${start.timeout}",
               "label": "verify"
             }
-          }
+          },
+          "color": "violet",
+          "group": "verify"
         },
         {
           "nodeId": "verify.failed",
@@ -1679,7 +1887,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "verify"
-          }
+          },
+          "color": "magenta",
+          "group": "verify"
         },
         {
           "nodeId": "verify.fail",
@@ -1689,7 +1899,9 @@
             "mapping": {
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "verify"
         },
         {
           "nodeId": "verify.heal",
@@ -1718,14 +1930,18 @@
               "format": "${start.fmt.spotless}",
               "auto": "-"
             }
-          }
+          },
+          "color": "violet",
+          "group": "verify"
         },
         {
           "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "teal",
+          "group": "check"
         }
       ],
       "edges": [
@@ -2373,7 +2589,38 @@
           "target": "verify.failed",
           "sourcePort": "failure"
         }
-      ]
+      ],
+      "groupColors": {
+        "check": "stone",
+        "reuse": "stone",
+        "actionlint": "stone",
+        "docs": "stone",
+        "fast": "sky",
+        "spotless": "sky",
+        "cli_fmt_check": "teal",
+        "cli_mod_verify": "teal",
+        "ui_prettier": "violet",
+        "dogfood_fmt": "sky",
+        "dogfood_check": "sky",
+        "compile": "sky",
+        "cli_vet": "teal",
+        "ui_tsc": "violet",
+        "ui_eslint": "violet",
+        "ui_headers": "violet",
+        "style": "sky",
+        "spotbugs": "sky",
+        "cli_lint": "teal",
+        "cli_sec": "teal",
+        "tests": "sky",
+        "ui_vitest": "violet",
+        "coverage": "sky",
+        "cli_cover_check": "teal",
+        "cli_vuln": "teal",
+        "licenses": "sky",
+        "security": "sky",
+        "ui_build": "violet",
+        "verify": "sky"
+      }
     },
     "claude": {
       "workflowId": "claude",
@@ -2386,7 +2633,8 @@
             "variables": {
               "prompt": "${start.prompt}"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "run",
@@ -2415,12 +2663,14 @@
             "engine": {
               "concurrencyGroup": "claude"
             }
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "failed",
@@ -2428,7 +2678,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the claude session failed, ran out of budget or ran out of time"
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -2460,7 +2711,8 @@
               "problems": "${start.problems}",
               "previous": "${start.previous}"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "prepare",
@@ -2482,7 +2734,8 @@
               "YUKTA_COMMAND": "${start.command}",
               "YUKTA_MODELS": "${start.models}",
               "YUKTA_BUDGET_CHECK": "${start.budgetCheck}",
-              "YUKTA_HEAL_TIMEOUT": "${start.claudeTimeout}"
+              "YUKTA_HEAL_TIMEOUT": "${start.claudeTimeout}",
+              "YUKTA_RULES": "${start.rules}"
             },
             "timeout": 120,
             "timeoutSeconds": 120,
@@ -2490,13 +2743,14 @@
             "outputFormat": "JSON",
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "claude",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "claude",
+            "workflowId": "agent",
             "timeoutSeconds": 7200,
             "routeByOutcome": true,
             "engine": {
@@ -2513,9 +2767,12 @@
               "schema": "{\"type\":\"object\",\"properties\":{\"fixed\":{\"type\":\"boolean\"},\"summary\":{\"type\":\"string\"}},\"required\":[\"fixed\",\"summary\"]}",
               "sessionId": "-",
               "claudeBin": "${start.claudeBin}",
-              "stage": "${start.stage}"
+              "stage": "${start.stage}",
+              "rulesFile": "${start.healDir}/${start.stage}-${payload.output.attempt}.rules",
+              "mcpConfig": "${start.healDir}/${start.stage}-${payload.output.attempt}.mcp.json"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "claimed",
@@ -2540,7 +2797,8 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "format",
@@ -2558,7 +2816,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "judge",
@@ -2584,7 +2843,8 @@
             "timeoutSeconds": 120,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "recheck",
@@ -2602,7 +2862,8 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet"
         },
         {
           "nodeId": "report",
@@ -2629,7 +2890,8 @@
             "inputMode": "STDIN",
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "fixed?",
@@ -2641,12 +2903,14 @@
               "true": "fixed"
             },
             "defaultPort": "notfixed"
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "failed",
@@ -2654,7 +2918,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the attempt did not fix the stage"
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -2760,7 +3025,9 @@
               "heal": "${start.heal}",
               "auto": "${start.auto}"
             }
-          }
+          },
+          "color": "stone",
+          "group": "start"
         },
         {
           "nodeId": "heal?",
@@ -2772,7 +3039,9 @@
               "off": "off"
             },
             "defaultPort": "on"
-          }
+          },
+          "color": "stone",
+          "group": "start"
         },
         {
           "nodeId": "disabled",
@@ -2780,7 +3049,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "healing is off (yk check --no-heal)"
-          }
+          },
+          "color": "magenta",
+          "group": "start"
         },
         {
           "nodeId": "auto?",
@@ -2791,7 +3062,9 @@
               "payload['auto'] != null and payload['auto'] != '' and payload['auto'] != '-'": "auto"
             },
             "defaultPort": "model"
-          }
+          },
+          "color": "stone",
+          "group": "free-fix"
         },
         {
           "nodeId": "auto-fix",
@@ -2809,7 +3082,9 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet",
+          "group": "free-fix"
         },
         {
           "nodeId": "auto-check",
@@ -2827,7 +3102,9 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "violet",
+          "group": "free-fix"
         },
         {
           "nodeId": "auto-record",
@@ -2848,7 +3125,9 @@
             "timeout": 60,
             "timeoutSeconds": 60,
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "free-fix"
         },
         {
           "nodeId": "brief",
@@ -2873,7 +3152,9 @@
             "inputMode": "STDIN",
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "first",
@@ -2887,7 +3168,9 @@
               "triage": "payload['output']['triage']",
               "known": "payload['output']['known']"
             }
-          }
+          },
+          "color": "stone",
+          "group": "triage"
         },
         {
           "nodeId": "known?",
@@ -2899,7 +3182,9 @@
               "true": "known"
             },
             "defaultPort": "unknown"
-          }
+          },
+          "color": "stone",
+          "group": "triage"
         },
         {
           "nodeId": "baseline-known",
@@ -2907,7 +3192,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the stage already fails the same way on origin/main: a known baseline failure, no fixer was started"
-          }
+          },
+          "color": "magenta",
+          "group": "triage"
         },
         {
           "nodeId": "triage?",
@@ -2919,7 +3206,9 @@
               "off": "off"
             },
             "defaultPort": "on"
-          }
+          },
+          "color": "stone",
+          "group": "triage"
         },
         {
           "nodeId": "triage",
@@ -2940,7 +3229,9 @@
             "engine": {
               "onError": "ROUTE"
             }
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "triage-log.easy",
@@ -2965,7 +3256,9 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "triage-log.average",
@@ -2990,7 +3283,9 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "triage-log.hard",
@@ -3015,7 +3310,9 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "triage-log.uncertain",
@@ -3040,7 +3337,9 @@
             "timeoutSeconds": 60,
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "triage-log.error",
@@ -3065,7 +3364,9 @@
             "timeoutSeconds": 60,
             "inputMode": "ENV",
             "failureMode": "CONTINUE"
-          }
+          },
+          "color": "sky",
+          "group": "triage"
         },
         {
           "nodeId": "carry.fix-sonnet-low",
@@ -3079,7 +3380,9 @@
               "same": "payload['results'] == null ? false : (payload['results'].size() > 0 ? payload['results'][0]['output']['same'] : false)",
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
-          }
+          },
+          "color": "stone",
+          "group": "ladder"
         },
         {
           "nodeId": "carry.fix-sonnet-low?",
@@ -3090,7 +3393,9 @@
               "payload['changed'] == false or payload['same'] == true or {'reuse','docs','actionlint'}.contains(payload['stage'])": "stop"
             },
             "defaultPort": "go"
-          }
+          },
+          "color": "stone",
+          "group": "ladder"
         },
         {
           "nodeId": "fix-haiku-low",
@@ -3122,7 +3427,9 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ladder"
         },
         {
           "nodeId": "fix-sonnet-low",
@@ -3154,7 +3461,9 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ladder"
         },
         {
           "nodeId": "fix-haiku-high",
@@ -3186,17 +3495,23 @@
               "problems": "${payload.problems}",
               "previous": "${payload.previous}"
             }
-          }
+          },
+          "color": "violet",
+          "group": "ladder"
         },
         {
           "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal",
+          "group": "outcome"
         },
         {
           "nodeId": "logged",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal",
+          "group": "outcome"
         },
         {
           "nodeId": "giveup",
@@ -3204,7 +3519,9 @@
           "config": {
             "outcome": "FAILED",
             "reason": "every model failed at every effort"
-          }
+          },
+          "color": "magenta",
+          "group": "outcome"
         }
       ],
       "edges": [
@@ -3423,7 +3740,14 @@
           "target": "carry.fix-sonnet-low",
           "sourcePort": "error"
         }
-      ]
+      ],
+      "groupColors": {
+        "start": "stone",
+        "free-fix": "teal",
+        "triage": "violet",
+        "ladder": "sky",
+        "outcome": "stone"
+      }
     },
     "pickup": {
       "workflowId": "pickup",
@@ -3435,7 +3759,8 @@
           "config": {
             "intervalMs": 1800000,
             "timeoutSeconds": 2400
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "tick",
@@ -3450,21 +3775,24 @@
             "timeout": 120,
             "failureMode": "CONTINUE",
             "routeByExitCode": true
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "teal"
         },
         {
           "nodeId": "failed",
           "type": "CONSOLE_TERMINAL",
           "config": {
             "displayOutput": true
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -3481,6 +3809,150 @@
           "source": "tick",
           "target": "failed",
           "sourcePort": "failure"
+        }
+      ]
+    },
+    "agent": {
+      "workflowId": "agent",
+      "description": "One fixer-grade Claude Code session on the AGENT_SESSION plugin; the payload carries the answer, its cost and its turns.",
+      "nodes": [
+        {
+          "nodeId": "trigger",
+          "type": "CONSTANT_SOURCE",
+          "config": {
+            "variables": {
+              "prompt": "${start.prompt}"
+            }
+          },
+          "color": "stone"
+        },
+        {
+          "nodeId": "agent",
+          "type": "AGENT_SESSION",
+          "config": {
+            "harness": "claude-code",
+            "prompt": "${payload.prompt}",
+            "model": "${start.model}",
+            "workingDir": "${start.project}",
+            "args": [
+              "--setting-sources",
+              "project",
+              "--strict-mcp-config",
+              "--mcp-config",
+              "${start.mcpConfig}",
+              "--disable-slash-commands",
+              "--exclude-dynamic-system-prompt-sections",
+              "--no-session-persistence",
+              "--tools",
+              "Read,Edit,Write,Grep,Glob,Bash",
+              "--permission-mode",
+              "auto",
+              "--permission-prompts",
+              "none",
+              "--allowedTools",
+              "Read",
+              "Edit",
+              "Write",
+              "Grep",
+              "Glob",
+              "Bash(./gradlew:*)",
+              "Bash(make:*)",
+              "Bash(go test:*)",
+              "Bash(go vet:*)",
+              "Bash(node_modules/.bin/*:*)",
+              "Bash(reuse:*)",
+              "Bash(actionlint:*)",
+              "Bash(mint:*)",
+              "Bash(cd:*)",
+              "mcp__yukta__get_node_output",
+              "mcp__yukta__get_execution_tree",
+              "mcp__yukta__get_execution_logs",
+              "mcp__yukta__get_execution_result",
+              "mcp__yukta__get_workflow_status",
+              "mcp__yukta__get_workflow_history",
+              "mcp__yukta__get_workflow_details",
+              "--disallowedTools",
+              "Bash(git commit:*)",
+              "Bash(git push:*)",
+              "mcp__yukta__start_workflow",
+              "mcp__yukta__control_workflow",
+              "mcp__yukta__control_node",
+              "mcp__yukta__set_node_breakpoint",
+              "mcp__yukta__signal_node",
+              "mcp__yukta__rollback_workflow",
+              "mcp__yukta__note_workflow_version",
+              "mcp__yukta__set_scheduler_limits",
+              "mcp__yukta__create_session",
+              "--append-system-prompt-file",
+              "${start.rulesFile}",
+              "--max-budget-usd",
+              "${start.budget}",
+              "--effort",
+              "${start.effort}",
+              "--json-schema",
+              "${start.schema}"
+            ],
+            "env": {
+              "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1",
+              "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+              "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+              "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5",
+              "YUKTA_HEAL_FIXER": "1",
+              "CLAUDECODE": "",
+              "CLAUDE_CODE_SESSION_ID": "",
+              "CLAUDE_CODE_ENTRYPOINT": "",
+              "CLAUDE_CODE_SSE_PORT": "",
+              "CLAUDE_CODE_MESSAGING_SOCKET": "",
+              "CLAUDE_CODE_MESSAGING_TOKEN": "",
+              "CLAUDE_CODE_CHILD_SESSION": "",
+              "CLAUDE_CODE_SESSION_ATTENDED": "",
+              "CLAUDE_PID": ""
+            },
+            "timeout": 1800,
+            "engine": {
+              "concurrencyGroup": "claude"
+            }
+          },
+          "color": "sky"
+        },
+        {
+          "nodeId": "ok",
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
+          "color": "teal"
+        },
+        {
+          "nodeId": "failed",
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
+          "color": "magenta"
+        },
+        {
+          "nodeId": "early",
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
+          "color": "violet"
+        }
+      ],
+      "edges": [
+        {
+          "source": "trigger",
+          "target": "agent"
+        },
+        {
+          "source": "agent",
+          "target": "ok",
+          "sourcePort": "success"
+        },
+        {
+          "source": "agent",
+          "target": "failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "agent",
+          "target": "early",
+          "sourcePort": "incomplete"
         }
       ]
     }

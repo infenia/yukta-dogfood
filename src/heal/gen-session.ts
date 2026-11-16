@@ -10,6 +10,7 @@
 //              with the next one; a failed heal ends the run with outcome FAILED, reason = the stage (failed_node). licenses and security are never
 //              healed. After the last stage, when anything was healed, `verify` runs the Gradle tasks of the stages again.
 //   claude     L0  one headless Claude Code session (src/heal/claude.ts)
+//   agent      L0  the same session on Yukta's AGENT_SESSION plugin (harness claude-code): cost, turns and the structured answer come back in the payload
 //   attempt    L1  one repair attempt: prepare -> claude -> claimed -> format -> judge (the guard) -> recheck -> report
 //   heal       L1  free automatic fix, then the System One triage picks a level; each level of heal.json has a ladder of rungs (model/effort, one
 //                  attempt each): a failed rung hands over to the next, the end of the ladder gives up. The efforts (budget, time box), the triage
@@ -18,6 +19,8 @@
 //
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
 // HEAL_SESSION and HEAL_POLICY point the generator at another session file and policy (the tests do). Edit this file or heal.json, run it, commit session.json.
+import { ecosystem } from './heal.ts'
+import { FIXER_ALLOW, MCP_DENY, MCP_READ, CLAUDE_SESSION_ENV } from './claude.ts'
 import { HERE, type Json, existsSync, join, readFileSync, writeFileSync } from '../lib.ts'
 
 const PATH = process.env.HEAL_SESSION || join(HERE, 'session.json')
@@ -29,14 +32,64 @@ const edges = (src: string, dst: string, ...ports: string[]): Edge[] =>
   ports.length ? ports.map((p) => ({ source: src, target: dst, sourcePort: p })) : [{ source: src, target: dst }]
 const cmd = (file: string, ...args: string[]): string[] => [BUN, file, ...args]
 
+// display only (palette of Yukta's canvas: teal, sky, violet, magenta, stone): input stone, the process sky, success teal, failure magenta, stopped early violet
+const COLORS: Record<string, string> = { trigger: 'stone', run: 'sky', agent: 'sky', ok: 'teal', failed: 'magenta', early: 'violet' }
+
+/** Colors every node of a workflow by what it is: inputs stone, process and agent steps sky, calls of another workflow violet, a failure magenta, a pass teal. */
+export function paint(wf: Json): Json {
+  const kind = (n: Json): string => {
+    if (/TRIGGER|SOURCE/.test(n.type)) return 'stone'
+    if (n.type === 'SUB_WORKFLOW') return 'violet'
+    if (n.type === 'PROCESS_EXECUTOR' || n.type === 'AGENT_SESSION' || n.type === 'CLASSIFY') return 'sky'
+    if (n.type === 'CONSOLE_TERMINAL') return 'teal'
+    if (n.type === 'OUTCOME_TERMINAL') return n.config?.outcome === 'FAILED' ? 'magenta' : n.config?.outcome === 'RETRY' ? 'violet' : 'teal'
+    return 'stone' // BRANCH and the rest
+  }
+  for (const n of wf.nodes) n.color = COLORS[n.nodeId] ?? kind(n)
+  return wf
+}
+
+/** Groups the nodes of a workflow for the canvas (display only): `of` names the group of a node, `colors` its palette color. */
+export function group(wf: Json, of: (nodeId: string) => string, colors: (group: string) => string): Json {
+  for (const n of wf.nodes) n.group = of(n.nodeId)
+  wf.groupColors = Object.fromEntries([...new Set<string>(wf.nodes.map((n: Json) => n.group))].map((g) => [g, colors(g)]))
+  return wf
+}
+
+/** check: one group per stage (a stage's nodes are `<stage>` and `<stage>.x`), colored by ecosystem; the fast path and the verify run have their own. */
+const ECOSYSTEM_COLOR: Record<string, string> = {
+  'go (cli)': 'teal',
+  'typescript (ui)': 'violet',
+  'repo files': 'stone',
+  'java (gradle)': 'sky',
+}
+export const checkGroups = (wf: Json): Json =>
+  group(
+    wf,
+    (id) => (['trigger', 'healed?', 'done'].includes(id) ? 'check' : id.split('.')[0]!),
+    (g) => (g === 'check' ? 'stone' : ECOSYSTEM_COLOR[ecosystem(g)]!),
+  )
+
+/** heal: the free fix, the triage, the ladder of rungs, and the way in and out. */
+const HEAL_GROUPS: Record<string, string> = { 'free-fix': 'teal', triage: 'violet', ladder: 'sky', start: 'stone', outcome: 'stone' }
+export const healGroups = (wf: Json): Json =>
+  group(
+    wf,
+    (id) => {
+      if (['trigger', 'heal?', 'disabled'].includes(id)) return 'start'
+      if (id.startsWith('auto')) return 'free-fix'
+      if (id.startsWith('fix-') || id.startsWith('carry.')) return 'ladder'
+      if (['done', 'logged', 'giveup'].includes(id)) return 'outcome'
+      return 'triage' // brief, first, known?, baseline-known, triage?, triage, triage-log.*
+    },
+    (g) => HEAL_GROUPS[g]!,
+  )
+
 // ---------------------------------------------------------------- tool
 export function toolWorkflow(wf: Json): Json {
   const run = wf.nodes.find((n: Json) => n.nodeId === 'run')
   run.config.command = cmd('__DOGFOOD__/src/tool.ts')
-  // display only (palette of Yukta's canvas): input stone, the process sky, success teal, failure magenta
-  const colors: Record<string, string> = { trigger: 'stone', run: 'sky', ok: 'teal', failed: 'magenta' }
-  for (const n of wf.nodes) n.color = colors[n.nodeId]
-  return wf
+  return paint(wf)
 }
 
 // ---------------------------------------------------------------- check
@@ -248,7 +301,7 @@ export function pickupWorkflow(): Json {
 }
 
 // ---------------------------------------------------------------- claude, attempt, heal
-export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal: Json } {
+export function healWorkflows(policy: Json): { claude: Json; agent: Json; attempt: Json; heal: Json } {
   const EFFORTS: Record<string, { budget: number; timeout: number }> = Object.fromEntries(
     Object.entries<Json>(policy.efforts).map(([e, c]) => [e, { budget: c.budget, timeout: c.timeoutSeconds }]),
   )
@@ -361,7 +414,7 @@ export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal
 
   // ---- attempt (L1)
   const claudeCall: Json = {
-    workflowId: 'claude',
+    workflowId: policy.claudeWorkflow ?? 'claude', // 'agent': the AGENT_SESSION plugin; 'claude': the process executor (the one with a stand-in binary for tests)
     timeoutSeconds: 7200,
     routeByOutcome: true,
     engine: { onError: 'ROUTE' },
@@ -377,6 +430,8 @@ export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal
       sessionId: '-',
       claudeBin: S('claudeBin'),
       stage: S('stage'),
+      rulesFile: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.rules`,
+      mcpConfig: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.mcp.json`,
     },
   }
   const aEnv = { YUKTA_MODEL: S('model'), YUKTA_EFFORT: S('effort'), YUKTA_COMMAND: S('command') }
@@ -388,7 +443,13 @@ export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal
       pe(
         'prepare',
         'prepare',
-        healEnv({ ...aEnv, YUKTA_MODELS: S('models'), YUKTA_BUDGET_CHECK: S('budgetCheck'), YUKTA_HEAL_TIMEOUT: S('claudeTimeout') }),
+        healEnv({
+          ...aEnv,
+          YUKTA_MODELS: S('models'),
+          YUKTA_BUDGET_CHECK: S('budgetCheck'),
+          YUKTA_HEAL_TIMEOUT: S('claudeTimeout'),
+          YUKTA_RULES: S('rules'),
+        }),
         { stdin: true, json: true, routed: true },
       ),
       { nodeId: 'claude', type: 'SUB_WORKFLOW', config: claudeCall },
@@ -529,6 +590,8 @@ export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal
   const e: Edge[] = []
   e.push(...edges('trigger', 'heal?'), ...edges('heal?', 'disabled', 'off'), ...edges('heal?', 'auto?', 'on'))
   e.push(...edges('auto?', 'auto-fix', 'auto'), ...edges('auto?', 'brief', 'model'))
+  // all three ports of auto-fix go to auto-check on purpose: the exit code of a free fix is not reliable (a formatter may exit non-zero after it changed files,
+  // or time out), the re-run of the stage decides, and only a stage that still fails goes on to the paid ladder
   e.push(...edges('auto-fix', 'auto-check', 'success', 'failure', 'error'), ...edges('auto-check', 'auto-record', 'success'))
   e.push(...edges('auto-check', 'brief', 'failure', 'error'), ...edges('auto-record', 'done'))
   e.push(
@@ -600,7 +663,74 @@ export function healWorkflows(policy: Json): { claude: Json; attempt: Json; heal
     nodes,
     edges: e,
   }
-  return { claude: CLAUDE_WF, attempt: ATTEMPT_WF, heal: HEAL_WF }
+  paint(CLAUDE_WF)
+  return { claude: CLAUDE_WF, agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
+}
+
+/**
+ * The `agent` workflow: one fixer-grade Claude Code session on the AGENT_SESSION plugin, the same flags as src/heal/claude.ts. Per call (start variables): prompt, project, model,
+ * effort, budget, schema, rulesFile (the system prompt) and mcpConfig (a file: the key stays out of arguments). The three exits all end in a CONSOLE_TERMINAL so the payload
+ * ({status, text, structured, costUsd, numTurns, reason, ...}) reaches the caller whatever the outcome; `status` says which.
+ */
+export function agentWorkflow(): Json {
+  const mcp = (t: string): string => `mcp__yukta__${t}`
+  const args = [
+    ...['--setting-sources', 'project', '--strict-mcp-config', '--mcp-config', S('mcpConfig')],
+    ...['--disable-slash-commands', '--exclude-dynamic-system-prompt-sections', '--no-session-persistence'],
+    ...['--tools', 'Read,Edit,Write,Grep,Glob,Bash', '--permission-mode', 'auto', '--permission-prompts', 'none'],
+    ...['--allowedTools', ...FIXER_ALLOW, ...MCP_READ.map(mcp)],
+    ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)', ...MCP_DENY.map(mcp)],
+    ...[
+      '--append-system-prompt-file',
+      S('rulesFile'),
+      '--max-budget-usd',
+      S('budget'),
+      '--effort',
+      S('effort'),
+      '--json-schema',
+      S('schema'),
+    ],
+  ]
+  const wf: Json = {
+    workflowId: 'agent',
+    description: 'One fixer-grade Claude Code session on the AGENT_SESSION plugin; the payload carries the answer, its cost and its turns.',
+    nodes: [
+      { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { prompt: S('prompt') } } },
+      {
+        nodeId: 'agent',
+        type: 'AGENT_SESSION',
+        config: {
+          harness: 'claude-code',
+          prompt: '${payload.prompt}',
+          model: S('model'),
+          workingDir: S('project'),
+          args,
+          // a fixer reads no CLAUDE.md, runs on pinned models and may call ./gradlew (the project hooks check YUKTA_HEAL_FIXER); the unset ones keep it from
+          // thinking it is the session that started the server
+          env: {
+            CLAUDE_CODE_DISABLE_CLAUDE_MDS: '1',
+            ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5',
+            ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
+            ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
+            YUKTA_HEAL_FIXER: '1',
+            ...Object.fromEntries(CLAUDE_SESSION_ENV.map((k) => [k, ''])),
+          },
+          timeout: 1800, // ponytail: AGENT_SESSION's timeout is a fixed number, not a start variable; the longest effort of heal.json, per-effort when it matters
+          engine: { concurrencyGroup: 'claude' },
+        },
+      },
+      { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: {} },
+      { nodeId: 'failed', type: 'CONSOLE_TERMINAL', config: {} },
+      { nodeId: 'early', type: 'CONSOLE_TERMINAL', config: {} },
+    ],
+    edges: [
+      ...edges('trigger', 'agent'),
+      ...edges('agent', 'ok', 'success'),
+      ...edges('agent', 'failed', 'failure'),
+      ...edges('agent', 'early', 'incomplete'),
+    ],
+  }
+  return paint(wf)
 }
 
 /** The session with every generated workflow rewritten. */
@@ -609,10 +739,11 @@ export function generate(session: Json, policy: Json): Json {
   d.workflows.tool = toolWorkflow(d.workflows.tool)
   delete d.workflows['fix-from']
   const h = healWorkflows(policy)
-  for (const wf of [h.claude, h.attempt, h.heal]) d.workflows[wf.workflowId] = wf
+  for (const wf of [h.claude, h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = paint(wf)
+  healGroups(d.workflows.heal)
   delete d.workflows['check-plain']
-  d.workflows.check = checkWorkflow()
-  d.workflows.pickup = pickupWorkflow()
+  d.workflows.check = checkGroups(paint(checkWorkflow()))
+  d.workflows.pickup = paint(pickupWorkflow())
   return d
 }
 
@@ -635,7 +766,7 @@ export function main(argv: string[]): number {
   writeFileSync(PATH, out)
   const d = JSON.parse(out)
   console.log(
-    ['tool', 'claude', 'attempt', 'heal', 'check', 'pickup'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '),
+    ['tool', 'claude', 'agent', 'attempt', 'heal', 'check', 'pickup'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '),
     'nodes',
   )
   return 0

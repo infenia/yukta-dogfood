@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os'
 import { DEV_HOME, DEV_URL, HERE, fixerKey, isFile, join, readFileSync, rmSync, run, text, writeFileSync } from '../lib.ts'
 
 // A headless claude must not think it is the session that started the server.
-const UNSET = [
+export const CLAUDE_SESSION_ENV = [
   'CLAUDECODE',
   'CLAUDE_CODE_SESSION_ID',
   'CLAUDE_CODE_ENTRYPOINT',
@@ -33,7 +33,7 @@ const UNSET = [
   'CLAUDE_PID',
 ]
 // the read tools of the endpoint a fixer may call, and the tools that change a run or the server, denied even if the key allowed them
-const MCP_READ = [
+export const MCP_READ = [
   'get_node_output',
   'get_execution_tree',
   'get_execution_logs',
@@ -42,7 +42,7 @@ const MCP_READ = [
   'get_workflow_history',
   'get_workflow_details',
 ]
-const MCP_DENY = [
+export const MCP_DENY = [
   'start_workflow',
   'control_workflow',
   'control_node',
@@ -52,6 +52,23 @@ const MCP_DENY = [
   'note_workflow_version',
   'set_scheduler_limits',
   'create_session',
+]
+
+export const FIXER_ALLOW = [
+  'Read',
+  'Edit',
+  'Write',
+  'Grep',
+  'Glob',
+  'Bash(./gradlew:*)',
+  'Bash(make:*)',
+  'Bash(go test:*)',
+  'Bash(go vet:*)',
+  'Bash(node_modules/.bin/*:*)',
+  'Bash(reuse:*)',
+  'Bash(actionlint:*)',
+  'Bash(mint:*)',
+  'Bash(cd:*)',
 ]
 
 /** The claude command line for one session (the tests read it back). */
@@ -76,23 +93,7 @@ export function claudeArgs(o: {
     for (const t of MCP_DENY) deny.push(`mcp__yukta__${t}`)
   }
   let tools = 'Read,Edit,Write,Grep,Glob,Bash'
-  let allowTools = [
-    'Read',
-    'Edit',
-    'Write',
-    'Grep',
-    'Glob',
-    'Bash(./gradlew:*)',
-    'Bash(make:*)',
-    'Bash(go test:*)',
-    'Bash(go vet:*)',
-    'Bash(node_modules/.bin/*:*)',
-    'Bash(reuse:*)',
-    'Bash(actionlint:*)',
-    'Bash(mint:*)',
-    'Bash(cd:*)',
-    ...(e.YK_ALLOW ?? '').split('\n').filter(Boolean), // the exact extra rules of a role (the ticket test writer's self-check)
-  ]
+  let allowTools = [...FIXER_ALLOW, ...(e.YK_ALLOW ?? '').split('\n').filter(Boolean)] // the exact extra rules of a role (the ticket test writer's self-check)
   if (e.YK_TOOLS === 'readonly') {
     tools = 'Read,Grep,Glob'
     allowTools = ['Read', 'Grep', 'Glob']
@@ -143,6 +144,30 @@ export function claudeArgs(o: {
         throw new Error('YK_SCHEMA is the answer schema')
       })(),
   ]
+}
+
+/** Read-only MCP access of a fixer to the server that runs the workflow (YUKTA_FIXER_MCP=off disables): the endpoint and the VIEWER key, or null. */
+export function fixerMcp(env: NodeJS.ProcessEnv): { url: string; key: string } | null {
+  if ((env.YUKTA_FIXER_MCP ?? 'on') === 'off') return null
+  const url = env.YUKTA_SERVER_URL || DEV_URL
+  let key = env.YUKTA_FIXER_MCP_KEY ?? ''
+  if (!key && url === DEV_URL && isFile(join(DEV_HOME, 'fixer-key')) && text(join(DEV_HOME, 'fixer-key')).length)
+    key = text(join(DEV_HOME, 'fixer-key')).trim() || fixerKey()
+  return key ? { url: `${url.replace(/\/$/, '')}/mcp`, key } : null
+}
+
+/** Writes the claude --mcp-config file of a fixer (mode 0600; the key stays in the file): its MCP server, or none without a key. */
+export function writeMcpConfig(file: string, env: NodeJS.ProcessEnv): void {
+  const m = fixerMcp(env)
+  const cfg = m ? { yukta: { type: 'http', url: m.url, headers: { 'X-API-Key': m.key } } } : {}
+  writeFileSync(file, JSON.stringify({ mcpServers: cfg }), { mode: 0o600 })
+}
+
+/** The system prompt of a stage: the common rules plus fixer-rules/<kind>.md when the stage has one. Returns the text. */
+export function stageRules(base: string, stage: string | undefined): string {
+  const kind = roleKind(stage, undefined)
+  const roleFile = join(HERE, 'fixer-rules', `${kind}.md`)
+  return readFileSync(base, 'utf8') + (kind && isFile(roleFile) ? readFileSync(roleFile, 'utf8') : '')
 }
 
 /** The role file kind of a stage / ticket role (fixer-rules/<kind>.md). */
@@ -206,17 +231,8 @@ export function main(argv: string[], stdin?: string): number {
     ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
     ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
   })
-  // Read-only MCP access to the server that runs this workflow (YUKTA_FIXER_MCP=off to disable).
-  if ((env.YUKTA_FIXER_MCP ?? 'on') !== 'off') {
-    const url = env.YUKTA_SERVER_URL || DEV_URL
-    let key = env.YUKTA_FIXER_MCP_KEY ?? ''
-    if (!key && url === DEV_URL && isFile(join(DEV_HOME, 'fixer-key')) && text(join(DEV_HOME, 'fixer-key')).length)
-      key = text(join(DEV_HOME, 'fixer-key')).trim() || fixerKey()
-    if (key) {
-      env.YK_MCP_URL = `${url.replace(/\/$/, '')}/mcp`
-      env.YK_MCP_KEY = key
-    }
-  }
+  const mcp = fixerMcp(env)
+  if (mcp) Object.assign(env, { YK_MCP_URL: mcp.url, YK_MCP_KEY: mcp.key })
   if (env.YK_CLAUDE_BIN) env.YUKTA_CLAUDE_BIN = env.YK_CLAUDE_BIN
   let kind: string
   try {
@@ -248,7 +264,7 @@ export function main(argv: string[], stdin?: string): number {
       return 2
     }
     const childEnv: Record<string, string | undefined> = { ...env, YUKTA_HEAL_FIXER: '1' }
-    for (const u of UNSET) childEnv[u] = undefined
+    for (const u of CLAUDE_SESSION_ENV) childEnv[u] = undefined
     const r = run(
       [
         env.YUKTA_CLAUDE_BIN || 'claude',

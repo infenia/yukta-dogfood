@@ -1,4 +1,5 @@
 {
+  "claudeWorkflow": "agent",
   "checkBudget": 5,
   "giveUp": {
     "minAttempts": 5,
