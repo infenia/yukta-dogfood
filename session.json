@@ -2386,7 +2386,8 @@
             "variables": {
               "prompt": "${start.prompt}"
             }
-          }
+          },
+          "color": "stone"
         },
         {
           "nodeId": "run",
@@ -2415,12 +2416,14 @@
             "engine": {
               "concurrencyGroup": "claude"
             }
-          }
+          },
+          "color": "sky"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
-          "config": {}
+          "config": {},
+          "color": "teal"
         },
         {
           "nodeId": "failed",
@@ -2428,7 +2431,8 @@
           "config": {
             "outcome": "FAILED",
             "reason": "the claude session failed, ran out of budget or ran out of time"
-          }
+          },
+          "color": "magenta"
         }
       ],
       "edges": [
@@ -3481,6 +3485,87 @@
           "source": "tick",
           "target": "failed",
           "sourcePort": "failure"
+        }
+      ]
+    },
+    "agent": {
+      "workflowId": "agent",
+      "description": "One headless Claude Code session in a project on the AGENT_SESSION plugin; returns its answer, its cost and its turns.",
+      "nodes": [
+        {
+          "nodeId": "trigger",
+          "type": "CONSTANT_SOURCE",
+          "config": {
+            "variables": {
+              "prompt": "${start.prompt}"
+            }
+          },
+          "color": "stone"
+        },
+        {
+          "nodeId": "agent",
+          "type": "AGENT_SESSION",
+          "config": {
+            "harness": "claude-code",
+            "prompt": "${payload.prompt}",
+            "model": "${start.model}",
+            "workingDir": "${start.project}",
+            "args": [
+              "--permission-mode",
+              "auto",
+              "--allowedTools",
+              "Read,Edit,Write,Grep,Glob",
+              "--max-budget-usd",
+              "${start.budget}"
+            ],
+            "timeout": 1800
+          },
+          "color": "sky"
+        },
+        {
+          "nodeId": "ok",
+          "type": "CONSOLE_TERMINAL",
+          "config": {},
+          "color": "teal"
+        },
+        {
+          "nodeId": "failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the claude session failed or ran out of time"
+          },
+          "color": "magenta"
+        },
+        {
+          "nodeId": "early",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "RETRY",
+            "reason": "the claude session stopped early (out of turns or budget)"
+          },
+          "color": "violet"
+        }
+      ],
+      "edges": [
+        {
+          "source": "trigger",
+          "target": "agent"
+        },
+        {
+          "source": "agent",
+          "target": "ok",
+          "sourcePort": "success"
+        },
+        {
+          "source": "agent",
+          "target": "failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "agent",
+          "target": "early",
+          "sourcePort": "incomplete"
         }
       ]
     }
