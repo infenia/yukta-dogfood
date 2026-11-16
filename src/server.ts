@@ -12,6 +12,7 @@ import {
   HERE,
   Json,
   REPO_ROOT,
+  STATE_DIR,
   basename,
   die,
   dirname,
@@ -368,6 +369,18 @@ function portOpen(port: number): Promise<boolean> {
 /** Before a run: starts the dev server if it is down, and swaps an idle server for an already built newer main (no fetch, no build:
  * `yk up` and the SessionStart hook do those). YUKTA_SERVER_URL pointing elsewhere opts out: that server is used as it is. */
 export async function ensureServer(): Promise<void> {
+  await ensureServerUp()
+  startThrottle()
+}
+
+/** The load supervisor (throttle.ts) watches the runs of the session for as long as the server is up: started here, so every run that yk starts is covered.
+ * YK_THROTTLE=off opts out. */
+function startThrottle(): void {
+  if (process.env.YK_THROTTLE === 'off' || process.env.YUKTA_SERVER_URL !== DEV_URL || lockHeld(join(STATE_DIR, 'throttle.lock'))) return
+  spawn(process.execPath, [join(HERE, 'src/yk.ts'), '_throttle'], { detached: true, stdio: 'ignore', env: process.env }).unref()
+}
+
+async function ensureServerUp(): Promise<void> {
   if (process.env.YUKTA_SERVER_URL && process.env.YUKTA_SERVER_URL !== DEV_URL) return
   process.env.YUKTA_SERVER_URL = DEV_URL
   if (!(await healthy())) {
