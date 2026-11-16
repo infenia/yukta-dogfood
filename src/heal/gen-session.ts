@@ -553,6 +553,8 @@ export function healWorkflows(policy: Json): { claude: Json; agent: Json; attemp
   const e: Edge[] = []
   e.push(...edges('trigger', 'heal?'), ...edges('heal?', 'disabled', 'off'), ...edges('heal?', 'auto?', 'on'))
   e.push(...edges('auto?', 'auto-fix', 'auto'), ...edges('auto?', 'brief', 'model'))
+  // all three ports of auto-fix go to auto-check on purpose: the exit code of a free fix is not reliable (a formatter may exit non-zero after it changed files,
+  // or time out), the re-run of the stage decides, and only a stage that still fails goes on to the paid ladder
   e.push(...edges('auto-fix', 'auto-check', 'success', 'failure', 'error'), ...edges('auto-check', 'auto-record', 'success'))
   e.push(...edges('auto-check', 'brief', 'failure', 'error'), ...edges('auto-record', 'done'))
   e.push(
