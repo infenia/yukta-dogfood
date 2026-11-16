@@ -19,6 +19,7 @@
 //
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
 // HEAL_SESSION and HEAL_POLICY point the generator at another session file and policy (the tests do). Edit this file or heal.json, run it, commit session.json.
+import { ecosystem } from './heal.ts'
 import { FIXER_ALLOW, MCP_DENY, MCP_READ, CLAUDE_SESSION_ENV } from './claude.ts'
 import { HERE, type Json, existsSync, join, readFileSync, writeFileSync } from '../lib.ts'
 
@@ -47,6 +48,42 @@ export function paint(wf: Json): Json {
   for (const n of wf.nodes) n.color = COLORS[n.nodeId] ?? kind(n)
   return wf
 }
+
+/** Groups the nodes of a workflow for the canvas (display only): `of` names the group of a node, `colors` its palette color. */
+export function group(wf: Json, of: (nodeId: string) => string, colors: (group: string) => string): Json {
+  for (const n of wf.nodes) n.group = of(n.nodeId)
+  wf.groupColors = Object.fromEntries([...new Set<string>(wf.nodes.map((n: Json) => n.group))].map((g) => [g, colors(g)]))
+  return wf
+}
+
+/** check: one group per stage (a stage's nodes are `<stage>` and `<stage>.x`), colored by ecosystem; the fast path and the verify run have their own. */
+const ECOSYSTEM_COLOR: Record<string, string> = {
+  'go (cli)': 'teal',
+  'typescript (ui)': 'violet',
+  'repo files': 'stone',
+  'java (gradle)': 'sky',
+}
+export const checkGroups = (wf: Json): Json =>
+  group(
+    wf,
+    (id) => (['trigger', 'healed?', 'done'].includes(id) ? 'check' : id.split('.')[0]!),
+    (g) => (g === 'check' ? 'stone' : ECOSYSTEM_COLOR[ecosystem(g)]!),
+  )
+
+/** heal: the free fix, the triage, the ladder of rungs, and the way in and out. */
+const HEAL_GROUPS: Record<string, string> = { 'free-fix': 'teal', triage: 'violet', ladder: 'sky', start: 'stone', outcome: 'stone' }
+export const healGroups = (wf: Json): Json =>
+  group(
+    wf,
+    (id) => {
+      if (['trigger', 'heal?', 'disabled'].includes(id)) return 'start'
+      if (id.startsWith('auto')) return 'free-fix'
+      if (id.startsWith('fix-') || id.startsWith('carry.')) return 'ladder'
+      if (['done', 'logged', 'giveup'].includes(id)) return 'outcome'
+      return 'triage' // brief, first, known?, baseline-known, triage?, triage, triage-log.*
+    },
+    (g) => HEAL_GROUPS[g]!,
+  )
 
 // ---------------------------------------------------------------- tool
 export function toolWorkflow(wf: Json): Json {
@@ -703,8 +740,9 @@ export function generate(session: Json, policy: Json): Json {
   delete d.workflows['fix-from']
   const h = healWorkflows(policy)
   for (const wf of [h.claude, h.agent, h.attempt, h.heal]) d.workflows[wf.workflowId] = paint(wf)
+  healGroups(d.workflows.heal)
   delete d.workflows['check-plain']
-  d.workflows.check = paint(checkWorkflow())
+  d.workflows.check = checkGroups(paint(checkWorkflow()))
   d.workflows.pickup = paint(pickupWorkflow())
   return d
 }

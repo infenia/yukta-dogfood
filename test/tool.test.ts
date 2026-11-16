@@ -40,3 +40,13 @@ test('every node of every generated workflow has a color', () => {
     for (const n of s.workflows[k].nodes) expect([k, n.nodeId, n.color]).not.toEqual([k, n.nodeId, undefined])
   }
 })
+
+test('the nodes of check and heal are grouped and every group has a color', () => {
+  const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
+  for (const k of ['check', 'heal']) {
+    const wf = s.workflows[k]
+    for (const n of wf.nodes) expect([k, n.nodeId, typeof n.group]).toEqual([k, n.nodeId, 'string'])
+    for (const g of new Set(wf.nodes.map((n: { group: string }) => n.group)))
+      expect([k, g, typeof wf.groupColors[g as string]]).toEqual([k, g, 'string'])
+  }
+})
