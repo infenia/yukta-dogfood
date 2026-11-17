@@ -42,7 +42,7 @@ export function decide(s: State, x: Sample, c: Cfg): { state: State; act: 'pause
 
 export type Io = {
   sample: () => Sample
-  live: () => Promise<{ id: string; paused: boolean }[]> // the root runs of the dogfood session that are running
+  live: () => Promise<{ id: string; paused: boolean; start: number }[]> // the root runs of the dogfood session that are running, any order
   control: (verb: 'pause' | 'resume', id: string) => Promise<boolean>
   log: (msg: string) => void
 }
@@ -51,18 +51,18 @@ export type Io = {
 export async function tick(s: State, mine: Set<string>, c: Cfg, io: Io): Promise<State> {
   const x = io.sample()
   const d = decide(s, x, c)
-  const runs = await io.live()
+  const runs = (await io.live()).sort((a, b) => a.start - b.start) // oldest first
   for (const id of [...mine]) if (!runs.some((r) => r.id === id && r.paused)) mine.delete(id) // ended, or somebody resumed it
   const what = `cpu ${x.cpu.toFixed(2)}/core, ram free ${(x.ramFree * 100).toFixed(0)}%`
-  if (d.act === 'pause') {
-    for (const r of runs.filter((r) => !r.paused)) if (await io.control('pause', r.id)) mine.add(r.id)
-    io.log(`paused ${mine.size} run(s): ${what}`)
-  } else if (d.act === 'resume' || (!d.state.paused && mine.size)) {
-    for (const id of [...mine]) if (await io.control('resume', id)) mine.delete(id)
+  if (d.act === 'resume' || (!d.state.paused && mine.size)) {
+    for (const r of runs.filter((r) => mine.has(r.id))) if (await io.control('resume', r.id)) mine.delete(r.id) // the oldest first
     io.log(`resumed: ${what}`)
   } else if (d.state.paused) {
-    // a run that started while we hold the others back waits as well
-    for (const r of runs.filter((r) => !r.paused && !mine.has(r.id))) if (await io.control('pause', r.id)) mine.add(r.id)
+    // the oldest run we may touch keeps going so it finishes first; the others (also the ones that start meanwhile) wait
+    const keep = runs.find((r) => !r.paused || mine.has(r.id))
+    if (keep && mine.has(keep.id) && (await io.control('resume', keep.id))) mine.delete(keep.id)
+    for (const r of runs.filter((r) => !r.paused && r !== keep)) if (await io.control('pause', r.id)) mine.add(r.id)
+    if (d.act === 'pause') io.log(`paused ${mine.size} run(s), the oldest keeps running: ${what}`)
   }
   return d.state
 }
@@ -86,6 +86,7 @@ const live: Io['live'] = async () => {
     roots.map(async (e) => ({
       id: e.executionId as string,
       paused: (await get(`/api/executions/${e.executionId}`))?.controlState === 'PAUSED',
+      start: Date.parse(e.startTime) || Infinity, // unknown start: treated as the newest
     })),
   )
 }
