@@ -16,7 +16,7 @@ Turn a ticket into a reviewed, tested code change using a strong "architect" mod
 ### Principles
 
 1. **Code decides what code can verify.** Order, scope, retries, budgets and pass/fail are deterministic (Yukta graph + scripts). Models are used only for judgment.
-2. **Executable checks are the spec.** The architect defines *what must be tested* (a compact test-case table) and writes interface stubs; a cheaper test-writer agent turns the table into failing tests. The implementer's job is to make them pass without touching them. Who authors tests is chosen by cost and risk (Section 3.3), not by default.
+2. **Executable checks are the spec.** The architect defines _what must be tested_ (a compact test-case table) and writes interface stubs; a cheaper test-writer agent turns the table into failing tests. The implementer's job is to make them pass without touching them. Who authors tests is chosen by cost and risk (Section 3.3), not by default.
 3. **Agents exchange pointers and schemas, not prose.** Large content lives in files; messages carry ids and hashes.
 4. **One step, minimal context.** An implementer sees one step plus only the files that step references.
 5. **Escape hatch over improvisation.** An implementer that cannot proceed returns `BLOCKED`; it never guesses.
@@ -49,15 +49,15 @@ Ticket ─► INTAKE ─► TRIAGE (Ollama) ─► ROUTE (code) ─► ARCHITECT
         FULL CHECKS (code) ─► REVIEW (Claude, fresh context) ─► [approval gate] ─► DONE
 ```
 
-| Component | Kind | Role |
-|---|---|---|
-| Yukta workflow | Deterministic engine | Enforces order, gates, loops, pause/resume, approvals. This **is** the orchestrator; do not build a second one. |
-| `ticketkit` CLI | Deterministic tool | Run workspace, schema validation, context packing, scope checks, failure digests, validation ladder. Invoked via `PROCESS_EXECUTOR` (commands must be allowlisted). Language free; a single static binary is preferred. |
-| Architect | Claude | Produces spec, test-case table, interface stubs, and revisions. Writes test code itself only in `architect_code` mode (Section 3.3). |
-| Test writer | Claude (cheaper tier) | Turns the test-case table into test code. Sees stubs and the case table only, not the ticket. |
-| Implementer | Claude | Executes one step. |
-| Reviewer | Claude | Fresh-context final review against the ticket. |
-| Decision model | Ollama (local) | Fuzzy classification only (Section 3.2). |
+| Component       | Kind                  | Role                                                                                                                                                                                                                    |
+| --------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Yukta workflow  | Deterministic engine  | Enforces order, gates, loops, pause/resume, approvals. This **is** the orchestrator; do not build a second one.                                                                                                         |
+| `ticketkit` CLI | Deterministic tool    | Run workspace, schema validation, context packing, scope checks, failure digests, validation ladder. Invoked via `PROCESS_EXECUTOR` (commands must be allowlisted). Language free; a single static binary is preferred. |
+| Architect       | Claude                | Produces spec, test-case table, interface stubs, and revisions. Writes test code itself only in `architect_code` mode (Section 3.3).                                                                                    |
+| Test writer     | Claude (cheaper tier) | Turns the test-case table into test code. Sees stubs and the case table only, not the ticket.                                                                                                                           |
+| Implementer     | Claude                | Executes one step.                                                                                                                                                                                                      |
+| Reviewer        | Claude                | Fresh-context final review against the ticket.                                                                                                                                                                          |
+| Decision model  | Ollama (local)        | Fuzzy classification only (Section 3.2).                                                                                                                                                                                |
 
 ---
 
@@ -67,11 +67,11 @@ Ticket ─► INTAKE ─► TRIAGE (Ollama) ─► ROUTE (code) ─► ARCHITECT
 
 Effort values are `low | medium | high`; map them to whatever parameter Yukta or the API exposes (**VERIFY**).
 
-| Triage result | Architect | Test writer | Implementer: `trivial`/`standard` step | Implementer: `tricky` step | Reviewer |
-|---|---|---|---|---|---|
-| complexity S, risk low | Sonnet / medium (one-step spec with a short case table) | none (`implementer_writes` or `existing`, Section 3.3) | Haiku / medium | Sonnet / medium | Sonnet / low |
-| complexity M, risk ≤ medium | Sonnet / high | Sonnet / low | Haiku / medium | Sonnet / medium | Sonnet / medium |
-| complexity L, or risk high | Opus / high | Sonnet / medium | Haiku / medium | Sonnet / high | Opus / medium |
+| Triage result               | Architect                                               | Test writer                                            | Implementer: `trivial`/`standard` step | Implementer: `tricky` step | Reviewer        |
+| --------------------------- | ------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------- | -------------------------- | --------------- |
+| complexity S, risk low      | Sonnet / medium (one-step spec with a short case table) | none (`implementer_writes` or `existing`, Section 3.3) | Haiku / medium                         | Sonnet / medium            | Sonnet / low    |
+| complexity M, risk ≤ medium | Sonnet / high                                           | Sonnet / low                                           | Haiku / medium                         | Sonnet / medium            | Sonnet / medium |
+| complexity L, or risk high  | Opus / high                                             | Sonnet / medium                                        | Haiku / medium                         | Sonnet / high              | Opus / medium   |
 
 Starting points, not truths: Section 11 tunes them from logged outcomes.
 
@@ -81,41 +81,45 @@ Starting points, not truths: Section 11 tunes them from logged outcomes.
 
 Ollama MUST only choose from a closed enum and MUST NOT write code, specs or free text that downstream agents consume. Invalid or empty output gets one retry, then the documented default.
 
-| ID | Yukta node type | Question | Output enum | Default on failure |
-|---|---|---|---|---|
-| D1 triage | `CLASSIFY` | What is this ticket? | `kind`: bug, feature, refactor, chore, docs; `complexity`: S, M, L; `risk`: low, medium, high; `clarity`: clear, needs_clarification | complexity L, risk high, clarity clear (conservative: stronger model) |
-| D2 failure cause | `CLASSIFY` | Given step summary + failure digest, why did it fail? Called only when deterministic rules cannot tell. | `impl_bug`, `spec_gap`, `spec_conflict`, `flaky` | `impl_bug` (next rung of the ladder handles it) |
-| D3 optional | `SCORE` | Risk of final diff (0–10) for merge-gate policy | integer | 10 (forces human approval) |
+| ID               | Yukta node type | Question                                                                                                | Output enum                                                                                                                          | Default on failure                                                    |
+| ---------------- | --------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| D1 triage        | `CLASSIFY`      | What is this ticket?                                                                                    | `kind`: bug, feature, refactor, chore, docs; `complexity`: S, M, L; `risk`: low, medium, high; `clarity`: clear, needs_clarification | complexity L, risk high, clarity clear (conservative: stronger model) |
+| D2 failure cause | `CLASSIFY`      | Given step summary + failure digest, why did it fail? Called only when deterministic rules cannot tell. | `impl_bug`, `spec_gap`, `spec_conflict`, `flaky`                                                                                     | `impl_bug` (next rung of the ladder handles it)                       |
+| D3 optional      | `SCORE`         | Risk of final diff (0–10) for merge-gate policy                                                         | integer                                                                                                                              | 10 (forces human approval)                                            |
 
 Rules that apply regardless of model output (code, post-triage):
+
 - Spec `scope.allowed_globs` matching any glob in the project's `high_risk_paths` (auth, payments, migrations, infra) raises `risk` to `high`.
 - Anything verifiable by command is never delegated to D1–D3.
 
 ### 3.3 Test authoring strategy (cost control)
 
-Problem: test code is often as large as or larger than the implementation, and Opus-tier tokens are the most expensive in the pipeline. The architect therefore decides *what* to test, in a compact table (id, given, when, expect), and a cheaper model writes *how*. Test code is only worth architect-tier tokens when the tests encode subtle semantics.
+Problem: test code is often as large as or larger than the implementation, and Opus-tier tokens are the most expensive in the pipeline. The architect therefore decides _what_ to test, in a compact table (id, given, when, expect), and a cheaper model writes _how_. Test code is only worth architect-tier tokens when the tests encode subtle semantics.
 
 Authoring is chosen per ticket by `ticketkit route` (deterministic; written to `routing.json`) and echoed in `spec.tests_mode`. The validator rejects a spec whose `tests_mode` differs from `routing.tests_mode`.
 
-| `tests_mode` | Chosen when | Who writes test code | Architect tokens spent on tests |
-|---|---|---|---|
-| `existing` | kind is docs/chore, or refactor with existing characterization tests | nobody; spec names the existing test commands | none |
-| `repro_only` | kind is bug | test writer, from 1–3 repro cases | one or two case rows |
-| `implementer_writes` | complexity S **and** risk low, kind feature | implementer, inside its step, from the case table | a few case rows |
-| `cases_to_code` (default) | complexity M or L, kind feature or refactor without tests | test writer (Section 3.1 tier) | case rows only |
-| `architect_code` | risk high **and** a `critical` case (concurrency, money, security, data migration) | architect, capped at `max_test_lines` (default 150); over the cap falls back to `cases_to_code` | test code, bounded |
+| `tests_mode`              | Chosen when                                                                        | Who writes test code                                                                            | Architect tokens spent on tests |
+| ------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------- |
+| `existing`                | kind is docs/chore, or refactor with existing characterization tests               | nobody; spec names the existing test commands                                                   | none                            |
+| `repro_only`              | kind is bug                                                                        | test writer, from 1–3 repro cases                                                               | one or two case rows            |
+| `implementer_writes`      | complexity S **and** risk low, kind feature                                        | implementer, inside its step, from the case table                                               | a few case rows                 |
+| `cases_to_code` (default) | complexity M or L, kind feature or refactor without tests                          | test writer (Section 3.1 tier)                                                                  | case rows only                  |
+| `architect_code`          | risk high **and** a `critical` case (concurrency, money, security, data migration) | architect, capped at `max_test_lines` (default 150); over the cap falls back to `cases_to_code` | test code, bounded              |
 
 Case-table rules (architect):
+
 - Each case is one row: `id`, `title`, `given`, `when`, `expect`, `kind`, `critical`. No code.
 - Prefer the fewest cases that distinguish a correct implementation from a wrong one: boundaries, error paths, one happy path per behavior. Hard cap `max_cases_total` (default 25).
 - Every step lists the case ids it covers (`covers`).
 
 Test-writer contract:
+
 - Input: stubs (`scaffold.patch` applied), the case table, a sample of an existing test file for style, the project's `test_file` command, and a ≤ 60-line test conventions digest. It does not receive the ticket or the architect's design notes.
 - Output: test files at the planned `locked_files` paths, plus a `TestWriterResult` (5.7). Each test name MUST contain its case tag, e.g. `[T3]`, so code can map tests to cases.
 - It may touch only test files. Stubs and source files are out of scope.
 
 Deterministic test gate (runs after the test writer, or after the architect in `architect_code` mode; fails go back to the writer once with the gate errors, then escalate to the architect, who revises the case table or switches mode if risk is high):
+
 1. Every case id has at least one tagged test; no tagged test refers to an unknown id.
 2. Tests compile against the stubs.
 3. Red check per case (Section 8.1b): each tagged test fails with an assertion or "not implemented", not a syntax or import error.
@@ -196,7 +200,20 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
   "title": "TicketSpec",
   "type": "object",
   "additionalProperties": false,
-  "required": ["spec_version", "ticket_id", "objective", "risk", "assumptions", "scope", "acceptance_criteria", "tests_mode", "test_cases", "locked_files", "scaffold_patch", "steps"],
+  "required": [
+    "spec_version",
+    "ticket_id",
+    "objective",
+    "risk",
+    "assumptions",
+    "scope",
+    "acceptance_criteria",
+    "tests_mode",
+    "test_cases",
+    "locked_files",
+    "scaffold_patch",
+    "steps"
+  ],
   "properties": {
     "spec_version": { "type": "integer", "minimum": 1 },
     "ticket_id": { "type": "string" },
@@ -215,10 +232,25 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
       }
     },
     "acceptance_criteria": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/criterion" } },
-    "tests_mode": { "enum": ["existing", "repro_only", "implementer_writes", "cases_to_code", "architect_code"], "description": "MUST equal routing.tests_mode (Section 3.3)." },
-    "test_cases": { "type": "array", "maxItems": 25, "items": { "$ref": "#/$defs/test_case" }, "description": "Compact table of what must be tested. No test code." },
-    "locked_files": { "type": "array", "items": { "type": "string" }, "description": "Planned paths of test files. Code locks them (records hashes) after the test gate. Empty in implementer_writes mode." },
-    "scaffold_patch": { "type": "string", "description": "Path under the run dir to a patch containing interface stubs only. Never test code (except in architect_code mode, where tests go in tests.patch)." },
+    "tests_mode": {
+      "enum": ["existing", "repro_only", "implementer_writes", "cases_to_code", "architect_code"],
+      "description": "MUST equal routing.tests_mode (Section 3.3)."
+    },
+    "test_cases": {
+      "type": "array",
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/test_case" },
+      "description": "Compact table of what must be tested. No test code."
+    },
+    "locked_files": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Planned paths of test files. Code locks them (records hashes) after the test gate. Empty in implementer_writes mode."
+    },
+    "scaffold_patch": {
+      "type": "string",
+      "description": "Path under the run dir to a patch containing interface stubs only. Never test code (except in architect_code mode, where tests go in tests.patch)."
+    },
     "steps": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/step" } }
   },
   "$defs": {
@@ -257,14 +289,37 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
     "step": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "depends_on", "covers", "complexity", "write_files", "read_files", "instructions", "contracts", "constraints", "non_goals", "done_when", "limits"],
+      "required": [
+        "id",
+        "title",
+        "depends_on",
+        "covers",
+        "complexity",
+        "write_files",
+        "read_files",
+        "instructions",
+        "contracts",
+        "constraints",
+        "non_goals",
+        "done_when",
+        "limits"
+      ],
       "properties": {
         "id": { "type": "string", "pattern": "^S[0-9]+$" },
         "title": { "type": "string", "maxLength": 120 },
         "depends_on": { "type": "array", "items": { "type": "string" } },
-        "covers": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]+$" }, "description": "Test case ids this step makes pass. May be empty only if done_when has an existing-test command." },
+        "covers": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^T[0-9]+$" },
+          "description": "Test case ids this step makes pass. May be empty only if done_when has an existing-test command."
+        },
         "complexity": { "enum": ["trivial", "standard", "tricky"] },
-        "write_files": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "The ONLY files this step may create or modify." },
+        "write_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "The ONLY files this step may create or modify."
+        },
         "read_files": {
           "type": "array",
           "items": {
@@ -278,7 +333,12 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
             }
           }
         },
-        "instructions": { "type": "array", "minItems": 1, "items": { "type": "string", "maxLength": 300 }, "description": "Ordered, imperative, one action each." },
+        "instructions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "maxLength": 300 },
+          "description": "Ordered, imperative, one action each."
+        },
         "contracts": {
           "type": "array",
           "items": {
@@ -309,7 +369,12 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
           "additionalProperties": false,
           "required": ["commands"],
           "properties": {
-            "commands": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Each MUST exit 0. At least one MUST be a test command covering this step." }
+            "commands": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string" },
+              "description": "Each MUST exit 0. At least one MUST be a test command covering this step."
+            }
           }
         },
         "limits": {
@@ -328,6 +393,7 @@ All inter-agent artifacts MUST validate against these schemas (JSON Schema 2020-
 ```
 
 Architect rules (enforced partly by validators, partly by prompt):
+
 - Every acceptance criterion is `command` or explicitly `review`. Prefer `command`. Quantitative claims (e.g. complexity bounds) become benchmarks/tests or `review`.
 - Every step's `write_files` ⊆ `scope.allowed_globs` and disjoint from `locked_files`.
 - Test cases carry intent only (`given`/`when`/`expect`), never code, unless `tests_mode = architect_code`.
@@ -341,19 +407,17 @@ Architect rules (enforced partly by validators, partly by prompt):
   "run_id": "TICK-4021-20261101T071500Z",
   "spec_hash": "sha256:...",
   "step": { "...": "the single step object from the spec" },
-  "cases": [ { "id": "T1", "...": "only the test cases this step covers; the implementer must write tests for them only in implementer_writes mode" } ],
+  "cases": [
+    { "id": "T1", "...": "only the test cases this step covers; the implementer must write tests for them only in implementer_writes mode" }
+  ],
   "global": {
     "forbidden_imports": ["lodash", "moment"],
     "allow_new_dependencies": false,
     "locked_files": ["tests/ratelimit.test.ts"],
     "conventions_digest": "<= 60 lines extracted from conventions_file>"
   },
-  "context_files": [
-    { "path": "src/redis/client.ts", "lines": "1-60", "content": "..." }
-  ],
-  "prior_attempts": [
-    { "attempt": 1, "failure_digest": "<= 2 KB" }
-  ]
+  "context_files": [{ "path": "src/redis/client.ts", "lines": "1-60", "content": "..." }],
+  "prior_attempts": [{ "attempt": 1, "failure_digest": "<= 2 KB" }]
 }
 ```
 
@@ -412,11 +476,13 @@ The code change itself is not in this JSON. See Section 7 for how edits are capt
 ### 5.5 Architect side-channel documents
 
 `NEEDS_CLARIFICATION`:
+
 ```json
 { "status": "NEEDS_CLARIFICATION", "questions": [{ "id": "Q1", "question": "...", "why_blocking": "..." }] }
 ```
 
 `RevisionRequest` (code → architect):
+
 ```json
 {
   "run_id": "...",
@@ -430,16 +496,20 @@ The code change itself is not in this JSON. See Section 7 for how edits are capt
 ```
 
 `RevisionResult` (architect → code). Completed steps are immutable; only the failing step and not-yet-run dependents may be replaced:
+
 ```json
 {
   "reason": "<= 300 chars",
-  "replace_steps": [ { "...": "full step objects, same schema as 5.1" } ],
-  "replace_test_cases": [ { "...": "full test_case objects for changed or new cases; deleting a case needs its id in remove_test_case_ids" } ],
+  "replace_steps": [{ "...": "full step objects, same schema as 5.1" }],
+  "replace_test_cases": [
+    { "...": "full test_case objects for changed or new cases; deleting a case needs its id in remove_test_case_ids" }
+  ],
   "remove_test_case_ids": [],
   "scaffold_patch_addendum": "spec/scaffold.addendum.patch or null",
   "new_assumptions": []
 }
 ```
+
 Code applies this to produce `spec.json` v+1 and re-runs spec validation. Changed or new cases go back through the test writer and test gate; unchanged cases and already-locked test files are untouched.
 
 ### 5.6 ReviewResult
@@ -453,6 +523,7 @@ Code applies this to produce `spec.json` v+1 and re-runs spec validation. Change
   ]
 }
 ```
+
 `verdict` ∈ `APPROVE | CHANGES_REQUESTED`. Any `blocker` or `major` forces `CHANGES_REQUESTED`; code enforces this, not the model. The reviewer MUST include a `criteria_results` entry with id `TESTS_FAITHFUL` stating whether the tests encode the case table (Section 3.3); `met: false` counts as a `major` finding.
 
 ### 5.7 TestWriterResult
@@ -464,6 +535,7 @@ Code applies this to produce `spec.json` v+1 and re-runs spec validation. Change
   "blocked": null
 }
 ```
+
 `blocked`, when present, uses the same `{category, detail, question}` shape as 5.3, with categories `case_ambiguous | stub_missing | framework_unclear`; it routes to the architect. The case-to-test mapping the agent declares is only a hint: code builds the authoritative `test_map.json` from the test report by reading the `[T#]` tags.
 
 ---
@@ -476,42 +548,42 @@ Every `PROCESS_EXECUTOR` below calls `ticketkit <subcommand>` and exits non-zero
 
 ### 6.1 Main workflow `ticket_pipeline`
 
-| # | nodeId | Type | Does | `success` → | `failure`/other → |
-|---|---|---|---|---|---|
-| 1 | `ticket_in` | `API_TRIGGER` | Receives ticket + project id | 2 | — |
-| 2 | `init_run` | `PROCESS_EXECUTOR` | `ticketkit init` (dirs, branch, worktree, snapshot) | 3 | `notify_fail` |
-| 3 | `triage` | `CLASSIFY` (Ollama) | D1 → `triage.json` | 4 | default D1 values → 4 |
-| 4 | `clarity_branch` | `BRANCH` | on `clarity` | `clear` → 6; `needs_clarification` → 5 | |
-| 5 | `ask_clarify` | `ASK` (human) | Collect answers, append to `ticket.json` | 6 | `notify_fail` |
-| 6 | `route` | `PROCESS_EXECUTOR` | `ticketkit route` applies Section 3.1 table → `routing.json` | 7 | `notify_fail` |
-| 7 | `architect` | LLM (Claude per routing) | Produces `spec.json` (with test-case table), `scaffold.patch` (stubs), or `NEEDS_CLARIFICATION` | 8 | `notify_fail` |
-| 8 | `validate_spec` | `PROCESS_EXECUTOR` | `ticketkit validate-spec` (Section 8.1) | 8b | back to 7 with validator errors, max 2 times, then `ask_human` |
-| 8b | `test_writer` | LLM (Claude, Section 3.1 tier); skipped when `tests_mode` is `existing`, `implementer_writes` or `architect_code` | Writes test files from stubs + case table (5.7) | 9 | `ask_human` |
-| 9 | `red_check` | `PROCESS_EXECUTOR` | `ticketkit gate-tests`: apply stubs and tests, compile, tag mapping, per-case red check, lint (Section 3.3, 8.1b), then lock test files | 10 | back to 8b once with gate errors, then back to 7 (max 2 architect rounds) |
-| 10 | `risk_branch` | `BRANCH` | on spec `risk` and policy | high → 11; else 12 | |
-| 11 | `approve_spec` | `ASK` / approval | Human approves spec | 12 | `notify_fail` |
-| 12 | `steps` | Sub-workflow fan-out | Run `step_workflow` per ready step (6.2) | 13 | `escalate` (6.3) |
-| 13 | `full_checks` | `PROCESS_EXECUTOR` | `ticketkit full-checks` (format, lint, typecheck, test_all, secret scan, diff-size budget) | 14 | `escalate` |
-| 14 | `review` | LLM (Claude per routing, fresh context) | Produces `ReviewResult` | 15 | `notify_fail` |
-| 15 | `verdict_branch` | `BRANCH` | on `verdict` | APPROVE → 16; CHANGES_REQUESTED → `escalate` (trigger `review_findings`) | |
-| 16 | `merge_gate` | `ASK`/approval (policy: always on high risk; else optional) | Human OK | 17 | `notify_fail` |
-| 17 | `finish` | `PROCESS_EXECUTOR` | `ticketkit finish` (open PR / merge per policy, summarize cost and attempts) | `notify_done` | — |
+| #   | nodeId           | Type                                                                                                              | Does                                                                                                                                    | `success` →                                                              | `failure`/other →                                                         |
+| --- | ---------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| 1   | `ticket_in`      | `API_TRIGGER`                                                                                                     | Receives ticket + project id                                                                                                            | 2                                                                        | —                                                                         |
+| 2   | `init_run`       | `PROCESS_EXECUTOR`                                                                                                | `ticketkit init` (dirs, branch, worktree, snapshot)                                                                                     | 3                                                                        | `notify_fail`                                                             |
+| 3   | `triage`         | `CLASSIFY` (Ollama)                                                                                               | D1 → `triage.json`                                                                                                                      | 4                                                                        | default D1 values → 4                                                     |
+| 4   | `clarity_branch` | `BRANCH`                                                                                                          | on `clarity`                                                                                                                            | `clear` → 6; `needs_clarification` → 5                                   |                                                                           |
+| 5   | `ask_clarify`    | `ASK` (human)                                                                                                     | Collect answers, append to `ticket.json`                                                                                                | 6                                                                        | `notify_fail`                                                             |
+| 6   | `route`          | `PROCESS_EXECUTOR`                                                                                                | `ticketkit route` applies Section 3.1 table → `routing.json`                                                                            | 7                                                                        | `notify_fail`                                                             |
+| 7   | `architect`      | LLM (Claude per routing)                                                                                          | Produces `spec.json` (with test-case table), `scaffold.patch` (stubs), or `NEEDS_CLARIFICATION`                                         | 8                                                                        | `notify_fail`                                                             |
+| 8   | `validate_spec`  | `PROCESS_EXECUTOR`                                                                                                | `ticketkit validate-spec` (Section 8.1)                                                                                                 | 8b                                                                       | back to 7 with validator errors, max 2 times, then `ask_human`            |
+| 8b  | `test_writer`    | LLM (Claude, Section 3.1 tier); skipped when `tests_mode` is `existing`, `implementer_writes` or `architect_code` | Writes test files from stubs + case table (5.7)                                                                                         | 9                                                                        | `ask_human`                                                               |
+| 9   | `red_check`      | `PROCESS_EXECUTOR`                                                                                                | `ticketkit gate-tests`: apply stubs and tests, compile, tag mapping, per-case red check, lint (Section 3.3, 8.1b), then lock test files | 10                                                                       | back to 8b once with gate errors, then back to 7 (max 2 architect rounds) |
+| 10  | `risk_branch`    | `BRANCH`                                                                                                          | on spec `risk` and policy                                                                                                               | high → 11; else 12                                                       |                                                                           |
+| 11  | `approve_spec`   | `ASK` / approval                                                                                                  | Human approves spec                                                                                                                     | 12                                                                       | `notify_fail`                                                             |
+| 12  | `steps`          | Sub-workflow fan-out                                                                                              | Run `step_workflow` per ready step (6.2)                                                                                                | 13                                                                       | `escalate` (6.3)                                                          |
+| 13  | `full_checks`    | `PROCESS_EXECUTOR`                                                                                                | `ticketkit full-checks` (format, lint, typecheck, test_all, secret scan, diff-size budget)                                              | 14                                                                       | `escalate`                                                                |
+| 14  | `review`         | LLM (Claude per routing, fresh context)                                                                           | Produces `ReviewResult`                                                                                                                 | 15                                                                       | `notify_fail`                                                             |
+| 15  | `verdict_branch` | `BRANCH`                                                                                                          | on `verdict`                                                                                                                            | APPROVE → 16; CHANGES_REQUESTED → `escalate` (trigger `review_findings`) |                                                                           |
+| 16  | `merge_gate`     | `ASK`/approval (policy: always on high risk; else optional)                                                       | Human OK                                                                                                                                | 17                                                                       | `notify_fail`                                                             |
+| 17  | `finish`         | `PROCESS_EXECUTOR`                                                                                                | `ticketkit finish` (open PR / merge per policy, summarize cost and attempts)                                                            | `notify_done`                                                            | —                                                                         |
 
 ### 6.2 Sub-workflow `step_workflow` (one execution per step)
 
 `ticketkit next-steps` returns the wave of steps whose `depends_on` are all `DONE`. Run a wave in parallel (separate worktrees, merged by code in step order; a merge conflict is an `infra_error`-class escalation). Loop until all steps are `DONE`.
 
-| # | nodeId | Type | Does |
-|---|---|---|---|
-| a | `pack` | `PROCESS_EXECUTOR` | `ticketkit pack-step` writes `packet.json` (attempt n, includes prior failure digests) |
-| b | `pick_model` | `PROCESS_EXECUTOR` | `ticketkit pick-model` applies the retry ladder (Section 9.1) → model + effort |
-| c | `implement` | LLM or restricted agent (Section 7) | Edits files in the worktree; emits `StepResult` |
-| d | `result_branch` | `BRANCH` | `DONE` → e; `BLOCKED` → `classify_blocked` (treated as spec problem, skip D2) |
-| e | `validate` | `PROCESS_EXECUTOR` | `ticketkit validate-step` runs the ladder (Section 8.2), writes `diff.patch`, `validation.json`; on failure writes `failure.json` |
-| f | `decide` | `PROCESS_EXECUTOR` | `ticketkit decide` applies Section 9 state machine; may call D2 via the next node |
-| g | `cause` | `CLASSIFY` (Ollama) | D2, only when `decide` says `needs_cause` |
-| h | `route_failure` | `BRANCH` | `retry` → a; `tier_up` → a; `revise` → `escalate`; `human` → `ask_human` |
-| i | `commit_step` | `PROCESS_EXECUTOR` | On pass: commit to run branch, mark step `DONE` |
+| #   | nodeId          | Type                                | Does                                                                                                                              |
+| --- | --------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| a   | `pack`          | `PROCESS_EXECUTOR`                  | `ticketkit pack-step` writes `packet.json` (attempt n, includes prior failure digests)                                            |
+| b   | `pick_model`    | `PROCESS_EXECUTOR`                  | `ticketkit pick-model` applies the retry ladder (Section 9.1) → model + effort                                                    |
+| c   | `implement`     | LLM or restricted agent (Section 7) | Edits files in the worktree; emits `StepResult`                                                                                   |
+| d   | `result_branch` | `BRANCH`                            | `DONE` → e; `BLOCKED` → `classify_blocked` (treated as spec problem, skip D2)                                                     |
+| e   | `validate`      | `PROCESS_EXECUTOR`                  | `ticketkit validate-step` runs the ladder (Section 8.2), writes `diff.patch`, `validation.json`; on failure writes `failure.json` |
+| f   | `decide`        | `PROCESS_EXECUTOR`                  | `ticketkit decide` applies Section 9 state machine; may call D2 via the next node                                                 |
+| g   | `cause`         | `CLASSIFY` (Ollama)                 | D2, only when `decide` says `needs_cause`                                                                                         |
+| h   | `route_failure` | `BRANCH`                            | `retry` → a; `tier_up` → a; `revise` → `escalate`; `human` → `ask_human`                                                          |
+| i   | `commit_step`   | `PROCESS_EXECUTOR`                  | On pass: commit to run branch, mark step `DONE`                                                                                   |
 
 ### 6.3 `escalate`
 
@@ -542,6 +614,7 @@ No conversational filler is consumed anywhere. Free text is limited to `notes` a
 ### 8.1 `validate-spec` (before any implementer runs)
 
 All MUST pass:
+
 1. `spec.json` validates against 5.1; `ticket_id` matches.
 2. Step graph is acyclic; ids unique; all `depends_on` exist.
 3. For each step: `write_files` ⊆ `scope.allowed_globs`, not in `forbidden_globs`, not in `locked_files`; `read_files` paths exist (or are created by the scaffold); line ranges within file length; `len(write_files) ≤ limits.max_files`.
@@ -575,14 +648,15 @@ After applying the stubs and the tests: build/typecheck succeeds (stubs compile)
 
 ### 9.1 Per-step ladder (`pick-model` / `decide`)
 
-| Attempt | Model/effort | Extra input |
-|---|---|---|
-| 1 | Assigned per 3.1 | — |
-| 2 | Same | Failure digest from attempt 1 |
-| 3 | One tier up (Haiku/medium → Sonnet/medium; Sonnet/medium → Sonnet/high) | Digests from attempts 1–2 |
-| after 3 | Architect revise | `RevisionRequest` |
+| Attempt | Model/effort                                                            | Extra input                   |
+| ------- | ----------------------------------------------------------------------- | ----------------------------- |
+| 1       | Assigned per 3.1                                                        | —                             |
+| 2       | Same                                                                    | Failure digest from attempt 1 |
+| 3       | One tier up (Haiku/medium → Sonnet/medium; Sonnet/medium → Sonnet/high) | Digests from attempts 1–2     |
+| after 3 | Architect revise                                                        | `RevisionRequest`             |
 
 Short-circuits (deterministic, no model):
+
 - `blocked_reported` with category `spec_conflict`, `contract_unclear`, `missing_context`, `needs_out_of_scope_change` → architect revise immediately.
 - `scope_violation`, `locked_file_modified`, `patch_apply_fail`, `format_fail`: retry same model once with the digest (these are usually mechanical).
 - `infra_error`, `timeout`: rerun once unchanged; second occurrence → `ask_human`.
@@ -590,13 +664,13 @@ Short-circuits (deterministic, no model):
 
 ### 9.2 Budgets (all configurable; defaults are starting points)
 
-| Budget | Default | On exceed |
-|---|---|---|
-| Attempts per step | 3 (+1 after a revision) | Architect revise, else human |
-| Architect revisions per run | 2 | Human |
-| Architect spec-validation retries | 2 | Human |
-| Cost per run (USD) | set per project | Pause, human |
-| Wall clock per run | set per project | Pause, human |
+| Budget                            | Default                 | On exceed                    |
+| --------------------------------- | ----------------------- | ---------------------------- |
+| Attempts per step                 | 3 (+1 after a revision) | Architect revise, else human |
+| Architect revisions per run       | 2                       | Human                        |
+| Architect spec-validation retries | 2                       | Human                        |
+| Cost per run (USD)                | set per project         | Pause, human                 |
+| Wall clock per run                | set per project         | Pause, human                 |
 
 ---
 
@@ -658,6 +732,7 @@ Return ReviewResult JSON. Every finding needs path, severity, and a concrete sug
 ## 11. Efficiency and tuning
 
 Efficiency rules:
+
 - Pass pointers and hashes between nodes; `ticketkit` loads slices.
 - Implementer context = one step + referenced line ranges + a ≤ 60-line conventions digest + prior failure digests. Nothing else.
 - Failure digests ≤ 2 KB, repo-only frames, first failing test only plus a failure count.
@@ -668,7 +743,25 @@ Efficiency rules:
 Telemetry: one line per model or tool call in `events.jsonl`:
 
 ```json
-{"ts":"2026-11-01T07:15:00Z","run_id":"...","node":"implement","role":"implementer","step_id":"S2","model":"haiku","effort":"medium","attempt":1,"status":"fail","fail_class":"test_fail","tokens_in":5200,"tokens_out":900,"cache_read_tokens":4100,"cache_write_tokens":0,"prefix_hash":"sha256:...","cost_usd":0.004,"duration_ms":14200}
+{
+  "ts": "2026-11-01T07:15:00Z",
+  "run_id": "...",
+  "node": "implement",
+  "role": "implementer",
+  "step_id": "S2",
+  "model": "haiku",
+  "effort": "medium",
+  "attempt": 1,
+  "status": "fail",
+  "fail_class": "test_fail",
+  "tokens_in": 5200,
+  "tokens_out": 900,
+  "cache_read_tokens": 4100,
+  "cache_write_tokens": 0,
+  "prefix_hash": "sha256:...",
+  "cost_usd": 0.004,
+  "duration_ms": 14200
+}
 ```
 
 Tuning loop (every ~50 steps or monthly): compute first-try pass rate and mean attempts by `(model, effort, step.complexity)`. Starting thresholds: if Haiku's first-try pass rate on `standard` steps is below 70%, make Sonnet/medium the default for them; if Sonnet's is above 90% on `tricky` steps at `high`, try `medium`. Also track how often D1 triage disagrees with the architect's final complexity, and how often D2 labels agree with the eventual resolution; if D2 accuracy is poor, drop it and use the plain ladder. Also report cost share by `role`; if `architect` plus `test_writer` exceed roughly half of cost per merged ticket on M/L tickets, revisit `tests_mode` defaults (fewer cases, cheaper test writer) before touching anything else.
@@ -694,14 +787,14 @@ Tuning loop (every ~50 steps or monthly): compute first-try pass rate and mean a
 
 Small steps reduce drift; steps that are too small lose context and break integration. Sizing is enforced by `validate-spec` lint (errors fail, warnings are fed back to the architect once).
 
-| Rule | Level |
-|---|---|
-| Max steps by complexity: S ≤ 2, M ≤ 5, L ≤ 8 (schema hard cap 12) | error |
-| Every step is independently verifiable: non-empty `covers`, or an existing-test command in `done_when` | error |
-| A step whose `write_files` are a subset of a dependency's `write_files`, with `max_diff_lines` < 20, should be merged into that dependency | error |
-| Layer-splitting the same unit ("write the signature", then "write the body") | prompt rule; the architect must keep one function or class in one step |
-| Step touches more than one concern (more than `max_files` or more than one module) | error |
-| Target size: one coherent unit, roughly 30–150 changed lines | warning outside the range |
+| Rule                                                                                                                                       | Level                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Max steps by complexity: S ≤ 2, M ≤ 5, L ≤ 8 (schema hard cap 12)                                                                          | error                                                                  |
+| Every step is independently verifiable: non-empty `covers`, or an existing-test command in `done_when`                                     | error                                                                  |
+| A step whose `write_files` are a subset of a dependency's `write_files`, with `max_diff_lines` < 20, should be merged into that dependency | error                                                                  |
+| Layer-splitting the same unit ("write the signature", then "write the body")                                                               | prompt rule; the architect must keep one function or class in one step |
+| Step touches more than one concern (more than `max_files` or more than one module)                                                         | error                                                                  |
+| Target size: one coherent unit, roughly 30–150 changed lines                                                                               | warning outside the range                                              |
 
 Runtime signals (from telemetry) to retune the lint thresholds: a `missing_context` BLOCKED rate above about 15% means steps are too small or the context too thin; steps repeatedly hitting `max_diff_lines` (over about 20%) means steps are too large.
 
@@ -712,12 +805,12 @@ Do not assume the two-tier setup pays off. A well-specified step may be done as 
 - `project.json` has `tier_mode: "two_tier" | "single"` and `implementer_override` (a model/effort pair, or null). With `single`, the implementer uses the architect's model; with `implementer_override`, every step uses that pair. The workflow itself does not change.
 - Run the golden tickets (13.2) under these configurations:
 
-| Config | Setup |
-|---|---|
-| A. Baseline | One Sonnet/high agent with the ticket and the same project validators (lint, typecheck, tests, scope check), no architect, no steps |
-| B. Single tier | Architect Sonnet/high, implementer Sonnet/medium (`tier_mode: single`) |
-| C. Two tier | Architect and implementer per Section 3.1 (Haiku implementer) |
-| D. Two tier, stronger junior | As C, with `implementer_override` Sonnet/medium |
+| Config                       | Setup                                                                                                                               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| A. Baseline                  | One Sonnet/high agent with the ticket and the same project validators (lint, typecheck, tests, scope check), no architect, no steps |
+| B. Single tier               | Architect Sonnet/high, implementer Sonnet/medium (`tier_mode: single`)                                                              |
+| C. Two tier                  | Architect and implementer per Section 3.1 (Haiku implementer)                                                                       |
+| D. Two tier, stronger junior | As C, with `implementer_override` Sonnet/medium                                                                                     |
 
 - Metrics per config: merged-without-human rate, attempts per step, human interventions, wall-clock time, and cost per merged ticket broken down by `role`.
 - **Decision rule.** Pick the cheapest configuration whose merged-without-human rate is within 5 points of the best. Keep the two-tier design only if its cost per merged ticket is at least 20% below the best single-tier configuration at that quality. If config A wins, the pipeline's value is the guardrails (validators, scope enforcement, review gate), not the architect/junior split; keep those and drop the split.
@@ -739,16 +832,16 @@ Do not assume the two-tier setup pays off. A well-specified step may be done as 
 
 Work in this order. Each milestone has an exit check; do not proceed until it passes.
 
-| M | Deliverable | Exit check |
-|---|---|---|
-| 0 | `verify.md` resolving every **VERIFY** item (Section 14) by reading Yukta's plugin docs, `GET /api/plugins/{type}`, and `examples/` | Each item answered with the exact node type/config or a documented workaround |
-| 1 | JSON Schemas (5.1–5.6) + `ticketkit validate-schema` + fixtures (valid and invalid) | Fixtures pass/fail as expected in CI |
-| 2 | `ticketkit` tools: `init`, `route` (incl. `tests_mode`), `validate-spec` (incl. sizing and parallel-safety lint), `gate-tests`, `pack-step` (byte-stable prefix), `validate-step`, `decide`, `full-checks`, `next-steps`, failure digester | Unit tests incl. fault injection in Section 13.1 |
-| 3 | Walking skeleton: one ticket, one step, no Ollama; Opus architect + test writer + Haiku implementer on a toy repo | Green end-to-end run; run dir matches Section 4; `events.jsonl` has `role` and cache fields |
-| 3b | One-tier-versus-two-tier experiment (11.4) on the golden tickets using the skeleton | Report with cost per merged ticket by config; decision recorded in `decisions.md` before M4 begins |
-| 4 | Retry ladder, BLOCKED handling, architect revision, budgets, `ask_human` | Fault-injection tests below pass |
-| 5 | Ollama D1/D2 (+ D3 optional), routing table, risk policy, approvals | Defaults used correctly when Ollama output is invalid |
-| 6 | Parallel waves with worktree merge and post-wave check (11.2), cache-hit and cost-by-role reporting, tuning report, sizing-lint retuning | Report generated from `events.jsonl` on 10 sample runs; cache hit ratio reported per role |
+| M   | Deliverable                                                                                                                                                                                                                                | Exit check                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| 0   | `verify.md` resolving every **VERIFY** item (Section 14) by reading Yukta's plugin docs, `GET /api/plugins/{type}`, and `examples/`                                                                                                        | Each item answered with the exact node type/config or a documented workaround                      |
+| 1   | JSON Schemas (5.1–5.6) + `ticketkit validate-schema` + fixtures (valid and invalid)                                                                                                                                                        | Fixtures pass/fail as expected in CI                                                               |
+| 2   | `ticketkit` tools: `init`, `route` (incl. `tests_mode`), `validate-spec` (incl. sizing and parallel-safety lint), `gate-tests`, `pack-step` (byte-stable prefix), `validate-step`, `decide`, `full-checks`, `next-steps`, failure digester | Unit tests incl. fault injection in Section 13.1                                                   |
+| 3   | Walking skeleton: one ticket, one step, no Ollama; Opus architect + test writer + Haiku implementer on a toy repo                                                                                                                          | Green end-to-end run; run dir matches Section 4; `events.jsonl` has `role` and cache fields        |
+| 3b  | One-tier-versus-two-tier experiment (11.4) on the golden tickets using the skeleton                                                                                                                                                        | Report with cost per merged ticket by config; decision recorded in `decisions.md` before M4 begins |
+| 4   | Retry ladder, BLOCKED handling, architect revision, budgets, `ask_human`                                                                                                                                                                   | Fault-injection tests below pass                                                                   |
+| 5   | Ollama D1/D2 (+ D3 optional), routing table, risk policy, approvals                                                                                                                                                                        | Defaults used correctly when Ollama output is invalid                                              |
+| 6   | Parallel waves with worktree merge and post-wave check (11.2), cache-hit and cost-by-role reporting, tuning report, sizing-lint retuning                                                                                                   | Report generated from `events.jsonl` on 10 sample runs; cache hit ratio reported per role          |
 
 ### 13.1 Required fault-injection tests (must all pass)
 
@@ -809,40 +902,40 @@ Read from `infenia/yukta` at commit `2769ea4` (2026-11-01): `CLAUDE.md`, module 
 
 ### 15.1 Reuse map (do not rebuild)
 
-| Spec concept | Already in the repo | Action |
-|---|---|---|
-| Orchestrator | Yukta workflows generated by Python (`scripts/gen-heal.py`, `gen-check.py`) into `session.json`; nodes `SUB_WORKFLOW`, `PROCESS_EXECUTOR`, `BRANCH`, `CLASSIFY`, `MAPPER`, `CONSTANT_SOURCE`, `OUTCOME_TERMINAL`; edges `{source, target, sourcePort}`; templating `${start.key}` | Add `scripts/gen-ticket.py` writing workflows `ticket` and `step` the same way. No Java needed. |
-| `ticketkit` CLI | Bash + `jq` + `python3` scripts and `yk` | Implement `ticketkit` as scripts in a new `examples/dogfood/ticket/` (same layout as `dogfood`). Add Go subcommands in `cli/` only if a server call is missing. |
-| Claude launcher | `scripts/claude.sh`: headless Claude, `--permission-mode auto --permission-prompts none` with a command allowlist, models pinned (`claude-haiku-5-5`, `claude-sonnet-5-5`), no user plugins/skills/MCP/CLAUDE.md (saves about 5k tokens per call), per-effort budget and time box, one constant role file per kind so the prompt cache holds | Extend: add `claude-opus-5-5`, and roles `architect`, `test_writer`, `implementer`, `reviewer` (each a constant file in `fixer-rules/`; "add the file and a line in the `case`"). |
-| Scoped validation | `yk plan` / `yk check [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--full]`; stages `spotless, compile, tests, coverage, style, spotbugs, licenses, security, ui_*, cli_*, reuse, docs, actionlint` | Step validation ladder (8.2) becomes calls to `yk check --no-heal --base <step base>`. |
-| Failure digest | One `RESULT status= failed_node= healed= execution= session=` line, `ERROR` lines, `OUTPUT <stage>:` (last 40 lines), `yk detail <session> <execution> [--grep P --tail N]`, JUnit XML in `<module>/build/test-results/test/` | Digester (5.4) parses these; never reads logs whole. |
-| Retry ladder, repair | `heal`: free fix, baseline check on clean `origin/main`, local-model triage easy/average/hard, ladders `haiku/low → sonnet/low`, `haiku/high → sonnet/low`, `sonnet/low`, guard, verify; $5 cap per check (`YUKTA_BUDGET_CHECK`) | Use for mechanical failures (15.5). |
-| Guard | After a fixer: rejects edits to `config/ build-logic/ gradle/ .github/ .claude/ examples/dogfood`, added suppressions, removed assertions, test expectations changed with no code change; optional model guard in `shadow` mode | Reuse the same rules in the per-step scope check. |
-| Local decision model | `decide NAME STATE QUESTION CRITERIA-JSON` in `scripts/_lib.sh`; modes `shadow/on/off`; `decisions.json` with `bar {minN: 50, minAgreement: 0.9}`; `yk stats --decisions`; Ollama model `tev1`; `yk advise` recommends a test tier | D1/D2/D3 become `decisions.json` entries (15.8). |
-| GitHub intake and PR | `pickup` skill and channel: assigned + Ready issues on project 5, status moves, worktree `../yukta-issue-<n>` on `issue/<n>`, draft PR with `Fixes #<n>` and the `RESULT` line, dead-end comment, `pickup_done` | Reuse its rules; the pipeline replaces its "implement" step (15.9). |
-| Telemetry | `~/.local/state/yukta-dev/heal-events.jsonl`, `yk stats` | Add `ticket-events.jsonl` beside it with the Section 11 fields. |
-| Run state | `.yukta-dev/` (gitignored, per checkout) | Run dir is `.yukta-dev/ticket/<run_id>/` instead of `.runs/`. |
-| Notifications and steering | `--detach --notify`, `yk watch|tree|pause|resume|stop|approve|reject` | Human gates use `yk approve|reject`; no new UI. |
-| Test-case table | Skills `generate-test-cases` (list cases, no code) and `generate-tests` (case list, then code); `.claude/skills/tests/rules/{general,java,post-generation}` | This is the 3.3 split. The architect's table follows `generate-test-cases`; the test writer's conventions digest is built from the `tests` rules. Headless Claude does not load skills, so inline the digest in the role file. |
-| Architect and reviewer personas | `.claude/agents/code-architect.md`, `code-reviewer.md` | Base the architect and reviewer role files on them. |
-| Mutation testing | `build-logic` `mutation-conventions`: pitest with `-Pmutation`, `-PmutationTargets=<class globs>`, disabled for `:boot`, `:plus:*`, `:test-support`; CI `mutation.yml` with a ratchet | Optional gate in 8.3 (15.6). |
+| Spec concept                    | Already in the repo                                                                                                                                                                                                                                                                                                                          | Action                                                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Orchestrator                    | Yukta workflows generated by Python (`scripts/gen-heal.py`, `gen-check.py`) into `session.json`; nodes `SUB_WORKFLOW`, `PROCESS_EXECUTOR`, `BRANCH`, `CLASSIFY`, `MAPPER`, `CONSTANT_SOURCE`, `OUTCOME_TERMINAL`; edges `{source, target, sourcePort}`; templating `${start.key}`                                                            | Add `scripts/gen-ticket.py` writing workflows `ticket` and `step` the same way. No Java needed.                                                                                                                                |
+| `ticketkit` CLI                 | Bash + `jq` + `python3` scripts and `yk`                                                                                                                                                                                                                                                                                                     | Implement `ticketkit` as scripts in a new `examples/dogfood/ticket/` (same layout as `dogfood`). Add Go subcommands in `cli/` only if a server call is missing.                                                                |
+| Claude launcher                 | `scripts/claude.sh`: headless Claude, `--permission-mode auto --permission-prompts none` with a command allowlist, models pinned (`claude-haiku-5-5`, `claude-sonnet-5-5`), no user plugins/skills/MCP/CLAUDE.md (saves about 5k tokens per call), per-effort budget and time box, one constant role file per kind so the prompt cache holds | Extend: add `claude-opus-5-5`, and roles `architect`, `test_writer`, `implementer`, `reviewer` (each a constant file in `fixer-rules/`; "add the file and a line in the `case`").                                              |
+| Scoped validation               | `yk plan` / `yk check [--base REF] [--stage a,b] [--skip a,b] [--no-heal] [--full]`; stages `spotless, compile, tests, coverage, style, spotbugs, licenses, security, ui_*, cli_*, reuse, docs, actionlint`                                                                                                                                  | Step validation ladder (8.2) becomes calls to `yk check --no-heal --base <step base>`.                                                                                                                                         |
+| Failure digest                  | One `RESULT status= failed_node= healed= execution= session=` line, `ERROR` lines, `OUTPUT <stage>:` (last 40 lines), `yk detail <session> <execution> [--grep P --tail N]`, JUnit XML in `<module>/build/test-results/test/`                                                                                                                | Digester (5.4) parses these; never reads logs whole.                                                                                                                                                                           |
+| Retry ladder, repair            | `heal`: free fix, baseline check on clean `origin/main`, local-model triage easy/average/hard, ladders `haiku/low → sonnet/low`, `haiku/high → sonnet/low`, `sonnet/low`, guard, verify; $5 cap per check (`YUKTA_BUDGET_CHECK`)                                                                                                             | Use for mechanical failures (15.5).                                                                                                                                                                                            |
+| Guard                           | After a fixer: rejects edits to `config/ build-logic/ gradle/ .github/ .claude/ examples/dogfood`, added suppressions, removed assertions, test expectations changed with no code change; optional model guard in `shadow` mode                                                                                                              | Reuse the same rules in the per-step scope check.                                                                                                                                                                              |
+| Local decision model            | `decide NAME STATE QUESTION CRITERIA-JSON` in `scripts/_lib.sh`; modes `shadow/on/off`; `decisions.json` with `bar {minN: 50, minAgreement: 0.9}`; `yk stats --decisions`; Ollama model `tev1`; `yk advise` recommends a test tier                                                                                                           | D1/D2/D3 become `decisions.json` entries (15.8).                                                                                                                                                                               |
+| GitHub intake and PR            | `pickup` skill and channel: assigned + Ready issues on project 5, status moves, worktree `../yukta-issue-<n>` on `issue/<n>`, draft PR with `Fixes #<n>` and the `RESULT` line, dead-end comment, `pickup_done`                                                                                                                              | Reuse its rules; the pipeline replaces its "implement" step (15.9).                                                                                                                                                            |
+| Telemetry                       | `~/.local/state/yukta-dev/heal-events.jsonl`, `yk stats`                                                                                                                                                                                                                                                                                     | Add `ticket-events.jsonl` beside it with the Section 11 fields.                                                                                                                                                                |
+| Run state                       | `.yukta-dev/` (gitignored, per checkout)                                                                                                                                                                                                                                                                                                     | Run dir is `.yukta-dev/ticket/<run_id>/` instead of `.runs/`.                                                                                                                                                                  |
+| Notifications and steering      | `--detach --notify`, `yk watch                                                                                                                                                                                                                                                                                                               | tree                                                                                                                                                                                                                           | pause | resume | stop | approve | reject` | Human gates use `yk approve | reject`; no new UI. |
+| Test-case table                 | Skills `generate-test-cases` (list cases, no code) and `generate-tests` (case list, then code); `.claude/skills/tests/rules/{general,java,post-generation}`                                                                                                                                                                                  | This is the 3.3 split. The architect's table follows `generate-test-cases`; the test writer's conventions digest is built from the `tests` rules. Headless Claude does not load skills, so inline the digest in the role file. |
+| Architect and reviewer personas | `.claude/agents/code-architect.md`, `code-reviewer.md`                                                                                                                                                                                                                                                                                       | Base the architect and reviewer role files on them.                                                                                                                                                                            |
+| Mutation testing                | `build-logic` `mutation-conventions`: pitest with `-Pmutation`, `-PmutationTargets=<class globs>`, disabled for `:boot`, `:plus:*`, `:test-support`; CI `mutation.yml` with a ratchet                                                                                                                                                        | Optional gate in 8.3 (15.6).                                                                                                                                                                                                   |
 
 ### 15.2 Verify items answered by the repo
 
-| Section 14 item | Answer |
-|---|---|
-| 1 Calling Claude | Not an LLM node: `PROCESS_EXECUTOR` running `scripts/claude.sh` (prompt JSON on stdin; env `YK_MODEL`, `YK_EFFORT`, `YK_SCHEMA`, `YK_RULES`, `YK_STAGE`, `YK_SESSION`, `YK_CLAUDE_BIN`); structured output via `YK_SCHEMA`. |
-| 2 Ollama for decisions | `decide` helper and `decisions.json`/`heal.json` (`triage.model`, `triage.url`, overrides `YUKTA_TRIAGE_MODEL`, `YUKTA_TRIAGE_URL`, `YUKTA_DECISION_*`). The `triage.url` in `heal.json` is a fixed LAN address; make it an override per machine. |
-| 3 Edge ports, templating | `{"source","target","sourcePort"}`; `${start.key}`; `engine: {onError: "ROUTE"}`; `routeByExitCode`, `routeByOutcome`, `failureMode: CONTINUE`. |
-| 4 Fan-out | `SUB_WORKFLOW` with `workflowId`, `payload`, `timeoutSeconds`, `routeByOutcome`; concurrency via `engine.concurrencyGroup` (`tool` has 2 places; `claude` is its own group). Parallel waves: `SPLITTER` plus `SUB_WORKFLOW` with `concurrency` works (confirmed in `examples/dogfood/ticket/verify.md`). |
-| 5 Executor allowlist | Allowlist is server config; dogfood scripts run under `yk`. **VERIFY** exact property for `ticketkit` scripts. |
-| 6 Tool-using implementer | Headless Claude Code through `claude.sh` (already the repo's pattern). |
-| 7 Approvals | `yk approve|reject`, `--notify` posts approvals into the Claude Code session. |
-| 8 Persistence | Sessions in memory: the generated `session.json` is applied on every run; keep `gen-ticket.py` output committed like the others. |
-| 9 Alpha | Dev server is built from `origin/main` (`yk up`), so workflow format changes arrive with the repo itself. |
-| 10 Per-test report | JUnit XML (Gradle), `vitest --reporter=json` (**VERIFY** flags), `go test -json`. |
-| 11 Mutation tool | pitest (15.6). |
-| Caching (item 9 in 11.1) | `claude.sh` already keeps role files constant per kind for cache hits; adopt the same rule for the new roles. Hit counts: **VERIFY** whether `claude` output exposes cache tokens. |
+| Section 14 item          | Answer                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 Calling Claude         | Not an LLM node: `PROCESS_EXECUTOR` running `scripts/claude.sh` (prompt JSON on stdin; env `YK_MODEL`, `YK_EFFORT`, `YK_SCHEMA`, `YK_RULES`, `YK_STAGE`, `YK_SESSION`, `YK_CLAUDE_BIN`); structured output via `YK_SCHEMA`.                                                                              |
+| 2 Ollama for decisions   | `decide` helper and `decisions.json`/`heal.json` (`triage.model`, `triage.url`, overrides `YUKTA_TRIAGE_MODEL`, `YUKTA_TRIAGE_URL`, `YUKTA_DECISION_*`). The `triage.url` in `heal.json` is a fixed LAN address; make it an override per machine.                                                        |
+| 3 Edge ports, templating | `{"source","target","sourcePort"}`; `${start.key}`; `engine: {onError: "ROUTE"}`; `routeByExitCode`, `routeByOutcome`, `failureMode: CONTINUE`.                                                                                                                                                          |
+| 4 Fan-out                | `SUB_WORKFLOW` with `workflowId`, `payload`, `timeoutSeconds`, `routeByOutcome`; concurrency via `engine.concurrencyGroup` (`tool` has 2 places; `claude` is its own group). Parallel waves: `SPLITTER` plus `SUB_WORKFLOW` with `concurrency` works (confirmed in `examples/dogfood/ticket/verify.md`). |
+| 5 Executor allowlist     | Allowlist is server config; dogfood scripts run under `yk`. **VERIFY** exact property for `ticketkit` scripts.                                                                                                                                                                                           |
+| 6 Tool-using implementer | Headless Claude Code through `claude.sh` (already the repo's pattern).                                                                                                                                                                                                                                   |
+| 7 Approvals              | `yk approve                                                                                                                                                                                                                                                                                              | reject`, `--notify` posts approvals into the Claude Code session. |
+| 8 Persistence            | Sessions in memory: the generated `session.json` is applied on every run; keep `gen-ticket.py` output committed like the others.                                                                                                                                                                         |
+| 9 Alpha                  | Dev server is built from `origin/main` (`yk up`), so workflow format changes arrive with the repo itself.                                                                                                                                                                                                |
+| 10 Per-test report       | JUnit XML (Gradle), `vitest --reporter=json` (**VERIFY** flags), `go test -json`.                                                                                                                                                                                                                        |
+| 11 Mutation tool         | pitest (15.6).                                                                                                                                                                                                                                                                                           |
+| Caching (item 9 in 11.1) | `claude.sh` already keeps role files constant per kind for cache hits; adopt the same rule for the new roles. Hit counts: **VERIFY** whether `claude` output exposes cache tokens.                                                                                                                       |
 
 ### 15.3 Workflows and commands
 
@@ -877,15 +970,25 @@ New in `examples/dogfood/ticket/`, mirroring `dogfood`: `yk ticket run <issue>`,
     "git": [".claude/rules/git-workflow.md", ".git-commit-guide.md"]
   },
   "high_risk_paths": [
-    "build-logic/**", "gradle/**", "config/**", ".github/**", ".claude/**", "examples/dogfood/**",
-    "release/**", "plus/**", "boot/**/META-INF/native-image/**",
-    "settings.gradle.kts", "build.gradle.kts", "gradle.properties",
-    "ui/package.json", "ui/pnpm-lock.yaml", "cli/go.mod", "cli/go.sum", "**/security/**"
+    "build-logic/**",
+    "gradle/**",
+    "config/**",
+    ".github/**",
+    ".claude/**",
+    "examples/dogfood/**",
+    "release/**",
+    "plus/**",
+    "boot/**/META-INF/native-image/**",
+    "settings.gradle.kts",
+    "build.gradle.kts",
+    "gradle.properties",
+    "ui/package.json",
+    "ui/pnpm-lock.yaml",
+    "cli/go.mod",
+    "cli/go.sum",
+    "**/security/**"
   ],
-  "denied_read": [
-    "**/pnpm-lock.yaml", "**/openapi.json", "**/*.generated.*",
-    "**/META-INF/native-image/**/*", "**/dogfood/session.json"
-  ],
+  "denied_read": ["**/pnpm-lock.yaml", "**/openapi.json", "**/*.generated.*", "**/META-INF/native-image/**/*", "**/dogfood/session.json"],
   "generated": [
     {
       "glob": "ui/openapi.json",
@@ -904,7 +1007,12 @@ New in `examples/dogfood/ticket/`, mirroring `dogfood`: `yk ticket run <issue>`,
     }
   ],
   "default_limits": { "max_diff_lines": 200, "max_files_per_step": 4 },
-  "tests": { "max_cases_total": 25, "max_test_lines": 150, "case_tag_format": "[{id}]", "report_format": "junit-xml|vitest-json|go-test-json" },
+  "tests": {
+    "max_cases_total": 25,
+    "max_test_lines": 150,
+    "case_tag_format": "[{id}]",
+    "report_format": "junit-xml|vitest-json|go-test-json"
+  },
   "tier_mode": "two_tier",
   "implementer_override": null,
   "max_parallel": 2,
@@ -919,16 +1027,16 @@ Notes: `docs/api/openapi.json` is a hand-kept second API snapshot (denied for re
 
 Module routing (deterministic, from the changed path, same classification as `plan.sh`):
 
-| Path | Ecosystem | Stages (from `yk plan`) | Notes for the architect |
-|---|---|---|---|
-| `<module>/src/**` with `build.gradle.kts` (core, web, mcp, plugin-api, plugins/*, messaging, boot, plus/*) | Java 25, Spring WebFlux | spotless, compile, tests, coverage, style, spotbugs, licenses, security (+ dependants compile and test) | Records over `@Value/@Data`; Lombok `@RequiredArgsConstructor`, `@Slf4j`, `@UtilityClass`, `@Builder` (more than 3 optional fields), `@With`; Google Java Style, 2 spaces, 100 columns; Apache header (Spotless); reactive tests with `StepVerifier`; test class `<Class>Test` next to the class. |
-| `ui/**` | React 19, Vite 8, Tailwind 4, TanStack Query 5, React Router 8, pnpm | eslint and prettier on changed files, `vitest` related with coverage on those files, `tsc` on the whole project | Calls go through `yk tool -C ui ...` (corepack's pnpm shim is not reliable; plan uses `node_modules/.bin`). API types come from `openapi.json` (15.7). |
-| `cli/**` | Go 1.26, Cobra | whole module (`go test` is cached); vuln scan only if `go.mod`/`go.sum` changed | `:cli:check` requires 100% coverage per function; exit codes are a contract (0 ok, 1 other, 2 usage, 3 not found, 4 server, 5 timeout); dogfood scripts are thin wrappers over this CLI. |
-| `build-logic/**`, `gradle/**`, `config/**`, root build files | Gradle conventions | every stage, unscoped | `high_risk`: approval gate; agents may edit only if the issue is about them. |
-| `.github/**` | Actions and scripts | `actionlint`; script tests `*.test.sh` | `plan-vs-ci.test.sh` keeps `plan.sh` and `ci-tasks.sh` equal: always run it when either changes. |
-| `docs/**` | Mintlify docs | `docs` (`mint broken-links`) | No SPDX headers in `.md` (REUSE covers them). |
-| any | REUSE | `reuse lint`; free fix `scripts/fix-reuse.sh` | New file types need a header or `.license` sidecar. |
-| `release/**`, `plus/**`, `boot/**/META-INF/native-image/**` | release, persistence, GraalVM | per module | `high_risk`; native image reflection config is regenerated by the agent described in `boot/CLAUDE.md`, never edited by hand. |
+| Path                                                                                                       | Ecosystem                                                            | Stages (from `yk plan`)                                                                                         | Notes for the architect                                                                                                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<module>/src/**` with `build.gradle.kts` (core, web, mcp, plugin-api, plugins/_, messaging, boot, plus/_) | Java 25, Spring WebFlux                                              | spotless, compile, tests, coverage, style, spotbugs, licenses, security (+ dependants compile and test)         | Records over `@Value/@Data`; Lombok `@RequiredArgsConstructor`, `@Slf4j`, `@UtilityClass`, `@Builder` (more than 3 optional fields), `@With`; Google Java Style, 2 spaces, 100 columns; Apache header (Spotless); reactive tests with `StepVerifier`; test class `<Class>Test` next to the class. |
+| `ui/**`                                                                                                    | React 19, Vite 8, Tailwind 4, TanStack Query 5, React Router 8, pnpm | eslint and prettier on changed files, `vitest` related with coverage on those files, `tsc` on the whole project | Calls go through `yk tool -C ui ...` (corepack's pnpm shim is not reliable; plan uses `node_modules/.bin`). API types come from `openapi.json` (15.7).                                                                                                                                            |
+| `cli/**`                                                                                                   | Go 1.26, Cobra                                                       | whole module (`go test` is cached); vuln scan only if `go.mod`/`go.sum` changed                                 | `:cli:check` requires 100% coverage per function; exit codes are a contract (0 ok, 1 other, 2 usage, 3 not found, 4 server, 5 timeout); dogfood scripts are thin wrappers over this CLI.                                                                                                          |
+| `build-logic/**`, `gradle/**`, `config/**`, root build files                                               | Gradle conventions                                                   | every stage, unscoped                                                                                           | `high_risk`: approval gate; agents may edit only if the issue is about them.                                                                                                                                                                                                                      |
+| `.github/**`                                                                                               | Actions and scripts                                                  | `actionlint`; script tests `*.test.sh`                                                                          | `plan-vs-ci.test.sh` keeps `plan.sh` and `ci-tasks.sh` equal: always run it when either changes.                                                                                                                                                                                                  |
+| `docs/**`                                                                                                  | Mintlify docs                                                        | `docs` (`mint broken-links`)                                                                                    | No SPDX headers in `.md` (REUSE covers them).                                                                                                                                                                                                                                                     |
+| any                                                                                                        | REUSE                                                                | `reuse lint`; free fix `scripts/fix-reuse.sh`                                                                   | New file types need a header or `.license` sidecar.                                                                                                                                                                                                                                               |
+| `release/**`, `plus/**`, `boot/**/META-INF/native-image/**`                                                | release, persistence, GraalVM                                        | per module                                                                                                      | `high_risk`; native image reflection config is regenerated by the agent described in `boot/CLAUDE.md`, never edited by hand.                                                                                                                                                                      |
 
 ### 15.5 Validation and retry for this stack (replaces 8.2 and 9.1)
 
@@ -942,14 +1050,14 @@ Step validation, run in the step's worktree with `--base <commit before the step
 
 Failure routing (deterministic, first match):
 
-| Failing stage | First response | Next |
-|---|---|---|
-| `spotless`, `reuse` | free fix, no model | — |
+| Failing stage                                                                     | First response                                                                                                                  | Next                                                                             |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `spotless`, `reuse`                                                               | free fix, no model                                                                                                              | —                                                                                |
 | `style` (Checkstyle, PMD), `spotbugs`, `ui_*` lint/format/`tsc`, `cli_*` vet/lint | hand to **`heal`** (role files `fixer-rules/pmd.md`, `spotbugs.md`, `ui.md`, `go.md` exist; Haiku first, baseline check, guard) | scope re-check after heal; if heal fails or the guard rejects → architect revise |
-| `compile`, `tests` (a covered case), `coverage` | **implementer retry** with step packet plus digest (the step's intent is needed); attempt 2 same tier, attempt 3 one tier up | architect revise |
-| any stage that already fails on clean `origin/main` (heal's baseline check) | not the implementer's fault: record as `baseline_failure`, continue or ask human per policy | — |
-| `licenses`, `security` | never healed | human |
-| `BLOCKED` from the implementer | architect revise at once | — |
+| `compile`, `tests` (a covered case), `coverage`                                   | **implementer retry** with step packet plus digest (the step's intent is needed); attempt 2 same tier, attempt 3 one tier up    | architect revise                                                                 |
+| any stage that already fails on clean `origin/main` (heal's baseline check)       | not the implementer's fault: record as `baseline_failure`, continue or ask human per policy                                     | —                                                                                |
+| `licenses`, `security`                                                            | never healed                                                                                                                    | human                                                                            |
+| `BLOCKED` from the implementer                                                    | architect revise at once                                                                                                        | —                                                                                |
 
 Heal edits the checkout without knowing `write_files`: always re-run the scope check after heal and revert anything outside it.
 
@@ -975,12 +1083,12 @@ Effort names: the repo has only `low` and `high` (`heal.json` efforts: 600 s/$0.
 
 Add entries to `decisions.json`, all starting in `shadow` mode, so the static rule decides and the model only logs until `yk stats --decisions` shows `minN` 50 and agreement 0.9:
 
-| Decision | Static rule (decides in shadow) | Labels the model picks from |
-|---|---|---|
-| `triage_complexity` | acceptance-criteria count in the issue: ≤ 2 → S, ≤ 5 → M, else L; any module outside one ecosystem → at least M | S, M, L |
-| `triage_risk` | `high` if labels include `risk` or `security`, or any `high_risk_paths` hit, or touches more than one module; else low/medium by module count | low, medium, high |
-| `cause` (D2) | stage and failure class table in 15.5; unknown → `impl_bug` | `impl_bug, spec_gap, spec_conflict, flaky` |
-| `merge_risk` (D3, optional) | diff stats and risk | integer 0–10 |
+| Decision                    | Static rule (decides in shadow)                                                                                                               | Labels the model picks from                |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `triage_complexity`         | acceptance-criteria count in the issue: ≤ 2 → S, ≤ 5 → M, else L; any module outside one ecosystem → at least M                               | S, M, L                                    |
+| `triage_risk`               | `high` if labels include `risk` or `security`, or any `high_risk_paths` hit, or touches more than one module; else low/medium by module count | low, medium, high                          |
+| `cause` (D2)                | stage and failure class table in 15.5; unknown → `impl_bug`                                                                                   | `impl_bug, spec_gap, spec_conflict, flaky` |
+| `merge_risk` (D3, optional) | diff stats and risk                                                                                                                           | integer 0–10                               |
 
 Not decided by the model: `kind` comes from the issue's `type/*` label (`type/feature|bugfix|chore|refactor|docs|test`), the module from the module labels (`core`, `web`, `ui`, `cli`, `plugins`, ...), and clarity from whether the issue has acceptance criteria (the `pickup` skill already treats "no acceptance criteria" as not Ready). `yk advise` (path-based test tier floor, can only widen) feeds step scoping. Digests sent to the model contain per-file facts, never diffs, as the repo already does for `guard`, and respect `YUKTA_DECISION_MAX_INPUT`.
 
@@ -996,6 +1104,7 @@ Not decided by the model: `kind` comes from the issue's `type/*` label (`type/fe
 8. **Never:** merge the PR, push to `main`, close the issue, or use `--dangerously-skip-permissions`.
 
 Integration modes (pick one for Milestone 3):
+
 - **A. Headless (recommended for cost):** `yk ticket run <issue>` runs the whole pipeline; `pickup tick` can call it instead of handing the issue to an interactive session.
 - **B. Interactive architect:** the interactive `pickup` session acts as architect (a `ticket-architect` skill writes `spec.json`), then calls `yk ticket exec <spec>` for the headless steps. More human steering, higher token cost.
 
@@ -1023,16 +1132,16 @@ Integration modes (pick one for Milestone 3):
 
 ### 15.12 Revised milestones for this repo
 
-| M | Deliverable | Exit check |
-|---|---|---|
-| 0 | `verify.md` for the remaining VERIFY items in this section only (effort mapping, stage names, splitter, executor allowlist, `docs/api/openapi.json` regeneration, cache tokens) | Each answered with a command or file reference |
-| 1 | Schemas (5.1–5.7), `project.json` above, role files (architect, test_writer, implementer, reviewer), `claude.sh` Opus support | `scripts/test-fixer-role.sh`-style offline test passes for new roles |
-| 2 | `ticketkit` scripts: `init`, `route`, `validate-spec`, `gate-tests`, `pack-step`, `scope-check`, `digest`, `finish`; unit tests with fake Claude | Section 13.1 and 15.13 fault tests pass offline |
-| 3 | `gen-ticket.py` → workflows `ticket` and `step`; walking skeleton on a toy issue in one module (S, one step) | Green run through `yk ticket run`; draft PR opened |
-| 3b | One-tier vs two-tier experiment (11.4) on golden tickets | Decision recorded before M4 |
-| 4 | Heal integration and failure routing (15.5), architect revision, budgets, approvals | Fault tests for retry and heal pass |
-| 5 | Decisions in shadow mode (15.8), `yk stats --decisions` report | Report on at least 20 tickets, switch to `on` only past the bar |
-| 6 | Parallel waves with 2 slots, post-wave check, mutation gate, cost-by-role report | Report from `ticket-events.jsonl` |
+| M   | Deliverable                                                                                                                                                                     | Exit check                                                           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 0   | `verify.md` for the remaining VERIFY items in this section only (effort mapping, stage names, splitter, executor allowlist, `docs/api/openapi.json` regeneration, cache tokens) | Each answered with a command or file reference                       |
+| 1   | Schemas (5.1–5.7), `project.json` above, role files (architect, test_writer, implementer, reviewer), `claude.sh` Opus support                                                   | `scripts/test-fixer-role.sh`-style offline test passes for new roles |
+| 2   | `ticketkit` scripts: `init`, `route`, `validate-spec`, `gate-tests`, `pack-step`, `scope-check`, `digest`, `finish`; unit tests with fake Claude                                | Section 13.1 and 15.13 fault tests pass offline                      |
+| 3   | `gen-ticket.py` → workflows `ticket` and `step`; walking skeleton on a toy issue in one module (S, one step)                                                                    | Green run through `yk ticket run`; draft PR opened                   |
+| 3b  | One-tier vs two-tier experiment (11.4) on golden tickets                                                                                                                        | Decision recorded before M4                                          |
+| 4   | Heal integration and failure routing (15.5), architect revision, budgets, approvals                                                                                             | Fault tests for retry and heal pass                                  |
+| 5   | Decisions in shadow mode (15.8), `yk stats --decisions` report                                                                                                                  | Report on at least 20 tickets, switch to `on` only past the bar      |
+| 6   | Parallel waves with 2 slots, post-wave check, mutation gate, cost-by-role report                                                                                                | Report from `ticket-events.jsonl`                                    |
 
 ### 15.13 Additional fault-injection tests for this stack
 

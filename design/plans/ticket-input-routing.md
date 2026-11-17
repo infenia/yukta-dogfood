@@ -24,21 +24,21 @@ A question may hold several sub-questions (kind `STRUCTURED`); the answer carrie
 
 ## 2. What exists and what is missing
 
-| Piece | State |
-|---|---|
-| `InputGateway`, `ASK_INPUT` (kinds APPROVAL, CHOICE, TEXT, STRUCTURED; `route`, `risk`, `ttlSeconds`, `onTimeout`) | merged |
-| Routes and tiers: `FIRST`/`QUORUM`/`UNANIMOUS`, `minConfidence`, `EscalateInputCommand` advice, tier timers, `HUMAN` type for HIGH risk | merged (#1796 part 1) |
-| One-time token endpoint, delivery outbox, `WebhookInputResponder` | merged (#1796 part 2) |
-| Workflow-backed supervisor, internal session, hidden runs | merged (#1798 parts 1 to 3; part 3 in review) |
-| Pull path: SSE `/api/events/stream` and MCP `list_pending_inputs`, `answer_input`, `escalate_input` | merged (#1793) |
-| Pickup channel: oldest idle session gets the issue, pushed as a `<channel>` event | merged (dogfood) |
-| Ticket gates (`approve_spec`, pause, `approve_merge`) are `ASK_INPUT` nodes | merged, but with no route, no issue metadata and approve/reject only |
-| **Input bridge**: a request reaching a tier notifies the right channel session | missing |
-| **Session mode of pickup**: the session receives the issue and runs `yk ticket run` itself | missing (today `pickup tick` runs the pipeline itself, mode `ticket`) |
-| **Dogfood supervisor workflow** and the `ticket` route | missing |
-| **Answer key limited to one run** | to verify against `DefaultAnswerAuthorizer` rules (`audience`, `scope`) |
-| **Questions from the architect** (`NEEDS_CLARIFICATION`) as one multi-question request | missing |
-| **A headless implementer asking mid-step** | out of scope (section 8) |
+| Piece                                                                                                                                   | State                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `InputGateway`, `ASK_INPUT` (kinds APPROVAL, CHOICE, TEXT, STRUCTURED; `route`, `risk`, `ttlSeconds`, `onTimeout`)                      | merged                                                                  |
+| Routes and tiers: `FIRST`/`QUORUM`/`UNANIMOUS`, `minConfidence`, `EscalateInputCommand` advice, tier timers, `HUMAN` type for HIGH risk | merged (#1796 part 1)                                                   |
+| One-time token endpoint, delivery outbox, `WebhookInputResponder`                                                                       | merged (#1796 part 2)                                                   |
+| Workflow-backed supervisor, internal session, hidden runs                                                                               | merged (#1798 parts 1 to 3; part 3 in review)                           |
+| Pull path: SSE `/api/events/stream` and MCP `list_pending_inputs`, `answer_input`, `escalate_input`                                     | merged (#1793)                                                          |
+| Pickup channel: oldest idle session gets the issue, pushed as a `<channel>` event                                                       | merged (dogfood)                                                        |
+| Ticket gates (`approve_spec`, pause, `approve_merge`) are `ASK_INPUT` nodes                                                             | merged, but with no route, no issue metadata and approve/reject only    |
+| **Input bridge**: a request reaching a tier notifies the right channel session                                                          | missing                                                                 |
+| **Session mode of pickup**: the session receives the issue and runs `yk ticket run` itself                                              | missing (today `pickup tick` runs the pipeline itself, mode `ticket`)   |
+| **Dogfood supervisor workflow** and the `ticket` route                                                                                  | missing                                                                 |
+| **Answer key limited to one run**                                                                                                       | to verify against `DefaultAnswerAuthorizer` rules (`audience`, `scope`) |
+| **Questions from the architect** (`NEEDS_CLARIFICATION`) as one multi-question request                                                  | missing                                                                 |
+| **A headless implementer asking mid-step**                                                                                              | out of scope (section 8)                                                |
 
 ## 3. Components
 
@@ -49,9 +49,9 @@ Configured once (`yukta.input.routes.ticket`, or the session's `input.route`), c
 ```yaml
 yukta.input.routes.ticket:
   tiers:
-    - { name: supervisor, responders: ["supervisor:dogfood-ticket"], timeout: 60s, mode: FIRST, minConfidence: 0.85, type: AUTO }
-    - { name: session,    responders: ["role:OPERATOR"],              timeout: 30m, type: AUTO }   # the channel session answers with its key
-    - { name: human,      responders: ["role:OPERATOR"],              timeout: 24h, type: HUMAN }
+    - { name: supervisor, responders: ['supervisor:dogfood-ticket'], timeout: 60s, mode: FIRST, minConfidence: 0.85, type: AUTO }
+    - { name: session, responders: ['role:OPERATOR'], timeout: 30m, type: AUTO } # the channel session answers with its key
+    - { name: human, responders: ['role:OPERATOR'], timeout: 24h, type: HUMAN }
   on-final-timeout: FAIL
 ```
 
@@ -95,13 +95,13 @@ The channel session answers with an OPERATOR key limited to the `dogfood` sessio
 
 ## 5. Failure and recovery
 
-| Case | Behaviour |
-|---|---|
-| Session dies or is closed | requests at its tier time out (30 min) and escalate to the human tier; `yk ticket status` shows them; `yk approve`/UI still answer |
-| Bridge down | the request waits at its tier; the tier timer escalates it; nothing is lost (the broker is the source of truth) |
-| Two answers | the broker's CAS rejects the second (409), the session reads the answer and goes on |
-| Supervisor answers wrongly (shadow off) | audited; it can be turned back to shadow by one config change; the person can still answer first at any tier |
-| Server restart | open requests are in memory (phase 9, Plus, makes them durable); the ticket run resumes with `yk ticket resume` and asks again (idempotent by key) |
+| Case                                    | Behaviour                                                                                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session dies or is closed               | requests at its tier time out (30 min) and escalate to the human tier; `yk ticket status` shows them; `yk approve`/UI still answer                 |
+| Bridge down                             | the request waits at its tier; the tier timer escalates it; nothing is lost (the broker is the source of truth)                                    |
+| Two answers                             | the broker's CAS rejects the second (409), the session reads the answer and goes on                                                                |
+| Supervisor answers wrongly (shadow off) | audited; it can be turned back to shadow by one config change; the person can still answer first at any tier                                       |
+| Server restart                          | open requests are in memory (phase 9, Plus, makes them durable); the ticket run resumes with `yk ticket resume` and asks again (idempotent by key) |
 
 ## 6. Rejected options
 

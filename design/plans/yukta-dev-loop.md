@@ -2,9 +2,10 @@
 
 Status: PR1 (foundation) in progress; PR2-PR6 planned. Agreed with the maintainer on 2026-10-25.
 
-
 ## Context
+
 Claude still runs `./gradlew` directly, for these reasons:
+
 - CLAUDE.md's test tiers 0-3 (and 13 module CLAUDE.md files) tell it to.
 - The `yukta` skill says "inner loop: use the Gradle tiers, not this".
 - `Bash(./gradlew *)` is pre-approved, while the dogfood scripts are not.
@@ -12,11 +13,12 @@ Claude still runs `./gradlew` directly, for these reasons:
   is then e.g. `docs/`, so `"$CLAUDE_PROJECT_DIR"/.claude/hooks/*.sh` doesn't exist, and `git status -- '*.java'` only
   sees that folder.
 
-The dogfood server comes from the latest GitHub *release* on a random port (9101+), not from `main`. The self-heal
+The dogfood server comes from the latest GitHub _release_ on a random port (9101+), not from `main`. The self-heal
 loop is ~120 lines of bash polling the server. Yukta is used as a flat task runner, although workflows should be
 composable layers: epic → issue → implement → check → PR.
 
 Goal:
+
 - Every build, test and check Claude runs goes through Yukta.
 - The Yukta server is built from `origin/main` and runs on fixed port **9858**.
 - The check is a reusable, self-healing building block that larger workflows call.
@@ -24,26 +26,28 @@ Goal:
 - The dogfood shell tooling gets smaller.
 
 ## Decisions (agreed with the user)
-| Topic | Decision |
-|---|---|
-| Server | `origin/main` → `:boot:bootJar` + `:cli:goBuild` in a dedicated worktree, cached per SHA, `java -jar` |
-| Port | **9858** on 127.0.0.1 (`YUKTA_DEV_PORT` overrides); in README + CLAUDE.md |
-| Stale server | Rebuild in the background when main moves; swap only when nothing is RUNNING |
-| Direct gradle/go/pnpm | PreToolUse **blocks** them from Claude's Bash tool and replies with the `yk` equivalent |
-| Heal loop | Inside Yukta, as one execution with unrolled stages; the bash driver and the RETRY-restart rule are deleted |
-| Control hierarchy | T0 = your Claude session (admin key, full tree control, live Monitor feed + Haiku watcher for long runs); T1 = Yukta rules (budget gate, stall, failure escalation, gradle concurrency cap); T2 = headless workers (VIEWER key). Default checkpoints: before-opus, before-implement, before-pr, between-issues |
-| Fixer ladder | deterministic auto fix → fresh slim **Haiku** → **Sonnet** → **Opus** (each gets the earlier summaries + diff). Fork mode removed. In `implement-issue`, the fixer **resumes the implementer session** instead |
-| Parallel analyzers | Yes, fanned out after tests; one fixer after the join |
-| Extra stages | ui (pnpm lint + vitest), docs (`mint broken-links`), reuse, actionlint; all healable |
-| Layering | L0 (check) + L1 (implement-issue) now; L2 (epic) right after |
-| Implementer | Headless `claude -p` node in the issue's worktree; approval (WAIT_FOR_SIGNAL) before PR; notify on finish |
-| CLI vs MCP | Both. The CLI is primary (start, watch, RESULT, hooks, watcher); MCP is for drill-down and steering |
-| Claude extras | Prompt-intent hook, touched-module tracking, status line (project settings), slash commands |
-| Providers | main-jar (default) and `release`. Deleted: native, jar, docker, worktree |
-| Location / entry | Stays in `examples/dogfood/`; one `yk` script |
-| State | `~/.local/state/yukta-dev/` machine-wide (main worktree, `builds/<sha>/`, pid/env/log, sessions). Per-checkout `.yukta-dev/` keeps heal records, durations, baselines, touched modules |
+
+| Topic                 | Decision                                                                                                                                                                                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Server                | `origin/main` → `:boot:bootJar` + `:cli:goBuild` in a dedicated worktree, cached per SHA, `java -jar`                                                                                                                                                                                                          |
+| Port                  | **9858** on 127.0.0.1 (`YUKTA_DEV_PORT` overrides); in README + CLAUDE.md                                                                                                                                                                                                                                      |
+| Stale server          | Rebuild in the background when main moves; swap only when nothing is RUNNING                                                                                                                                                                                                                                   |
+| Direct gradle/go/pnpm | PreToolUse **blocks** them from Claude's Bash tool and replies with the `yk` equivalent                                                                                                                                                                                                                        |
+| Heal loop             | Inside Yukta, as one execution with unrolled stages; the bash driver and the RETRY-restart rule are deleted                                                                                                                                                                                                    |
+| Control hierarchy     | T0 = your Claude session (admin key, full tree control, live Monitor feed + Haiku watcher for long runs); T1 = Yukta rules (budget gate, stall, failure escalation, gradle concurrency cap); T2 = headless workers (VIEWER key). Default checkpoints: before-opus, before-implement, before-pr, between-issues |
+| Fixer ladder          | deterministic auto fix → fresh slim **Haiku** → **Sonnet** → **Opus** (each gets the earlier summaries + diff). Fork mode removed. In `implement-issue`, the fixer **resumes the implementer session** instead                                                                                                 |
+| Parallel analyzers    | Yes, fanned out after tests; one fixer after the join                                                                                                                                                                                                                                                          |
+| Extra stages          | ui (pnpm lint + vitest), docs (`mint broken-links`), reuse, actionlint; all healable                                                                                                                                                                                                                           |
+| Layering              | L0 (check) + L1 (implement-issue) now; L2 (epic) right after                                                                                                                                                                                                                                                   |
+| Implementer           | Headless `claude -p` node in the issue's worktree; approval (WAIT_FOR_SIGNAL) before PR; notify on finish                                                                                                                                                                                                      |
+| CLI vs MCP            | Both. The CLI is primary (start, watch, RESULT, hooks, watcher); MCP is for drill-down and steering                                                                                                                                                                                                            |
+| Claude extras         | Prompt-intent hook, touched-module tracking, status line (project settings), slash commands                                                                                                                                                                                                                    |
+| Providers             | main-jar (default) and `release`. Deleted: native, jar, docker, worktree                                                                                                                                                                                                                                       |
+| Location / entry      | Stays in `examples/dogfood/`; one `yk` script                                                                                                                                                                                                                                                                  |
+| State                 | `~/.local/state/yukta-dev/` machine-wide (main worktree, `builds/<sha>/`, pid/env/log, sessions). Per-checkout `.yukta-dev/` keeps heal records, durations, baselines, touched modules                                                                                                                         |
 
 ## 1. Server from main on 9858 — `yk up | down | status`
+
 - `yk up`:
   - Take the lock `flock …/build.lock`.
   - Ensure the worktree `…/main` (`git worktree add --detach`), then `fetch origin main` and `checkout --detach origin/main`.
@@ -71,7 +75,9 @@ Goal:
 - Consequence: engine changes (PR2) reach the dev server only once merged to main. PR3+ depend on PR2 being merged.
 
 ## 2. Engine and CLI work (PR2; core / plugins / web / cli, with tests)
+
 Evidence from the code research is in parentheses.
+
 1. **SUB_WORKFLOW outcome to the parent.** Today the output is only `{executionId, results}` (`SubWorkflowProcessor.java:148-154`);
    the outcome lives only in OUTCOME_TERMINAL event metadata (`OutcomeTerminal.java:96-107`).
    Add the child's `status` and `outcome` (and `reason`) to the output, plus `routeByOutcome` → `success`/`failure`/
@@ -92,16 +98,19 @@ Evidence from the code research is in parentheses.
 5. **ALL_DONE join**: an end-to-end test that a failed branch behind an ALL_DONE join is visible (node FAILURE, run status
    correct), and a fix if it's silently swallowed (`StreamTopologyDecorator.java:223-233`, `WorkflowOrchestrator.java:517-546`).
 6. **AGGREGATE items carry `sourceNodeId`** (`AggregateProcessor.java:101`), so the analyzer gate knows which branches failed.
+
 - Restart lineage (part of item 2) isn't needed by the unrolled check, but it's included as decided.
 - Each item has its own tests (Tier 1-2 via `yk gradle`, Tier 4 before the PR); `:cli:check` needs 100% function coverage.
 
 ## 3. The check as a building block (PR3)
-One session, **`yukta-dev`**, applied by `yk` from the *current branch's* `session.json` + generator. Its workflows are
+
+One session, **`yukta-dev`**, applied by `yk` from the _current branch's_ `session.json` + generator. Its workflows are
 parameterized by the start payload (`project`, `implSession`, `module`), so every checkout and every issue worktree shares them.
 The generator moves from `stage_workflows` to `heal_workflow` in `_lib.sh`. Scoped variants (`check@core`) are generated per
 module list on demand.
 
 **`check` graph: one execution, stages unrolled.**
+
 - Fixers per stage come from `heal.json`: `[auto]?` then the ladder `["haiku","sonnet","opus"]`. The ladder is set globally
   in `heal.json` with per-stage overrides; e.g. `compile` may start at sonnet if measurements show Haiku rarely fixes it.
   `yk check --ladder sonnet,opus` overrides it per run.
@@ -120,7 +129,7 @@ module list on demand.
   - `an.join` = AGGREGATE with `engine.trigger: ALL_DONE`, plus a guard edge from coverage, then
     `an.gate` (BRANCH on failed `sourceNodeId`s).
   - **One** fixer gets all failed analyzers (no two fixers ever edit the tree at once).
-  - The re-run is a *single* `./gradlew --continue <failed analyzer tasks>` (+ non-gradle tools), never parallel gradle.
+  - The re-run is a _single_ `./gradlew --continue <failed analyzer tasks>` (+ non-gradle tools), never parallel gradle.
     Concurrent builds are only safe while compile is up to date, and each would start a 4 GB daemon.
   - Analyzers without a heal policy (licenses, security) skip the fixer and fail.
 - `verify`: `yukta-heal.sh verify` with all tasks, only if anything was healed (already implemented), then `done`.
@@ -144,6 +153,7 @@ module list on demand.
   a single fixer after the join, guard scoping).
 
 ## 4. Layered workflows (PR5: L1, PR6: L2)
+
 All live in the `yukta-dev` session and reuse `check` via SUB_WORKFLOW (timeout 14400, routeByOutcome). The
 check's `project` is the worktree that step 2 creates, not a start value of the issue run (whose start payload
 is only `{issue}`): step 2 prints `{"worktree": "<path>"}` with `outputFormat: JSON`, and the check node gets
@@ -151,6 +161,7 @@ is only `{issue}`): step 2 prints `{"worktree": "<path>"}` with `outputFormat: J
 also counts against the session's execution timeout, so `yk` runs the server with
 `YUKTA_SESSION_EXECUTION_TIMEOUT_SECONDS=14400` and child timeouts stay at or below it (an acceptance test in
 PR5 pins which limit wins).
+
 - **`implement-issue`** (`yk run issue <n>`, `/yk-pickup`), with API_TRIGGER `{issue}`:
   1. `gh issue view` checks it is assigned and Ready (else OUTCOME ESCALATE "not Ready"). Claim it as In progress
      (`.github/scripts/project-lib.sh`, as in the pickup skill).
@@ -168,6 +179,7 @@ PR5 pins which limit wins).
 - The `pickup` skill becomes a thin front end to `yk run issue|epic`. Its claim/PR steps move into the workflow.
 
 ## 5. `yk` command surface (replaces yukta-check/watch/cli/server/stop scripts)
+
 ```
 yk up [--background|--release [tag]] | down | status        server (url, sha, stale?, running executions)
 yk check [-m mod]... [--only stage,..] [--no-heal] [--ladder haiku,sonnet,opus] [--detach]   watch is the default
@@ -178,9 +190,11 @@ yk watch <exec> | yk retry <exec> <node> | yk stop <exec> | yk approve <exec> [-
 yk finding …            (report-finding.sh behind it)       yk cli <args…>   raw passthrough
 yk statusline           one cached line (<50 ms)
 ```
+
 The full-log default of `yukta-check.sh` (`mode=logs`, which the skill forbids) is gone. `-m` is repeatable.
 
 ## 6. Claude Code integration
+
 - **Hook paths**: every hook becomes `bash -c 'exec "$(git rev-parse --show-toplevel)/.claude/hooks/yk-hook.sh" <event>'`,
   and the scripts use `git -C "$root"`. One `yk-hook.sh` replaces dogfood-baseline/nudge.
   - The untracked `post-tool-call.py` local hook has the same bug. Tell the user; it isn't ours to change.
@@ -210,6 +224,7 @@ The full-log default of `yukta-check.sh` (`mode=logs`, which the skill forbids) 
   descendants) covers the whole run.
 
 ## 7. Skill and docs
+
 - **SKILL.md**: ~70 lines.
   - Description front-loads the triggers (any build/test/compile/gradle/check/lint/coverage/CI failure/"does it pass",
     dev server, watch/retry/approve a run, implement an issue or epic, dogfood finding).
@@ -222,6 +237,7 @@ The full-log default of `yukta-check.sh` (`mode=logs`, which the skill forbids) 
   `design/plans/yukta-dev-loop.md` (this plan).
 
 ## 8. Dead code removed (shell tooling only)
+
 - Deleted files: `yukta-native.sh`, `yukta-docker.sh`, `yukta-worktree.sh`, `yukta-stop.sh`, `yukta-server.sh`, `yukta-check.sh`,
   `yukta-watch.sh`, `yukta-cli.sh` (all folded into `yk`), `dogfood-baseline.sh` and `dogfood-nudge.sh` (→ `yk-hook.sh`).
   `rules.json` loses its RETRY-restart rule and keeps only the T1 policies (§10).
@@ -231,11 +247,13 @@ The full-log default of `yukta-check.sh` (`mode=logs`, which the skill forbids) 
   `session.json` (the public example).
 
 ## 9. Token efficiency (applies to every headless Claude: fixer, implementer)
+
 Principle: spawn Claude only when nothing cheaper works, and make every spawned session share one byte-identical cached prefix.
+
 1. **Cheaper steps first** (all in the graph, before any Claude node):
    - deterministic fixes (`spotlessApply`, `eslint --fix`, `reuse annotate`);
    - a "passes now" re-run (flaky, no spend);
-   - one fixer for *all* failed analyzers;
+   - one fixer for _all_ failed analyzers;
    - gradle `--continue`, so a single attempt sees every failure.
 2. **One shared slim prefix**. A single `yk_claude()` launcher in `yukta-heal.sh` is used by every headless node:
    - `--setting-sources project`: none of the user's plugins, skills or settings;
@@ -268,16 +286,18 @@ Principle: spawn Claude only when nothing cheaper works, and make every spawned 
    targeted drill-down.
 
 ## 10. Control hierarchy: T0 has full control of the tree
+
 Every run is a tree (epic → issue → check → stages, via `parentExecutionId` from §2). Authority runs top-down.
 
-| Tier | Who | Key / authority | Role |
-|---|---|---|---|
-| **T0** | the interactive Claude session (and you, in the UI) | `admin` key | Full control of any tree: start, pause/resume (tree or node), stop (drain/cancel/kill), skip, retry, restart-from, breakpoints, step mode, signals/approvals, workflow rollback |
-| **T1** | Yukta supervisor rules + WAIT_FOR_SIGNAL gates | server-side | Autonomous policies; escalate to T0 by pausing and raising a signal |
-| **T2** | headless implementer/fixers | `worker` key, **VIEWER** | Read their own status/logs; no control. They report via exit code + JSON only |
+| Tier   | Who                                                 | Key / authority          | Role                                                                                                                                                                            |
+| ------ | --------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **T0** | the interactive Claude session (and you, in the UI) | `admin` key              | Full control of any tree: start, pause/resume (tree or node), stop (drain/cancel/kill), skip, retry, restart-from, breakpoints, step mode, signals/approvals, workflow rollback |
+| **T1** | Yukta supervisor rules + WAIT_FOR_SIGNAL gates      | server-side              | Autonomous policies; escalate to T0 by pausing and raising a signal                                                                                                             |
+| **T2** | headless implementer/fixers                         | `worker` key, **VIEWER** | Read their own status/logs; no control. They report via exit code + JSON only                                                                                                   |
 
 **Keys**: on first run, `yk up` generates named keys (`ApiKeys.KeyEntry`, hashed `sha256:` form in the server config;
 plaintext at mode 600 in the state dir).
+
 - `yk` and the MCP entry use `admin` (`--token-file`; `.mcp.json` header from an env var).
 - Headless nodes get `YUKTA_TOKEN=<worker>`. A VIEWER key with no `sessions` reaches every session, so each
   worker key is generated with `sessions` set to the one session its node runs in (`ApiKeys.KeyEntry`); tests
@@ -285,6 +305,7 @@ plaintext at mode 600 in the state dir).
 - The server stays loopback-only. Once keys exist, a no-key request is rejected.
 
 **Engine/CLI additions (added to PR2)**:
+
 - **Tree-scoped control**: control commands accept `scope: TREE` and apply to the execution and all descendants
   (`ControlCommand`, the control gateway, the REST control endpoints, MCP `control_workflow`/`control_node`).
   `get_execution_tree` is added as a VIEWER MCP tool, with REST and CLI equivalents.
@@ -296,6 +317,7 @@ plaintext at mode 600 in the state dir).
   Fallback if this grows too large: a flock semaphore in the stage command.
 
 **T1 policies** (rules file + gates in the generated graphs; `rules.json` returns, holding policies only):
+
 - **Budget gate**: before every Claude node, `yk-budget` checks the tree's spent $ (heal/implement records) against
   `YUKTA_BUDGET_ISSUE` / `YUKTA_BUDGET_EPIC`; over budget → WAIT_FOR_SIGNAL `budget` (approve = raise, reject = stop subtree).
 - **Stall**: a rule on `NodeStalled` → PauseNode + a signal to T0 (`stall`).
@@ -304,6 +326,7 @@ plaintext at mode 600 in the state dir).
 - **Concurrency cap**: the gradle concurrency group above.
 
 **Default checkpoints** (WAIT_FOR_SIGNAL nodes in the graphs; `--no-pause <name,…>` drops them per run):
+
 - `before-opus`: the ladder pauses before the Opus rung. T0 can continue, take over (stop the subtree, fix it itself, then
   retry the stage), or stop.
 - `before-implement`: the brief and worktree are ready; T0 may edit `.yukta-dev/issue-<n>/brief.md` and then approve.
@@ -311,6 +334,7 @@ plaintext at mode 600 in the state dir).
 - `between-issues`: in an epic, each finished issue (with parallel=2, as each slot frees) waits for T0 before the next starts.
 
 **T0 monitoring and control surface**:
+
 - **Live feed**: `yk watch --tree <root> --quiet` under the **Monitor** tool. Only attention events reach the session:
   NODE FAILURE/ERROR, WARN, STALL, BUDGET, APPROVAL pending (with the signal name), CONTROL refused, HEAL, SLOW, and the
   WORKFLOW end + RESULT. The session keeps working and acts as events arrive.
@@ -326,6 +350,7 @@ plaintext at mode 600 in the state dir).
   signal, and that only T0 issues control.
 
 ## Delivery (each PR branches from `main`; RESULT line in each PR description)
+
 1. **PR1 – foundation**: `yk` (up/down/status/check/gradle/watch/retry/finding/cli), the main-jar server on 9858 + release, the
    hook path fix, `yk-hook.sh` (SessionStart/Stop/PreToolUse redirect), skill + CLAUDE.md + module docs, README port, and the
    dead-script removal. The heal still uses the current driver.
@@ -345,6 +370,7 @@ plaintext at mode 600 in the state dir).
 6. **PR6 – `epic`**: parallel with a limit of 2, the `between-issues` checkpoint, the failure-escalation rule, and warm-then-fan-out.
 
 ## Verification
+
 - **PR1**:
   - From a feature branch, `yk up`, then `yk status`: the SHA equals `git rev-parse origin/main` and
     `curl 127.0.0.1:9858/actuator/health` is UP. A second `yk up` is a no-op. With `YUKTA_DEV_MAIN_REF=<older sha>` then back,
@@ -363,7 +389,7 @@ plaintext at mode 600 in the state dir).
   - a VIEWER key is refused `control_node`;
   - a silent node emits `NodeStalled` after `stallAfterSeconds`;
   - 3 nodes in a concurrency group of 2 run at most 2 at a time.
-  `:cli:check` at 100% function coverage.
+    `:cli:check` at 100% function coverage.
 - **PR3**: `test-self-heal.sh` checks the graph shape. Seeded failures on a scratch branch:
   - a spotless break → `healed=spotless:auto`;
   - a checkstyle + spotbugs violation → one analyzer fixer, `healed=analyzers:fix1`;
@@ -371,7 +397,7 @@ plaintext at mode 600 in the state dir).
   - a trivial checkstyle issue is fixed at the Haiku rung (`healed=analyzers:haiku`). `yk stats` shows usage per rung, and
     the second same-model session within the TTL reads ≥70% from cache;
   - a clean tree → SUCCESS with no verify.
-  Compare wall-clock against today's staged check (durations.tsv).
+    Compare wall-clock against today's staged check (durations.tsv).
   - T1 policies:
     - with `YUKTA_BUDGET_ISSUE=0.01`, the budget gate pauses at the first Claude node with a `budget` signal;
     - `yk approve` resumes it;
