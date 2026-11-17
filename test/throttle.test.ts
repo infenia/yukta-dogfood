@@ -30,7 +30,7 @@ test('low RAM pauses; resuming needs both CPU and RAM back above the resume limi
   expect(decide(s, calm, c).act).toBe('resume')
 })
 
-function fake(runs: { id: string; paused: boolean }[], x: () => Sample) {
+function fake(runs: { id: string; paused: boolean; start: number }[], x: () => Sample) {
   const calls: string[] = []
   const io: Io = {
     sample: x,
@@ -49,28 +49,28 @@ function fake(runs: { id: string; paused: boolean }[], x: () => Sample) {
 test('a tick pauses the live runs, then resumes only the ones it paused (a person-paused run stays paused)', async () => {
   let load = hot
   const runs = [
-    { id: 'a', paused: false },
-    { id: 'b', paused: false },
-    { id: 'human', paused: true },
+    { id: 'a', paused: false, start: 1 },
+    { id: 'b', paused: false, start: 2 },
+    { id: 'human', paused: true, start: 0 },
   ]
   const { io, calls } = fake(runs, () => load)
   const mine = new Set<string>()
   const one = { ...c, hold: 1 }
   let s: State = { paused: false, streak: 0 }
   s = await tick(s, mine, one, io)
-  expect(calls).toEqual(['pause a', 'pause b'])
-  expect([...mine]).toEqual(['a', 'b'])
-  runs.push({ id: 'late', paused: false }) // starts while the others are held back
+  expect(calls).toEqual(['pause b']) // a is the oldest
+  expect([...mine]).toEqual(['b'])
+  runs.push({ id: 'late', paused: false, start: 3 }) // starts while the others are held back
   s = await tick(s, mine, one, io)
-  expect(calls.slice(2)).toEqual(['pause late'])
+  expect(calls.slice(1)).toEqual(['pause late'])
   load = calm
   s = await tick(s, mine, one, io)
-  expect(calls.slice(3)).toEqual(['resume a', 'resume b', 'resume late'])
+  expect(calls.slice(2)).toEqual(['resume b', 'resume late'])
   expect(runs.find((r) => r.id === 'human')!.paused).toBe(true)
   expect(s.paused).toBe(false)
 })
 test('a run that somebody else resumed is forgotten, not paused again by mistake', async () => {
-  const runs = [{ id: 'a', paused: false }]
+  const runs = [{ id: 'a', paused: false, start: 1 }]
   const { io, calls } = fake(runs, () => calm)
   const mine = new Set(['a']) // we paused it before, a person resumed it since
   await tick({ paused: false, streak: 0 }, mine, { ...c, hold: 1 }, io)
@@ -79,8 +79,8 @@ test('a run that somebody else resumed is forgotten, not paused again by mistake
 })
 test('release resumes everything in mine, and keeps what could not be resumed', async () => {
   const runs = [
-    { id: 'a', paused: true },
-    { id: 'b', paused: true },
+    { id: 'a', paused: true, start: 1 },
+    { id: 'b', paused: true, start: 2 },
   ]
   const { io } = fake(runs, () => calm)
   const mine = new Set(['a', 'b'])
@@ -89,4 +89,15 @@ test('release resumes everything in mine, and keeps what could not be resumed', 
   await release(mine, io)
   expect(runs.map((r) => r.paused)).toEqual([false, true])
   expect([...mine]).toEqual(['b'])
+})
+test('when the oldest run ends, the next oldest is let go and the rest keep waiting', async () => {
+  const runs = [
+    { id: 'b', paused: true, start: 2 },
+    { id: 'c', paused: true, start: 3 },
+  ]
+  const { io, calls } = fake(runs, () => hot)
+  const mine = new Set(['b', 'c']) // a, the oldest, has ended
+  await tick({ paused: true, streak: 0 }, mine, { ...c, hold: 1 }, io)
+  expect(calls).toEqual(['resume b'])
+  expect([...mine]).toEqual(['c'])
 })
