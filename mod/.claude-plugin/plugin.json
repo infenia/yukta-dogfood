@@ -6,5 +6,5 @@
   "author": { "name": "Infenia" },
   "repository": "https://github.com/infenia/yukta",
   "license": "Apache-2.0",
-  "dependencies": ["yukta"]
+  "dependencies": [{ "name": "yukta", "marketplace": "yukta" }]
 }
