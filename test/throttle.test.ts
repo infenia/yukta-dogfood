@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // The load supervisor: the decision with its hysteresis, and one tick against fake runs.
 import { expect, test } from 'bun:test'
-import { type Cfg, type Io, type Sample, type State, decide, tick } from '../src/throttle.ts'
+import { type Cfg, type Io, type Sample, type State, decide, release, tick } from '../src/throttle.ts'
 
 const c: Cfg = { pauseCpu: 1.5, resumeCpu: 0.9, pauseRam: 0.1, resumeRam: 0.2, hold: 3, interval: 10 }
 const calm: Sample = { cpu: 0.3, ramFree: 0.6 }
@@ -76,4 +76,17 @@ test('a run that somebody else resumed is forgotten, not paused again by mistake
   await tick({ paused: false, streak: 0 }, mine, { ...c, hold: 1 }, io)
   expect(calls).toEqual([])
   expect(mine.size).toBe(0)
+})
+test('release resumes everything in mine, and keeps what could not be resumed', async () => {
+  const runs = [
+    { id: 'a', paused: true },
+    { id: 'b', paused: true },
+  ]
+  const { io } = fake(runs, () => calm)
+  const mine = new Set(['a', 'b'])
+  const ok = io.control
+  io.control = async (v, id) => (id === 'b' ? Promise.reject(new Error('down')) : ok(v, id))
+  await release(mine, io)
+  expect(runs.map((r) => r.paused)).toEqual([false, true])
+  expect([...mine]).toEqual(['b'])
 })

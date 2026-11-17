@@ -67,6 +67,11 @@ export async function tick(s: State, mine: Set<string>, c: Cfg, io: Io): Promise
   return d.state
 }
 
+/** Best effort: resume every run in `mine`; the ones that fail stay in it. */
+export async function release(mine: Set<string>, io: Io): Promise<void> {
+  for (const id of [...mine]) if (await io.control('resume', id).catch(() => false)) mine.delete(id)
+}
+
 const headers = (): Record<string, string> => (process.env.YUKTA_TOKEN ? { 'X-API-Key': process.env.YUKTA_TOKEN } : {})
 const get = async (path: string): Promise<any> => {
   const r = await http('GET', `${process.env.YUKTA_SERVER_URL ?? DEV_URL}${path}`, { headers: headers(), timeoutMs: 15000 })
@@ -113,6 +118,8 @@ export async function cmdThrottle(
       s = await tick(s, mine, c, io)
     } catch (e) {
       io.log((e as Error).message)
+      await release(mine, io) // never leave the runs we paused behind a dead loop
+      writeFileSync(minePath(), JSON.stringify([...mine])) // what could not be resumed (server down) is resumed by the next start
       return 0
     }
     writeFileSync(minePath(), JSON.stringify([...mine]))
