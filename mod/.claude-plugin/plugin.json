@@ -1,7 +1,7 @@
 {
   "name": "yukta-dogfood",
   "displayName": "Yukta dogfood",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Develop Yukta with Yukta: routes builds, tests and checks through yk, nudges yk check, and adds /yk-check and /yk-plan",
   "author": { "name": "Infenia" },
   "repository": "https://github.com/infenia/yukta",
