@@ -47,6 +47,16 @@ export function paint(wf: Json): Json {
   return wf
 }
 
+/** Sets the description of nodes (display only: the info button of the canvas). `text` maps a nodeId to it; a node it does not name keeps none. */
+export function describe(wf: Json, text: (nodeId: string) => string | undefined): Json {
+  for (const n of wf.nodes) {
+    const d = text(n.nodeId)
+    if (d) n.description = d
+  }
+  return wf
+}
+const byId = (m: Record<string, string>) => (id: string) => m[id]
+
 /** Groups the nodes of a workflow for the canvas (display only): `of` names the group of a node, `colors` its palette color. */
 export function group(wf: Json, of: (nodeId: string) => string, colors: (group: string) => string): Json {
   for (const n of wf.nodes) n.group = of(n.nodeId)
@@ -87,7 +97,7 @@ export const healGroups = (wf: Json): Json =>
 export function toolWorkflow(wf: Json): Json {
   const run = wf.nodes.find((n: Json) => n.nodeId === 'run')
   run.config.command = cmd('__DOGFOOD__/src/tool.ts')
-  return paint(wf)
+  return describe(paint(wf), byId({ run: 'Runs the command in the project (src/tool.ts) and passes its output and exit code on.' }))
 }
 
 // ---------------------------------------------------------------- check
@@ -119,6 +129,54 @@ const STAGES = [
   'security',
   'ui_build',
 ]
+const STAGE_DESC: Record<string, string> = {
+  reuse: 'REUSE lint: every file has its license header.',
+  actionlint: 'Lints the GitHub Actions workflows.',
+  docs: 'Checks the Markdown docs (links and structure).',
+  spotless: 'Gradle formatting check of the Java code (spotlessCheck).',
+  cli_fmt_check: 'gofmt check of the Go CLI.',
+  cli_mod_verify: 'Verifies the Go module dependencies (go mod verify).',
+  ui_prettier: 'Prettier format check of the UI.',
+  dogfood_fmt: 'Format check of the yukta-dogfood tooling.',
+  dogfood_check: 'Typecheck of the yukta-dogfood tooling.',
+  compile: 'Compiles the Java modules.',
+  cli_vet: 'go vet of the Go CLI.',
+  ui_tsc: 'TypeScript typecheck of the UI.',
+  ui_eslint: 'ESLint of the UI.',
+  ui_headers: 'Checks the license headers of the UI files.',
+  style: 'Checkstyle of the Java code.',
+  spotbugs: 'SpotBugs static analysis of the Java code.',
+  cli_lint: 'golangci-lint of the Go CLI.',
+  cli_sec: 'gosec security scan of the Go CLI.',
+  tests: 'Runs the Java tests.',
+  ui_vitest: 'Runs the UI unit tests (Vitest).',
+  coverage: 'Java test coverage against its threshold.',
+  cli_cover_check: 'Go CLI test coverage against its threshold.',
+  cli_vuln: 'govulncheck: known vulnerabilities in the Go dependencies.',
+  licenses: 'Checks the licenses of the dependencies. Never healed.',
+  security: 'Dependency security scan. Never healed.',
+  ui_build: 'Production build of the UI.',
+}
+/** The stage nodes: `<stage>` runs it, `.fail` extracts its output, `.heal` repairs it, `.failed` ends the run. */
+const stageText = (id: string): string | undefined => {
+  const [s, part] = id.split('.') as [string, string | undefined]
+  const d = STAGE_DESC[s]
+  if (!d) return undefined
+  if (!part) return d
+  if (part === 'fail') return `Takes the output of the failed ${s} stage to hand to heal.`
+  if (part === 'heal') return `Repairs the failed ${s} stage with the heal workflow (free fix, then the Claude ladder).`
+  return `Ends the run as FAILED: the ${s} stage failed and could not be healed.`
+}
+const CHECK_DESC: Record<string, string> = {
+  trigger: 'Start: the plan of the run (stages, commands, options) arrives here.',
+  fast: 'Runs every Gradle task of the plan as one invocation. A pass lets the Gradle stages skip; a failure only means they run one by one.',
+  'healed?': 'Did anything get healed in this run? Only then the Gradle tasks run once more.',
+  verify: 'Runs the Gradle tasks of all stages again: a fix may have broken a stage that ran before it.',
+  'verify.fail': 'Takes the output of the failed verify run to hand to heal.',
+  'verify.heal': 'Repairs the failed verify run with the heal workflow.',
+  'verify.failed': 'Ends the run as FAILED: verify failed and could not be healed.',
+  done: 'Ends the run: every stage passed.',
+}
 const FAST_BEFORE = 'spotless' // the fast path runs in front of the first Gradle stage
 const NO_HEAL = new Set(['licenses', 'security']) // a model may not fix these
 const PASS = ['project', 'healDir', 'modules', 'events', 'models', 'timeout', 'rules', 'heal', 'budgetCheck']
@@ -242,12 +300,15 @@ export function checkWorkflow(): Json {
   edge('verify.fail', 'verify.heal')
   edge('verify.heal', 'done', 'success')
   edge('verify.heal', 'verify.failed', 'failure')
-  return {
-    workflowId: 'check',
-    description: 'The scoped, self-healing quality gate: one tool call per planned stage, a failed stage goes to heal (yk check)',
-    nodes,
-    edges: es,
-  }
+  return describe(
+    {
+      workflowId: 'check',
+      description: 'The scoped, self-healing quality gate: one tool call per planned stage, a failed stage goes to heal (yk check)',
+      nodes,
+      edges: es,
+    },
+    (id) => CHECK_DESC[id] ?? stageText(id),
+  )
 }
 
 // ---------------------------------------------------------------- pickup
@@ -285,6 +346,42 @@ export function pickupWorkflow(): Json {
 }
 
 // ---------------------------------------------------------------- attempt, heal
+const ATTEMPT_DESC: Record<string, string> = {
+  trigger: 'Start: the problems of the failed stage and what the previous attempt said.',
+  prepare: 'Writes the prompt, the rules and the MCP config of this attempt; refuses when the budget check says no.',
+  agent: "Runs the Claude fixer session (the agent workflow) at this attempt's model and effort.",
+  claimed: 'Records what the fixer says it did.',
+  format: 'Runs the project formatter over what the fixer changed.',
+  judge: 'The guard: rejects edits outside what a fixer may touch (config, build-logic, CI, this folder).',
+  recheck: 'Re-runs the failed stage: this decides whether the attempt worked.',
+  report: 'Writes the attempt record (cost, tokens, changed files) and says whether the stage is fixed.',
+  'fixed?': 'Did the stage pass after the attempt?',
+  ok: 'The attempt fixed the stage.',
+  failed: 'The attempt did not fix the stage; heal goes to the next rung.',
+}
+const HEAL_DESC: Record<string, string> = {
+  trigger: 'Start: the failed stage, its output and the heal options.',
+  'heal?': 'Is healing on? (yk check --no-heal turns it off.)',
+  disabled: 'Healing is off: the stage stays failed.',
+  'auto?': 'Does this stage have a free automatic fix (a formatter, a generator)?',
+  'auto-fix': 'Runs the free fix: no model, no cost.',
+  'auto-check': 'Re-runs the stage after the free fix; only a stage that still fails goes on to a model.',
+  'auto-record': 'Records that the free fix healed the stage.',
+  brief: 'Builds the brief for the fixers: the problems, and whether the stage already fails the same way on a clean origin/main.',
+  first: 'Takes the problems of the brief as the input of the first rung.',
+  'known?': 'Does the stage already fail the same way on origin/main?',
+  'baseline-known': 'A known failure of origin/main: no fixer is started, the stage stays failed.',
+  done: 'The stage is healed.',
+  giveup: 'Gives up: the ladder is spent or a stronger model would gain nothing. The stage stays failed.',
+}
+const rungText = (id: string): string => {
+  const [, m, e] = id.split('-')
+  return `Repair attempt with ${m} at ${e} effort (one attempt per rung); the stage is re-run to judge it.`
+}
+const carryText = (id: string): string =>
+  id.endsWith('?')
+    ? 'Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.'
+    : `Carries the problems and the summary of the failed attempt to the next rung (${id.slice(6)}).`
 export function healWorkflows(policy: Json): { agent: Json; attempt: Json; heal: Json } {
   const EFFORTS: Record<string, { budget: number; timeout: number }> = Object.fromEntries(
     Object.entries<Json>(policy.efforts).map(([e, c]) => [e, { budget: c.budget, timeout: c.timeoutSeconds }]),
@@ -518,6 +615,8 @@ export function healWorkflows(policy: Json): { agent: Json; attempt: Json; heal:
     nodes,
     edges: e,
   }
+  describe(ATTEMPT_WF, byId(ATTEMPT_DESC))
+  describe(HEAL_WF, (id) => HEAL_DESC[id] ?? (id.startsWith('fix-') ? rungText(id) : id.startsWith('carry.') ? carryText(id) : undefined))
   return { agent: agentWorkflow(), attempt: ATTEMPT_WF, heal: HEAL_WF }
 }
 
@@ -584,7 +683,16 @@ export function agentWorkflow(): Json {
       ...edges('agent', 'early', 'incomplete'),
     ],
   }
-  return paint(wf)
+  return describe(
+    paint(wf),
+    byId({
+      trigger: 'Start: the prompt of the session (model, effort, budget, rules and MCP config come as start variables).',
+      agent: 'The Claude Code session itself (AGENT_SESSION, harness claude-code); its answer, cost and turns go into the payload.',
+      ok: 'The session finished: the payload carries its answer.',
+      failed: 'The session failed: the payload says why.',
+      early: 'The session stopped early (budget or time box): the payload carries what it had.',
+    }),
+  )
 }
 
 /** The session with every generated workflow rewritten. */
