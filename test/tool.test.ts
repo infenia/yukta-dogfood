@@ -41,6 +41,13 @@ test('every node of every generated workflow has a color', () => {
   }
 })
 
+test('every node of check, heal, attempt and agent has a description', () => {
+  const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
+  for (const k of ['agent', 'attempt', 'heal', 'check']) {
+    for (const n of s.workflows[k].nodes) expect([k, n.nodeId, typeof n.description]).toEqual([k, n.nodeId, 'string'])
+  }
+})
+
 test('the nodes of check and heal are grouped and every group has a color', () => {
   const s = JSON.parse(readFileSync(join(import.meta.dir, '..', 'session.json'), 'utf8'))
   for (const k of ['check', 'heal']) {

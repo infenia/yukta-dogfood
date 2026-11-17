@@ -43,7 +43,8 @@
               "concurrencyGroup": "tool"
             }
           },
-          "color": "sky"
+          "color": "sky",
+          "description": "Runs the command in the project (src/tool.ts) and passes its output and exit code on."
         },
         {
           "nodeId": "ok",
@@ -88,6 +89,7 @@
           "nodeId": "trigger",
           "type": "CONSTANT_SOURCE",
           "config": {},
+          "description": "Start: the plan of the run (stages, commands, options) arrives here.",
           "color": "stone",
           "group": "check"
         },
@@ -105,6 +107,7 @@
               "label": "reuse"
             }
           },
+          "description": "REUSE lint: every file has its license header.",
           "color": "violet",
           "group": "reuse"
         },
@@ -115,6 +118,7 @@
             "outcome": "FAILED",
             "reason": "reuse"
           },
+          "description": "Ends the run as FAILED: the reuse stage failed and could not be healed.",
           "color": "magenta",
           "group": "reuse"
         },
@@ -127,6 +131,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed reuse stage to hand to heal.",
           "color": "stone",
           "group": "reuse"
         },
@@ -154,6 +159,7 @@
               "auto": "${start.auto.reuse}"
             }
           },
+          "description": "Repairs the failed reuse stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "reuse"
         },
@@ -171,6 +177,7 @@
               "label": "actionlint"
             }
           },
+          "description": "Lints the GitHub Actions workflows.",
           "color": "violet",
           "group": "actionlint"
         },
@@ -181,6 +188,7 @@
             "outcome": "FAILED",
             "reason": "actionlint"
           },
+          "description": "Ends the run as FAILED: the actionlint stage failed and could not be healed.",
           "color": "magenta",
           "group": "actionlint"
         },
@@ -193,6 +201,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed actionlint stage to hand to heal.",
           "color": "stone",
           "group": "actionlint"
         },
@@ -220,6 +229,7 @@
               "auto": "${start.auto.actionlint}"
             }
           },
+          "description": "Repairs the failed actionlint stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "actionlint"
         },
@@ -237,6 +247,7 @@
               "label": "docs"
             }
           },
+          "description": "Checks the Markdown docs (links and structure).",
           "color": "violet",
           "group": "docs"
         },
@@ -247,6 +258,7 @@
             "outcome": "FAILED",
             "reason": "docs"
           },
+          "description": "Ends the run as FAILED: the docs stage failed and could not be healed.",
           "color": "magenta",
           "group": "docs"
         },
@@ -259,6 +271,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed docs stage to hand to heal.",
           "color": "stone",
           "group": "docs"
         },
@@ -286,6 +299,7 @@
               "auto": "${start.auto.docs}"
             }
           },
+          "description": "Repairs the failed docs stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "docs"
         },
@@ -303,6 +317,7 @@
               "label": "fast"
             }
           },
+          "description": "Runs every Gradle task of the plan as one invocation. A pass lets the Gradle stages skip; a failure only means they run one by one.",
           "color": "violet",
           "group": "fast"
         },
@@ -320,6 +335,7 @@
               "label": "spotless"
             }
           },
+          "description": "Gradle formatting check of the Java code (spotlessCheck).",
           "color": "violet",
           "group": "spotless"
         },
@@ -330,6 +346,7 @@
             "outcome": "FAILED",
             "reason": "spotless"
           },
+          "description": "Ends the run as FAILED: the spotless stage failed and could not be healed.",
           "color": "magenta",
           "group": "spotless"
         },
@@ -342,6 +359,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed spotless stage to hand to heal.",
           "color": "stone",
           "group": "spotless"
         },
@@ -369,6 +387,7 @@
               "auto": "${start.auto.spotless}"
             }
           },
+          "description": "Repairs the failed spotless stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "spotless"
         },
@@ -386,6 +405,7 @@
               "label": "cli_fmt_check"
             }
           },
+          "description": "gofmt check of the Go CLI.",
           "color": "violet",
           "group": "cli_fmt_check"
         },
@@ -396,6 +416,7 @@
             "outcome": "FAILED",
             "reason": "cli_fmt_check"
           },
+          "description": "Ends the run as FAILED: the cli_fmt_check stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_fmt_check"
         },
@@ -408,6 +429,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_fmt_check stage to hand to heal.",
           "color": "stone",
           "group": "cli_fmt_check"
         },
@@ -435,6 +457,7 @@
               "auto": "${start.auto.cli_fmt_check}"
             }
           },
+          "description": "Repairs the failed cli_fmt_check stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_fmt_check"
         },
@@ -452,6 +475,7 @@
               "label": "cli_mod_verify"
             }
           },
+          "description": "Verifies the Go module dependencies (go mod verify).",
           "color": "violet",
           "group": "cli_mod_verify"
         },
@@ -462,6 +486,7 @@
             "outcome": "FAILED",
             "reason": "cli_mod_verify"
           },
+          "description": "Ends the run as FAILED: the cli_mod_verify stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_mod_verify"
         },
@@ -474,6 +499,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_mod_verify stage to hand to heal.",
           "color": "stone",
           "group": "cli_mod_verify"
         },
@@ -501,6 +527,7 @@
               "auto": "${start.auto.cli_mod_verify}"
             }
           },
+          "description": "Repairs the failed cli_mod_verify stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_mod_verify"
         },
@@ -518,6 +545,7 @@
               "label": "ui_prettier"
             }
           },
+          "description": "Prettier format check of the UI.",
           "color": "violet",
           "group": "ui_prettier"
         },
@@ -528,6 +556,7 @@
             "outcome": "FAILED",
             "reason": "ui_prettier"
           },
+          "description": "Ends the run as FAILED: the ui_prettier stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_prettier"
         },
@@ -540,6 +569,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_prettier stage to hand to heal.",
           "color": "stone",
           "group": "ui_prettier"
         },
@@ -567,6 +597,7 @@
               "auto": "${start.auto.ui_prettier}"
             }
           },
+          "description": "Repairs the failed ui_prettier stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_prettier"
         },
@@ -584,6 +615,7 @@
               "label": "dogfood_fmt"
             }
           },
+          "description": "Format check of the yukta-dogfood tooling.",
           "color": "violet",
           "group": "dogfood_fmt"
         },
@@ -594,6 +626,7 @@
             "outcome": "FAILED",
             "reason": "dogfood_fmt"
           },
+          "description": "Ends the run as FAILED: the dogfood_fmt stage failed and could not be healed.",
           "color": "magenta",
           "group": "dogfood_fmt"
         },
@@ -606,6 +639,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed dogfood_fmt stage to hand to heal.",
           "color": "stone",
           "group": "dogfood_fmt"
         },
@@ -633,6 +667,7 @@
               "auto": "${start.auto.dogfood_fmt}"
             }
           },
+          "description": "Repairs the failed dogfood_fmt stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "dogfood_fmt"
         },
@@ -650,6 +685,7 @@
               "label": "dogfood_check"
             }
           },
+          "description": "Typecheck of the yukta-dogfood tooling.",
           "color": "violet",
           "group": "dogfood_check"
         },
@@ -660,6 +696,7 @@
             "outcome": "FAILED",
             "reason": "dogfood_check"
           },
+          "description": "Ends the run as FAILED: the dogfood_check stage failed and could not be healed.",
           "color": "magenta",
           "group": "dogfood_check"
         },
@@ -672,6 +709,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed dogfood_check stage to hand to heal.",
           "color": "stone",
           "group": "dogfood_check"
         },
@@ -699,6 +737,7 @@
               "auto": "${start.auto.dogfood_check}"
             }
           },
+          "description": "Repairs the failed dogfood_check stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "dogfood_check"
         },
@@ -716,6 +755,7 @@
               "label": "compile"
             }
           },
+          "description": "Compiles the Java modules.",
           "color": "violet",
           "group": "compile"
         },
@@ -726,6 +766,7 @@
             "outcome": "FAILED",
             "reason": "compile"
           },
+          "description": "Ends the run as FAILED: the compile stage failed and could not be healed.",
           "color": "magenta",
           "group": "compile"
         },
@@ -738,6 +779,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed compile stage to hand to heal.",
           "color": "stone",
           "group": "compile"
         },
@@ -765,6 +807,7 @@
               "auto": "${start.auto.compile}"
             }
           },
+          "description": "Repairs the failed compile stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "compile"
         },
@@ -782,6 +825,7 @@
               "label": "cli_vet"
             }
           },
+          "description": "go vet of the Go CLI.",
           "color": "violet",
           "group": "cli_vet"
         },
@@ -792,6 +836,7 @@
             "outcome": "FAILED",
             "reason": "cli_vet"
           },
+          "description": "Ends the run as FAILED: the cli_vet stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_vet"
         },
@@ -804,6 +849,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_vet stage to hand to heal.",
           "color": "stone",
           "group": "cli_vet"
         },
@@ -831,6 +877,7 @@
               "auto": "${start.auto.cli_vet}"
             }
           },
+          "description": "Repairs the failed cli_vet stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_vet"
         },
@@ -848,6 +895,7 @@
               "label": "ui_tsc"
             }
           },
+          "description": "TypeScript typecheck of the UI.",
           "color": "violet",
           "group": "ui_tsc"
         },
@@ -858,6 +906,7 @@
             "outcome": "FAILED",
             "reason": "ui_tsc"
           },
+          "description": "Ends the run as FAILED: the ui_tsc stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_tsc"
         },
@@ -870,6 +919,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_tsc stage to hand to heal.",
           "color": "stone",
           "group": "ui_tsc"
         },
@@ -897,6 +947,7 @@
               "auto": "${start.auto.ui_tsc}"
             }
           },
+          "description": "Repairs the failed ui_tsc stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_tsc"
         },
@@ -914,6 +965,7 @@
               "label": "ui_eslint"
             }
           },
+          "description": "ESLint of the UI.",
           "color": "violet",
           "group": "ui_eslint"
         },
@@ -924,6 +976,7 @@
             "outcome": "FAILED",
             "reason": "ui_eslint"
           },
+          "description": "Ends the run as FAILED: the ui_eslint stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_eslint"
         },
@@ -936,6 +989,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_eslint stage to hand to heal.",
           "color": "stone",
           "group": "ui_eslint"
         },
@@ -963,6 +1017,7 @@
               "auto": "${start.auto.ui_eslint}"
             }
           },
+          "description": "Repairs the failed ui_eslint stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_eslint"
         },
@@ -980,6 +1035,7 @@
               "label": "ui_headers"
             }
           },
+          "description": "Checks the license headers of the UI files.",
           "color": "violet",
           "group": "ui_headers"
         },
@@ -990,6 +1046,7 @@
             "outcome": "FAILED",
             "reason": "ui_headers"
           },
+          "description": "Ends the run as FAILED: the ui_headers stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_headers"
         },
@@ -1002,6 +1059,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_headers stage to hand to heal.",
           "color": "stone",
           "group": "ui_headers"
         },
@@ -1029,6 +1087,7 @@
               "auto": "${start.auto.ui_headers}"
             }
           },
+          "description": "Repairs the failed ui_headers stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_headers"
         },
@@ -1046,6 +1105,7 @@
               "label": "style"
             }
           },
+          "description": "Checkstyle of the Java code.",
           "color": "violet",
           "group": "style"
         },
@@ -1056,6 +1116,7 @@
             "outcome": "FAILED",
             "reason": "style"
           },
+          "description": "Ends the run as FAILED: the style stage failed and could not be healed.",
           "color": "magenta",
           "group": "style"
         },
@@ -1068,6 +1129,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed style stage to hand to heal.",
           "color": "stone",
           "group": "style"
         },
@@ -1095,6 +1157,7 @@
               "auto": "${start.auto.style}"
             }
           },
+          "description": "Repairs the failed style stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "style"
         },
@@ -1112,6 +1175,7 @@
               "label": "spotbugs"
             }
           },
+          "description": "SpotBugs static analysis of the Java code.",
           "color": "violet",
           "group": "spotbugs"
         },
@@ -1122,6 +1186,7 @@
             "outcome": "FAILED",
             "reason": "spotbugs"
           },
+          "description": "Ends the run as FAILED: the spotbugs stage failed and could not be healed.",
           "color": "magenta",
           "group": "spotbugs"
         },
@@ -1134,6 +1199,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed spotbugs stage to hand to heal.",
           "color": "stone",
           "group": "spotbugs"
         },
@@ -1161,6 +1227,7 @@
               "auto": "${start.auto.spotbugs}"
             }
           },
+          "description": "Repairs the failed spotbugs stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "spotbugs"
         },
@@ -1178,6 +1245,7 @@
               "label": "cli_lint"
             }
           },
+          "description": "golangci-lint of the Go CLI.",
           "color": "violet",
           "group": "cli_lint"
         },
@@ -1188,6 +1256,7 @@
             "outcome": "FAILED",
             "reason": "cli_lint"
           },
+          "description": "Ends the run as FAILED: the cli_lint stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_lint"
         },
@@ -1200,6 +1269,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_lint stage to hand to heal.",
           "color": "stone",
           "group": "cli_lint"
         },
@@ -1227,6 +1297,7 @@
               "auto": "${start.auto.cli_lint}"
             }
           },
+          "description": "Repairs the failed cli_lint stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_lint"
         },
@@ -1244,6 +1315,7 @@
               "label": "cli_sec"
             }
           },
+          "description": "gosec security scan of the Go CLI.",
           "color": "violet",
           "group": "cli_sec"
         },
@@ -1254,6 +1326,7 @@
             "outcome": "FAILED",
             "reason": "cli_sec"
           },
+          "description": "Ends the run as FAILED: the cli_sec stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_sec"
         },
@@ -1266,6 +1339,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_sec stage to hand to heal.",
           "color": "stone",
           "group": "cli_sec"
         },
@@ -1293,6 +1367,7 @@
               "auto": "${start.auto.cli_sec}"
             }
           },
+          "description": "Repairs the failed cli_sec stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_sec"
         },
@@ -1310,6 +1385,7 @@
               "label": "tests"
             }
           },
+          "description": "Runs the Java tests.",
           "color": "violet",
           "group": "tests"
         },
@@ -1320,6 +1396,7 @@
             "outcome": "FAILED",
             "reason": "tests"
           },
+          "description": "Ends the run as FAILED: the tests stage failed and could not be healed.",
           "color": "magenta",
           "group": "tests"
         },
@@ -1332,6 +1409,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed tests stage to hand to heal.",
           "color": "stone",
           "group": "tests"
         },
@@ -1359,6 +1437,7 @@
               "auto": "${start.auto.tests}"
             }
           },
+          "description": "Repairs the failed tests stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "tests"
         },
@@ -1376,6 +1455,7 @@
               "label": "ui_vitest"
             }
           },
+          "description": "Runs the UI unit tests (Vitest).",
           "color": "violet",
           "group": "ui_vitest"
         },
@@ -1386,6 +1466,7 @@
             "outcome": "FAILED",
             "reason": "ui_vitest"
           },
+          "description": "Ends the run as FAILED: the ui_vitest stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_vitest"
         },
@@ -1398,6 +1479,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_vitest stage to hand to heal.",
           "color": "stone",
           "group": "ui_vitest"
         },
@@ -1425,6 +1507,7 @@
               "auto": "${start.auto.ui_vitest}"
             }
           },
+          "description": "Repairs the failed ui_vitest stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_vitest"
         },
@@ -1442,6 +1525,7 @@
               "label": "coverage"
             }
           },
+          "description": "Java test coverage against its threshold.",
           "color": "violet",
           "group": "coverage"
         },
@@ -1452,6 +1536,7 @@
             "outcome": "FAILED",
             "reason": "coverage"
           },
+          "description": "Ends the run as FAILED: the coverage stage failed and could not be healed.",
           "color": "magenta",
           "group": "coverage"
         },
@@ -1464,6 +1549,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed coverage stage to hand to heal.",
           "color": "stone",
           "group": "coverage"
         },
@@ -1491,6 +1577,7 @@
               "auto": "${start.auto.coverage}"
             }
           },
+          "description": "Repairs the failed coverage stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "coverage"
         },
@@ -1508,6 +1595,7 @@
               "label": "cli_cover_check"
             }
           },
+          "description": "Go CLI test coverage against its threshold.",
           "color": "violet",
           "group": "cli_cover_check"
         },
@@ -1518,6 +1606,7 @@
             "outcome": "FAILED",
             "reason": "cli_cover_check"
           },
+          "description": "Ends the run as FAILED: the cli_cover_check stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_cover_check"
         },
@@ -1530,6 +1619,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_cover_check stage to hand to heal.",
           "color": "stone",
           "group": "cli_cover_check"
         },
@@ -1557,6 +1647,7 @@
               "auto": "${start.auto.cli_cover_check}"
             }
           },
+          "description": "Repairs the failed cli_cover_check stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_cover_check"
         },
@@ -1574,6 +1665,7 @@
               "label": "cli_vuln"
             }
           },
+          "description": "govulncheck: known vulnerabilities in the Go dependencies.",
           "color": "violet",
           "group": "cli_vuln"
         },
@@ -1584,6 +1676,7 @@
             "outcome": "FAILED",
             "reason": "cli_vuln"
           },
+          "description": "Ends the run as FAILED: the cli_vuln stage failed and could not be healed.",
           "color": "magenta",
           "group": "cli_vuln"
         },
@@ -1596,6 +1689,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed cli_vuln stage to hand to heal.",
           "color": "stone",
           "group": "cli_vuln"
         },
@@ -1623,6 +1717,7 @@
               "auto": "${start.auto.cli_vuln}"
             }
           },
+          "description": "Repairs the failed cli_vuln stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "cli_vuln"
         },
@@ -1640,6 +1735,7 @@
               "label": "licenses"
             }
           },
+          "description": "Checks the licenses of the dependencies. Never healed.",
           "color": "violet",
           "group": "licenses"
         },
@@ -1650,6 +1746,7 @@
             "outcome": "FAILED",
             "reason": "licenses"
           },
+          "description": "Ends the run as FAILED: the licenses stage failed and could not be healed.",
           "color": "magenta",
           "group": "licenses"
         },
@@ -1667,6 +1764,7 @@
               "label": "security"
             }
           },
+          "description": "Dependency security scan. Never healed.",
           "color": "violet",
           "group": "security"
         },
@@ -1677,6 +1775,7 @@
             "outcome": "FAILED",
             "reason": "security"
           },
+          "description": "Ends the run as FAILED: the security stage failed and could not be healed.",
           "color": "magenta",
           "group": "security"
         },
@@ -1694,6 +1793,7 @@
               "label": "ui_build"
             }
           },
+          "description": "Production build of the UI.",
           "color": "violet",
           "group": "ui_build"
         },
@@ -1704,6 +1804,7 @@
             "outcome": "FAILED",
             "reason": "ui_build"
           },
+          "description": "Ends the run as FAILED: the ui_build stage failed and could not be healed.",
           "color": "magenta",
           "group": "ui_build"
         },
@@ -1716,6 +1817,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed ui_build stage to hand to heal.",
           "color": "stone",
           "group": "ui_build"
         },
@@ -1743,6 +1845,7 @@
               "auto": "${start.auto.ui_build}"
             }
           },
+          "description": "Repairs the failed ui_build stage with the heal workflow (free fix, then the Claude ladder).",
           "color": "violet",
           "group": "ui_build"
         },
@@ -1765,6 +1868,7 @@
             "failureMode": "CONTINUE",
             "routeByExitCode": true
           },
+          "description": "Did anything get healed in this run? Only then the Gradle tasks run once more.",
           "color": "sky",
           "group": "check"
         },
@@ -1782,6 +1886,7 @@
               "label": "verify"
             }
           },
+          "description": "Runs the Gradle tasks of all stages again: a fix may have broken a stage that ran before it.",
           "color": "violet",
           "group": "verify"
         },
@@ -1792,6 +1897,7 @@
             "outcome": "FAILED",
             "reason": "verify"
           },
+          "description": "Ends the run as FAILED: verify failed and could not be healed.",
           "color": "magenta",
           "group": "verify"
         },
@@ -1804,6 +1910,7 @@
               "stdout": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['stdout'] : '')"
             }
           },
+          "description": "Takes the output of the failed verify run to hand to heal.",
           "color": "stone",
           "group": "verify"
         },
@@ -1831,6 +1938,7 @@
               "auto": "-"
             }
           },
+          "description": "Repairs the failed verify run with the heal workflow.",
           "color": "violet",
           "group": "verify"
         },
@@ -1840,6 +1948,7 @@
           "config": {
             "displayOutput": true
           },
+          "description": "Ends the run: every stage passed.",
           "color": "teal",
           "group": "check"
         }
@@ -2535,6 +2644,7 @@
               "previous": "${start.previous}"
             }
           },
+          "description": "Start: the problems of the failed stage and what the previous attempt said.",
           "color": "stone"
         },
         {
@@ -2567,6 +2677,7 @@
             "failureMode": "CONTINUE",
             "routeByExitCode": true
           },
+          "description": "Writes the prompt, the rules and the MCP config of this attempt; refuses when the budget check says no.",
           "color": "sky"
         },
         {
@@ -2590,6 +2701,7 @@
               "mcpConfig": "${start.healDir}/${start.stage}-${payload.output.attempt}.mcp.json"
             }
           },
+          "description": "Runs the Claude fixer session (the agent workflow) at this attempt's model and effort.",
           "color": "sky"
         },
         {
@@ -2616,6 +2728,7 @@
             "inputMode": "STDIN",
             "failureMode": "CONTINUE"
           },
+          "description": "Records what the fixer says it did.",
           "color": "sky"
         },
         {
@@ -2635,6 +2748,7 @@
               "onError": "ROUTE"
             }
           },
+          "description": "Runs the project formatter over what the fixer changed.",
           "color": "violet"
         },
         {
@@ -2662,6 +2776,7 @@
             "failureMode": "CONTINUE",
             "routeByExitCode": true
           },
+          "description": "The guard: rejects edits outside what a fixer may touch (config, build-logic, CI, this folder).",
           "color": "sky"
         },
         {
@@ -2681,6 +2796,7 @@
               "onError": "ROUTE"
             }
           },
+          "description": "Re-runs the failed stage: this decides whether the attempt worked.",
           "color": "violet"
         },
         {
@@ -2709,6 +2825,7 @@
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
           },
+          "description": "Writes the attempt record (cost, tokens, changed files) and says whether the stage is fixed.",
           "color": "sky"
         },
         {
@@ -2722,12 +2839,14 @@
             },
             "defaultPort": "notfixed"
           },
+          "description": "Did the stage pass after the attempt?",
           "color": "stone"
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
           "config": {},
+          "description": "The attempt fixed the stage.",
           "color": "teal"
         },
         {
@@ -2737,6 +2856,7 @@
             "outcome": "FAILED",
             "reason": "the attempt did not fix the stage"
           },
+          "description": "The attempt did not fix the stage; heal goes to the next rung.",
           "color": "magenta"
         }
       ],
@@ -2844,6 +2964,7 @@
               "auto": "${start.auto}"
             }
           },
+          "description": "Start: the failed stage, its output and the heal options.",
           "color": "stone",
           "group": "start"
         },
@@ -2858,6 +2979,7 @@
             },
             "defaultPort": "on"
           },
+          "description": "Is healing on? (yk check --no-heal turns it off.)",
           "color": "stone",
           "group": "start"
         },
@@ -2868,6 +2990,7 @@
             "outcome": "FAILED",
             "reason": "healing is off (yk check --no-heal)"
           },
+          "description": "Healing is off: the stage stays failed.",
           "color": "magenta",
           "group": "start"
         },
@@ -2881,6 +3004,7 @@
             },
             "defaultPort": "model"
           },
+          "description": "Does this stage have a free automatic fix (a formatter, a generator)?",
           "color": "stone",
           "group": "free-fix"
         },
@@ -2901,6 +3025,7 @@
               "onError": "ROUTE"
             }
           },
+          "description": "Runs the free fix: no model, no cost.",
           "color": "violet",
           "group": "free-fix"
         },
@@ -2921,6 +3046,7 @@
               "onError": "ROUTE"
             }
           },
+          "description": "Re-runs the stage after the free fix; only a stage that still fails goes on to a model.",
           "color": "violet",
           "group": "free-fix"
         },
@@ -2944,6 +3070,7 @@
             "timeoutSeconds": 60,
             "failureMode": "CONTINUE"
           },
+          "description": "Records that the free fix healed the stage.",
           "color": "sky",
           "group": "free-fix"
         },
@@ -2970,6 +3097,7 @@
             "outputFormat": "JSON",
             "failureMode": "CONTINUE"
           },
+          "description": "Builds the brief for the fixers: the problems, and whether the stage already fails the same way on a clean origin/main.",
           "color": "sky",
           "group": "brief"
         },
@@ -2984,6 +3112,7 @@
               "known": "payload['output']['known']"
             }
           },
+          "description": "Takes the problems of the brief as the input of the first rung.",
           "color": "stone",
           "group": "brief"
         },
@@ -2998,6 +3127,7 @@
             },
             "defaultPort": "unknown"
           },
+          "description": "Does the stage already fail the same way on origin/main?",
           "color": "stone",
           "group": "brief"
         },
@@ -3008,6 +3138,7 @@
             "outcome": "FAILED",
             "reason": "the stage already fails the same way on origin/main: a known baseline failure, no fixer was started"
           },
+          "description": "A known failure of origin/main: no fixer is started, the stage stays failed.",
           "color": "magenta",
           "group": "brief"
         },
@@ -3024,6 +3155,7 @@
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
+          "description": "Carries the problems and the summary of the failed attempt to the next rung (fix-haiku-medium).",
           "color": "stone",
           "group": "ladder"
         },
@@ -3037,6 +3169,7 @@
             },
             "defaultPort": "go"
           },
+          "description": "Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.",
           "color": "stone",
           "group": "ladder"
         },
@@ -3053,6 +3186,7 @@
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
+          "description": "Carries the problems and the summary of the failed attempt to the next rung (fix-haiku-high).",
           "color": "stone",
           "group": "ladder"
         },
@@ -3066,6 +3200,7 @@
             },
             "defaultPort": "go"
           },
+          "description": "Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.",
           "color": "stone",
           "group": "ladder"
         },
@@ -3082,6 +3217,7 @@
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
+          "description": "Carries the problems and the summary of the failed attempt to the next rung (fix-sonnet-low).",
           "color": "stone",
           "group": "ladder"
         },
@@ -3095,6 +3231,7 @@
             },
             "defaultPort": "go"
           },
+          "description": "Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.",
           "color": "stone",
           "group": "ladder"
         },
@@ -3111,6 +3248,7 @@
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
+          "description": "Carries the problems and the summary of the failed attempt to the next rung (fix-sonnet-medium).",
           "color": "stone",
           "group": "ladder"
         },
@@ -3124,6 +3262,7 @@
             },
             "defaultPort": "go"
           },
+          "description": "Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.",
           "color": "stone",
           "group": "ladder"
         },
@@ -3140,6 +3279,7 @@
               "stage": "payload['results'] == null ? '' : (payload['results'].size() > 0 ? payload['results'][0]['output']['stage'] : '')"
             }
           },
+          "description": "Carries the problems and the summary of the failed attempt to the next rung (fix-sonnet-high).",
           "color": "stone",
           "group": "ladder"
         },
@@ -3153,6 +3293,7 @@
             },
             "defaultPort": "go"
           },
+          "description": "Stops the ladder when the attempt changed nothing, failed as before, or the stage is single-attempt; otherwise goes on to the next rung.",
           "color": "stone",
           "group": "ladder"
         },
@@ -3186,6 +3327,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with haiku at low effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3219,6 +3361,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with haiku at medium effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3252,6 +3395,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with haiku at high effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3285,6 +3429,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with sonnet at low effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3318,6 +3463,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with sonnet at medium effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3351,6 +3497,7 @@
               "previous": "${payload.previous}"
             }
           },
+          "description": "Repair attempt with sonnet at high effort (one attempt per rung); the stage is re-run to judge it.",
           "color": "violet",
           "group": "ladder"
         },
@@ -3358,6 +3505,7 @@
           "nodeId": "done",
           "type": "CONSOLE_TERMINAL",
           "config": {},
+          "description": "The stage is healed.",
           "color": "teal",
           "group": "outcome"
         },
@@ -3368,6 +3516,7 @@
             "outcome": "FAILED",
             "reason": "every model failed at every effort"
           },
+          "description": "Gives up: the ladder is spent or a stronger model would gain nothing. The stage stays failed.",
           "color": "magenta",
           "group": "outcome"
         }
@@ -3693,7 +3842,8 @@
               "prompt": "${start.prompt}"
             }
           },
-          "color": "stone"
+          "color": "stone",
+          "description": "Start: the prompt of the session (model, effort, budget, rules and MCP config come as start variables)."
         },
         {
           "nodeId": "agent",
@@ -3782,25 +3932,29 @@
               "concurrencyGroup": "claude"
             }
           },
-          "color": "sky"
+          "color": "sky",
+          "description": "The Claude Code session itself (AGENT_SESSION, harness claude-code); its answer, cost and turns go into the payload."
         },
         {
           "nodeId": "ok",
           "type": "CONSOLE_TERMINAL",
           "config": {},
-          "color": "teal"
+          "color": "teal",
+          "description": "The session finished: the payload carries its answer."
         },
         {
           "nodeId": "failed",
           "type": "CONSOLE_TERMINAL",
           "config": {},
-          "color": "magenta"
+          "color": "magenta",
+          "description": "The session failed: the payload says why."
         },
         {
           "nodeId": "early",
           "type": "CONSOLE_TERMINAL",
           "config": {},
-          "color": "violet"
+          "color": "violet",
+          "description": "The session stopped early (budget or time box): the payload carries what it had."
         }
       ],
       "edges": [
