@@ -7,5 +7,6 @@
       "source": "./mod",
       "description": "Develop Yukta with Yukta: yk routing, check nudges, dev-server status"
     }
-  ]
+  ],
+  "allowCrossMarketplaceDependenciesOn": ["yukta"]
 }
