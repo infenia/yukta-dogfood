@@ -152,13 +152,18 @@ stops a teammate from completing a task while `yk check --no-heal` fails ([Agent
 `yk tree|pause|resume|stop|skip|retry|break|step|signals|approve|reject`. `stop` is a drain of up to 30 s; add `--tree` to reach the runs below.
 `pause` lets the running node finish and holds the next one. `approve|reject` answer a pending approval.
 
-### Load supervisor (`yk throttle`)
+### Resource guard (`yk throttle`)
 
-While the machine is short of CPU or RAM, the live runs of the `dogfood` session are paused (`pause --tree`: the running node finishes, the next one waits), and
-the oldest run keeps going so it finishes first (when it ends the next oldest is let go), and the ones it paused are resumed, oldest first, when the load is gone. A run you paused yourself is never resumed by it. It starts in the background with the first run
-(any `yk` command that starts one) and ends when the server stops; `yk throttle [--once]` runs it in the foreground, `YK_THROTTLE=off` opts out.
+A Yukta supervisor, `dogfood-resource-guard` (type `http`, `supervisor/resource-guard.json`), owns the run level of every workflow of the `dogfood` session, and
+`yk throttle` is its decision maker: while the machine is short of CPU or RAM it sends `PauseWorkflow` directives for the live runs (and the runs they started; the running node
+finishes, the next one waits), the oldest run keeps going so it finishes first, and the ones it paused are resumed, oldest first, when the load is gone. A run you paused yourself is never resumed by it.
+The server checks every directive (ownership, allow-list, a reason with the load, a rate limit) and audits it: `yk cli supervisors decisions --supervisor dogfood-resource-guard`.
+Your own start/stop/pause of those runs go through it as reviews, which the loop answers with ALLOW at once.
+**Opt in** with `YK_THROTTLE=on`: the loop then starts in the background with the first run (any `yk` command that starts one; that command waits up to 10 s until the guard is attached) and ends when the server stops;
+`yk throttle` runs it in the foreground, `YK_THROTTLE=off` takes the guard off the runs. The guard stays attached when the loop ends (the next `yk` command starts it again); without a loop,
+the commands of people on those runs are refused after 5 s. Known problem: see ARCHITECTURE.md, open points.
 Pause at 1.5 load per core or under 10% available RAM, resume under 0.9 and over 20%, each after 3 samples in a row (10 s apart); tune with
-`YK_THROTTLE_PAUSE_CPU|RESUME_CPU|PAUSE_RAM|RESUME_RAM|HOLD|INTERVAL`. State: `.yukta-dev/throttle.json` (the runs it paused), `throttle.lock`.
+`YK_THROTTLE_PAUSE_CPU|RESUME_CPU|PAUSE_RAM|RESUME_RAM|HOLD|INTERVAL`. State: `.yukta-dev/throttle.json` (the runs it paused), `throttle.lock`, `guard.ready`, `guard.log`.
 
 ### Other
 

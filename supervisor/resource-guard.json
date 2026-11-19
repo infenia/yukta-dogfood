@@ -1,0 +1,20 @@
+{
+  "id": "dogfood-resource-guard",
+  "type": "http",
+  "description": "yk throttle decides on CPU/RAM; this supervisor owns the run level of the dogfood workflows and pauses/resumes them on its directives",
+  "settings": {
+    "allowedCommands": ["PauseWorkflowCommand", "ResumeWorkflowCommand"],
+    "initiative": ["PauseWorkflowCommand", "ResumeWorkflowCommand"],
+    "maxInitiativePerMinute": 600,
+    "operatorAccess": [
+      "StartWorkflowCommand",
+      "PauseWorkflowCommand",
+      "ResumeWorkflowCommand",
+      "StopWorkflowCommand",
+      "RestartCommand",
+      "RestartFromNodeCommand",
+      "RecoverCommand",
+      "SetPriorityCommand"
+    ]
+  }
+}

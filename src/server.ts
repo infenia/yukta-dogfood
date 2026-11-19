@@ -3,6 +3,7 @@
 // Dogfood helpers: the dev server (built from origin/main), pickup start, locks, up/ensure. `lib.ts` re-exports every module.
 import { spawn } from 'node:child_process'
 import { closeSync, openSync, utimesSync } from 'node:fs'
+import { detachGuard, readyPath } from './guard.ts'
 import { createConnection } from 'node:net'
 import { tmpdir } from 'node:os'
 import {
@@ -370,14 +371,19 @@ function portOpen(port: number): Promise<boolean> {
  * `yk up` and the SessionStart hook do those). YUKTA_SERVER_URL pointing elsewhere opts out: that server is used as it is. */
 export async function ensureServer(): Promise<void> {
   await ensureServerUp()
-  startThrottle()
+  await startThrottle()
 }
 
-/** The load supervisor (throttle.ts) watches the runs of the session for as long as the server is up: started here, so every run that yk starts is covered.
- * YK_THROTTLE=off opts out. */
-function startThrottle(): void {
-  if (process.env.YK_THROTTLE === 'off' || process.env.YUKTA_SERVER_URL !== DEV_URL || lockHeld(join(STATE_DIR, 'throttle.lock'))) return
-  spawn(process.execPath, [join(HERE, 'src/yk.ts'), '_throttle'], { detached: true, stdio: 'ignore', env: process.env }).unref()
+/** The resource guard (throttle.ts, guard.ts) decides for the supervisor that owns the runs of the session for as long as the server is up: started here, so every run that
+ * yk starts is covered. It answers the reviews of people's commands too, so this waits (up to 10 s) until it is attached.  Opt-in: YK_THROTTLE=on; YK_THROTTLE=off takes the guard off the runs. */
+async function startThrottle(): Promise<void> {
+  if (process.env.YUKTA_SERVER_URL !== DEV_URL) return
+  if (process.env.YK_THROTTLE === 'off') return void (await detachGuard().catch(() => {}))
+  if (process.env.YK_THROTTLE !== 'on') return // opt in: while the guard owns the runs every command of a person waits for the loop (see ARCHITECTURE.md, open points)
+  if (lockHeld(join(STATE_DIR, 'throttle.lock'))) return
+  rmSync(readyPath(), { force: true })
+  spawn(process.execPath, [join(HERE, 'yk'), '_throttle'], { detached: true, stdio: 'ignore', env: process.env }).unref()
+  for (let i = 0; i < 40 && !existsSync(readyPath()); i++) await sleep(250) // the loop writes it when attached, or when it gave up
 }
 
 async function ensureServerUp(): Promise<void> {
