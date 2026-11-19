@@ -102,7 +102,7 @@ All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` 
 | `heal.json`                          | Policy: the ladder, efforts, budgets, give-up rule, extra tool variants.                                             |
 | `rules.json`                         | Server-side supervisor rule `no-kill`: denies `StopWorkflow` with `mode == 'KILL'`.                                  |
 | `project.json`                       | Project facts for the ticket pipeline (commands per role, budgets, high-risk paths, shared files).                   |
-| `supervisor/`                        | `supervisor.json` + `assignments.json` + `session.json`: the advice supervisor (§11.8).                              |
+| `supervisor/`                        | `supervisor.json` + `session.json`: the advice supervisor (§11.8); `resource-guard.json`: the resource guard (§4).   |
 | `fixer-rules.md`, `fixer-rules/*.md` | System prompt for fixers (constant) plus per-kind and per-ticket-role additions.                                     |
 | `schemas/`, `fixtures/`              | JSON Schemas for ticket role contracts; each schema has a `valid.json` and `invalid-*.json` fixture.                 |
 | `ticket-template.md`                 | The issue body template `yk ticket new` fills.                                                                       |
@@ -196,11 +196,19 @@ steering) still work but are not advertised.
 
 ---
 
-`yk throttle` (`throttle.ts`) is the load supervisor. It is a loop of `yk`, not a Yukta supervisor: the session `dogfood` is already owned by the
-ticket-advice supervisor, and Yukta gives a session to one supervisor only (`409 OWNERSHIP_CONFLICT`). It uses the run controls instead, so every workflow
-of the session is covered. `ensureServer` (`server.ts`) starts it, detached, if `throttle.lock` is not held; it ends when the server is unreachable.
-Each tick (`tick`) takes a sample (1-minute load per core; `MemAvailable` over total RAM), `decide` applies the hysteresis, and the runs it paused are kept in
-`throttle.json`. Under load the oldest run (by `startTime`) is never paused, so it finishes first; resuming goes oldest first. If the advice supervisor refuses an operator pause (`409 CONTROLLED_BY_SUPERVISOR`) the error is logged and the run keeps going.
+`yk throttle` (`throttle.ts`, `guard.ts`) is the decision maker of the Yukta supervisor `dogfood-resource-guard` (type `http`). A unit has one owner (`409 OWNERSHIP_CONFLICT`),
+so the ownership is split: the guard owns `run:dogfood/<workflow>` (start, pause, resume, stop, restart) of every workflow in `session.json` and `ticket-session.json`, and the
+ticket-advice supervisor keeps only the `ASK_INPUT` nodes of the ticket workflows (`workflow:dogfood/<wf>//<ids>`, both lists derived from the generated session files).
+`saveGuard` narrows ticket-advice first (when it is installed), saves the guard, issues its credential (rotated on each start, kept in memory, renewed on a 401), takes the cursor of
+`/api/agent/v1/snapshot`, then `attachGuard` assigns the runs and the loop writes `guard.ready`. `ensureServer` (`server.ts`) starts the loop, detached, if `throttle.lock` is not held, and waits up to 10 s for
+`guard.ready`: since the guard owns the run level, every start/stop/pause of a person is a _review_ that the loop (`answerReviews`, long poll of `/signals`) answers ALLOW, and the server
+refuses anything but a stop when no answer comes in 5 s. The loop ends when the server is unreachable; the guard stays attached (a detach and attach restarts its engines), and `ensureServer` starts the loop again; `YK_THROTTLE=off` takes the guard off the runs (`detachGuard`). It is **opt-in** (`YK_THROTTLE=on`).
+
+**Open points (verified live on the dev server).** Pause/resume directives work: applied, audited with the load as reason, runs `PAUSED`. People's commands on the guarded runs do not always: with one assignment (`run:dogfood/tool`) `yk tool` starts were answered; with the ~20 `run:` assignments some reviews reach the loop but `POST /reviews/<id>` answers `409 No open request r1 …` (every assignment engine counts `r1, r2, …` itself while the agent channel remembers answered ids), so the command is refused after 5 s. In the yukta source `AgentHub.Channel.claimAnswer` refuses an id that was answered before (a set kept for the channel); that every assignment engine counts from `r1` itself is inferred from the ids seen live (`r1`, `r3`, … for different workflows), not read from the source. Tracked in infenia/yukta#2510, fix in infenia/yukta#2512. Until yukta gives reviews unique ids (or one assignment can cover all runs) the guard should not be on by default. A resume of a run the loop did not pause by itself still needs the review to work.
+Each tick (`tick`) takes a sample (1-minute load per core; `MemAvailable` over total RAM), `decide` applies the hysteresis, and pause/resume go out as `POST /api/agent/v1/directives`
+(`cause: initiative`, a reason with the load; a directive has no `tree`, so one per execution of the run's tree, read from `/api/executions`). The runs it paused are kept in
+`throttle.json`. Under load the oldest run (by `startTime`) is never paused, so it finishes first; resuming goes oldest first. A directive is accepted (202) before it is applied; a refusal
+(`NOT_OWNED`, `forbidden`, `rate-limited`) shows in the decisions of the supervisor, and the next tick sees that the run is not paused and tries again.
 
 ## 5. Walkthroughs of one run
 

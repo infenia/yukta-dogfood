@@ -46,6 +46,7 @@ import {
 import { cmdRunControl, cmdTree, startNotifier, watchOwned } from '../runs.ts'
 import { main as report } from './report.ts'
 import { KIT } from './lib.ts'
+import { askTargets } from '../guard.ts'
 import { main as github } from './github.ts'
 import { pr as prCmd, releaseCmd, worktree as worktreeCmd } from './branch.ts'
 import { criteria as criteriaOf } from './init.ts'
@@ -364,20 +365,21 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
   }
 }
 
-/** The dogfood supervisor of the ticket questions (supervisor/*.json, #1923): the internal session with its workflow, the supervisor and what it owns, sent to the dev server
+/** The dogfood supervisor of the ticket questions (supervisor/*.json, #1923): the internal session with its workflow, the supervisor and the question nodes it owns, sent to the dev server
  * with the dev key (ADMIN). __TICKET__ and __STATE__ are replaced; an object that exists already (409) is left as it is. */
 export async function installSupervisor(base = DEV_URL, dir = join(KIT, 'supervisor'), state = STATE_DIR): Promise<string[]> {
   const sub = (s: string): string => s.split('__TICKET__').join(KIT).split('__STATE__').join(state)
   const steps: [string, string, string][] = [
     ['session.json', 'POST', '/api/sessions'],
     ['supervisor.json', 'POST', '/api/supervisors'],
-    ['assignments.json', 'PUT', '/api/supervisors/dogfood-ticket-advice/assignments'],
+    ['assignments', 'PUT', '/api/supervisors/dogfood-ticket-advice/assignments'],
   ]
   const out: string[] = []
   for (const [file, method, path] of steps) {
     const r = await http(method, base + path, {
       headers: { ...keyHeader(), 'Content-Type': 'application/json' },
-      body: sub(text(join(dir, file))),
+      // the resource guard has the run level (guard.ts), so this supervisor keeps only the nodes that ask a question
+      body: file === 'assignments' ? JSON.stringify(askTargets().map((target) => ({ target }))) : sub(text(join(dir, file))),
       timeoutMs: 20000,
     })
     if (![200, 201, 409].includes(r.code)) die(`${file}: HTTP ${r.code} ${r.body.slice(0, 200)}`)

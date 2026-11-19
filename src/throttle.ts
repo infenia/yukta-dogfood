@@ -4,7 +4,8 @@
 // It uses the run controls of the server (pause|resume ?tree=true), so every workflow of the session is covered, now and later, with nothing wired into a workflow.
 // A paused run keeps the node it is in (a Gradle task finishes); only the next node waits. A run somebody else paused is never resumed here.
 import { freemem, loadavg, availableParallelism, totalmem } from 'node:os'
-import { DEV_URL, STATE_DIR, checkSession, http, join, mkdirp, readFileSync, sleep, text, tryJson, writeFileSync } from './lib.ts'
+import { DEV_URL, STATE_DIR, checkSession, http, join, mkdirp, readFileSync, rmSync, sleep, text, tryJson, writeFileSync } from './lib.ts'
+import { type Agent, agent, answerReviews, attachGuard, detachGuard, directives, logLine, readyPath, saveGuard } from './guard.ts'
 import { tryLock } from './server.ts'
 
 export type Sample = { cpu: number; ramFree: number } // cpu: 1-minute load per core; ramFree: available memory as a fraction of the total
@@ -73,13 +74,13 @@ export async function release(mine: Set<string>, io: Io): Promise<void> {
 }
 
 const headers = (): Record<string, string> => (process.env.YUKTA_TOKEN ? { 'X-API-Key': process.env.YUKTA_TOKEN } : {})
-const get = async (path: string): Promise<any> => {
+export const get = async (path: string): Promise<any> => {
   const r = await http('GET', `${process.env.YUKTA_SERVER_URL ?? DEV_URL}${path}`, { headers: headers(), timeoutMs: 15000 })
   if (r.code === 0) throw new Error('the server is not reachable') // the loop ends with the server (the next yk run starts it again)
   const j = r.code === 200 ? tryJson(r.body) : null
   return j && typeof j === 'object' && 'data' in j ? j.data : j
 }
-const live: Io['live'] = async () => {
+export const live: Io['live'] = async () => {
   const all: any[] = (await get('/api/executions?limit=1000')) ?? []
   const roots = all.filter((e) => e.sessionId === checkSession() && e.status === 'RUNNING' && e.parentExecutionId == null)
   return Promise.all(
@@ -90,41 +91,74 @@ const live: Io['live'] = async () => {
     })),
   )
 }
-const control: Io['control'] = async (verb, id) => {
-  const r = await http('POST', `${process.env.YUKTA_SERVER_URL ?? DEV_URL}/api/executions/${id}/${verb}?tree=true`, {
-    headers: headers(),
-    timeoutMs: 15000,
-  })
-  if (r.code >= 400 || r.code === 0) console.error(`throttle: ${verb} ${id.slice(0, 8)}: HTTP ${r.code} ${r.body.slice(0, 120)}`)
-  return r.code > 0 && r.code < 400
+/** The Io of the guard: the load is sampled here, and pause/resume go out as directives of the supervisor (the run and the runs it started). */
+export function guardIo(a: Agent): Io {
+  let why = ''
+  return {
+    sample: () => {
+      const x = sample()
+      why = `cpu ${x.cpu.toFixed(2)}/core, ram free ${(x.ramFree * 100).toFixed(0)}%`
+      return x
+    },
+    live,
+    control: async (verb, id) => {
+      const all: any[] = (await get('/api/executions?limit=1000')) ?? []
+      const tree = [id]
+      for (let i = 0; i < tree.length; i++)
+        for (const e of all) if (e.parentExecutionId === tree[i] && e.status === 'RUNNING') tree.push(e.executionId)
+      return directives(a, verb, tree, why)
+    },
+    log: logLine,
+  }
 }
 
 export const lockPath = (): string => join(STATE_DIR, 'throttle.lock')
 const minePath = (): string => join(STATE_DIR, 'throttle.json')
 
-/** yk throttle [--once]: the loop (one tick with --once). Runs it paused by itself are kept in throttle.json, so a restart of the loop still resumes them. */
-export async function cmdThrottle(
-  argv: string[],
-  io: Io = { sample, live, control, log: (m) => console.log(`throttle: ${m}`) },
-): Promise<number> {
+/** yk throttle [--once]: the loop (one tick with --once). Runs it paused by itself are kept in throttle.json, so a restart of the loop still resumes them.
+ * Without `io` it is the decision maker of the guard supervisor: it saves it, takes the credential, attaches it to the runs and answers the reviews while it runs. */
+export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
   const c = config()
   if (argv.includes('--once')) c.hold = 1
   const once = argv.includes('--once')
   mkdirp(STATE_DIR)
   if (!once && !tryLock(lockPath())) return (console.log('throttle: already running'), 0)
-  const mine = new Set<string>((tryJson(text(minePath())) as string[] | null) ?? [])
-  let s: State = { paused: mine.size > 0, streak: 0 }
-  do {
+  rmSync(readyPath(), { force: true })
+  let stopped = false
+  const own = !io
+  if (!io) {
     try {
-      s = await tick(s, mine, c, io)
+      const a = agent(DEV_URL, await saveGuard())
+      const cursor = tryJson((await a.call('GET', '/snapshot')).body)?.data?.cursor ?? 0 // before the attach, so no review is missed
+      await attachGuard()
+      writeFileSync(readyPath(), String(Date.now()))
+      answerReviews(a, () => stopped, cursor).catch((e) => ((stopped = true), logLine(`reviews: ${(e as Error).message}`)))
+      io = guardIo(a)
     } catch (e) {
-      io.log((e as Error).message)
-      await release(mine, io) // never leave the runs we paused behind a dead loop
-      writeFileSync(minePath(), JSON.stringify([...mine])) // what could not be resumed (server down) is resumed by the next start
+      logLine(`the guard did not start: ${(e as Error).message}`)
+      writeFileSync(readyPath(), 'failed') // yk stops waiting for it
       return 0
     }
-    writeFileSync(minePath(), JSON.stringify([...mine]))
-    if (!once) await sleep(c.interval * 1000)
-  } while (!once)
+  }
+  const mine = new Set<string>((tryJson(text(minePath())) as string[] | null) ?? [])
+  let s: State = { paused: mine.size > 0, streak: 0 }
+  try {
+    do {
+      try {
+        s = await tick(s, mine, c, io)
+      } catch (e) {
+        io.log((e as Error).message)
+        await release(mine, io) // never leave the runs we paused behind a dead loop
+        writeFileSync(minePath(), JSON.stringify([...mine])) // what could not be resumed (server down) is resumed by the next start
+        return 0
+      }
+      writeFileSync(minePath(), JSON.stringify([...mine]))
+      if (!once) await sleep(c.interval * 1000)
+    } while (!once && !stopped)
+  } finally {
+    stopped = true
+    // with YK_THROTTLE=on the guard stays attached (detach and attach restart its engines, see saveGuard) and the next yk command starts the loop again; otherwise nobody would answer its reviews
+    if (own && process.env.YK_THROTTLE !== 'on') await detachGuard().catch(() => {})
+  }
   return 0
 }
