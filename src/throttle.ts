@@ -157,8 +157,8 @@ export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
     } while (!once && !stopped)
   } finally {
     stopped = true
-    // with YK_THROTTLE=on the guard stays attached (detach and attach restart its engines, see saveGuard) and the next yk command starts the loop again; otherwise nobody would answer its reviews
-    if (own && process.env.YK_THROTTLE !== 'on') await detachGuard().catch(() => {})
+    // unless YK_THROTTLE=off the guard stays attached (detach and attach restart its engines, see saveGuard) and the next yk command starts the loop again; otherwise nobody would answer its reviews
+    if (own && process.env.YK_THROTTLE === 'off') await detachGuard().catch(() => {})
   }
   return 0
 }
