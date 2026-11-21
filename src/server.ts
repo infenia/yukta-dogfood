@@ -375,11 +375,10 @@ export async function ensureServer(): Promise<void> {
 }
 
 /** The resource guard (throttle.ts, guard.ts) decides for the supervisor that owns the runs of the session for as long as the server is up: started here, so every run that
- * yk starts is covered. It answers the reviews of people's commands too, so this waits (up to 10 s) until it is attached.  Opt-in: YK_THROTTLE=on; YK_THROTTLE=off takes the guard off the runs. */
+ * yk starts is covered. It answers the reviews of people's commands too, so this waits (up to 10 s) until it is attached.  On by default; YK_THROTTLE=off takes the guard off the runs. */
 async function startThrottle(): Promise<void> {
   if (process.env.YUKTA_SERVER_URL !== DEV_URL) return
   if (process.env.YK_THROTTLE === 'off') return void (await detachGuard().catch(() => {}))
-  if (process.env.YK_THROTTLE !== 'on') return // opt in: while the guard owns the runs every command of a person waits for the loop (see ARCHITECTURE.md, open points)
   if (lockHeld(join(STATE_DIR, 'throttle.lock'))) return
   rmSync(readyPath(), { force: true })
   spawn(process.execPath, [join(HERE, 'yk'), '_throttle'], { detached: true, stdio: 'ignore', env: process.env }).unref()
