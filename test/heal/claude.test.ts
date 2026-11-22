@@ -47,6 +47,8 @@ test('MCP access: none without a key, read tools only with one, the key by envir
   put(join(d, 'home/fixer-key'), 'secretkey\n')
   argv = call()
   expect(argv, 'no --mcp-config with the dev fixer key').toContain('--mcp-config')
+  expect(argv).toContain('mcp__yukta__get_failure_digest')
+  expect(argv).toContain('mcp__yukta__search_logs')
   expect(argv).toContain('mcp__yukta__get_node_output')
   expect(argv).toContain('mcp__yukta__get_workflow_history')
   for (const t of ['start_workflow', 'control_workflow', 'control_node', 'signal_node', 'create_session'])
@@ -56,7 +58,7 @@ test('MCP access: none without a key, read tools only with one, the key by envir
     .slice(0, argv.split('\n').indexOf('--disallowedTools'))
     .filter((l) => l.startsWith('mcp__yukta__'))
   expect(
-    allowed.every((l) => l.startsWith('mcp__yukta__get_')),
+    allowed.every((l) => l.startsWith('mcp__yukta__get_') || l.startsWith('mcp__yukta__search_')),
     'a non-read MCP tool is allowed',
   ).toBe(true)
   expect(argv).not.toContain('secretkey')
