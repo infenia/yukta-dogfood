@@ -3,7 +3,7 @@
 // The resource guard: what it owns, the order of the install, the directives it sends and the reviews it answers (against a fake server).
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { ADVICE, GUARD, agent, answerReviews, askTargets, directives, runTargets, saveGuard } from '../src/guard.ts'
+import { ADVICE, GUARD, agent, answerReviews, askTargets, directives, retrying, runTargets, saveGuard } from '../src/guard.ts'
 
 const root = join(import.meta.dir, '..')
 const wfs = (f: string): string[] => Object.keys(require(join(root, f)).workflows)
@@ -156,4 +156,68 @@ test('answerReviews: ALLOW for a review, nothing for the other signals; a 401 ta
   } finally {
     f.srv.stop(true)
   }
+})
+
+test('retrying: tries again after a failure with a growing pause (2 s, 4 s ... 30 s) until it works', async () => {
+  const pauses: number[] = []
+  const errors: string[] = []
+  let n = 0
+  const r = await retrying(
+    async () => {
+      if (++n < 7) throw new Error(`down ${n}`)
+      return 'up'
+    },
+    () => false,
+    (e) => errors.push(e.message),
+    60 * 60_000,
+    async (ms) => void pauses.push(ms),
+  )
+  expect(r).toBe('up')
+  expect(pauses).toEqual([2000, 4000, 8000, 16000, 30000, 30000])
+  expect(errors).toHaveLength(6)
+})
+
+test('retrying: a 429 waits a minute and does not shorten the growing pause', async () => {
+  const pauses: number[] = []
+  let n = 0
+  await retrying(
+    async () => {
+      if (++n === 1) throw new Error('credential: HTTP 429 {"message":"Too many failed attempts"}')
+      if (n === 2) throw new Error('refused')
+    },
+    () => false,
+    () => {},
+    60 * 60_000,
+    async (ms) => void pauses.push(ms),
+  )
+  expect(pauses).toEqual([60000, 4000])
+})
+
+test('retrying: gives up after the time allowed, and does nothing once stopped', async () => {
+  let t = 0
+  let calls = 0
+  const gave = await retrying(
+    async () => {
+      calls++
+      throw new Error('down')
+    },
+    () => false,
+    () => {},
+    10 * 60_000,
+    async (ms) => void (t += ms),
+    () => t,
+  )
+  expect(gave).toBeUndefined()
+  expect(calls).toBeGreaterThan(3)
+  expect(t).toBeGreaterThanOrEqual(10 * 60_000 - 30000)
+  let ran = false
+  expect(
+    await retrying(
+      async () => (ran = true),
+      () => true,
+      () => {},
+      1000,
+    ),
+  ).toBeUndefined()
+  expect(ran).toBe(false)
 })
