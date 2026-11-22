@@ -3883,6 +3883,8 @@
               "Bash(actionlint:*)",
               "Bash(mint:*)",
               "Bash(cd:*)",
+              "mcp__yukta__get_failure_digest",
+              "mcp__yukta__search_logs",
               "mcp__yukta__get_node_output",
               "mcp__yukta__get_execution_tree",
               "mcp__yukta__get_execution_logs",

@@ -145,11 +145,11 @@ Never edit these by hand (the yukta skill says so).
 Random 32-character keys, mode 0600, in `DEV_HOME`. They reach the server through a Spring properties file
 (`--spring.config.additional-location`), **not** the environment, because Gradle children would inherit environment variables.
 
-| Key               | Role                                      | Used by                                                                                              |
-| ----------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `api-key` ("dev") | ADMIN                                     | `yk` itself (`useDevKey()` sets `YUKTA_TOKEN` when the target is the dev URL)                        |
-| `fixer-key`       | VIEWER, all sessions                      | headless fixers: read-only MCP (`get_workflow_history`, `get_node_output`)                           |
-| `session-key`     | OPERATOR, session `dogfood`, `agent=true` | Claude Code's MCP when `YUKTA_MCP_KEY=session` (only if the build's `ApiKeys.java` supports `agent`) |
+| Key               | Role                                      | Used by                                                                                                         |
+| ----------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `api-key` ("dev") | ADMIN                                     | `yk` itself (`useDevKey()` sets `YUKTA_TOKEN` when the target is the dev URL)                                   |
+| `fixer-key`       | VIEWER, all sessions                      | headless fixers: read-only MCP (`get_failure_digest`, `search_logs`, `get_node_output`, `get_workflow_history`) |
+| `session-key`     | OPERATOR, session `dogfood`, `agent=true` | Claude Code's MCP when `YUKTA_MCP_KEY=session` (only if the build's `ApiKeys.java` supports `agent`)            |
 
 The same properties file raises `max-in-memory-size` to 8 MB (the rendered session is over the 256 KB default) and defines the input routing
 tiers `yukta.input.routes.ticket`: supervisor (auto, min-confidence 0.85, 20 s) → session (OPERATOR, 30 min) → human (24 h), final timeout

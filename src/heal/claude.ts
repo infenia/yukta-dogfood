@@ -32,8 +32,12 @@ export const CLAUDE_SESSION_ENV = [
   'CLAUDE_CODE_SESSION_ATTENDED',
   'CLAUDE_PID',
 ]
-// the read tools of the endpoint a fixer may call, and the tools that change a run or the server, denied even if the key allowed them
+// the read tools of the endpoint a fixer may call, cheapest first (the digest and the search answer in a few KB; servers before
+// yukta#2614 do not have them, and an allowed tool the server lacks is simply not offered), and the tools that change a run or the
+// server, denied even if the key allowed them
 export const MCP_READ = [
+  'get_failure_digest',
+  'search_logs',
   'get_node_output',
   'get_execution_tree',
   'get_execution_logs',
