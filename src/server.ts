@@ -106,6 +106,13 @@ export async function pickupResume(): Promise<void> {
   else console.error('WARN pickup: could not start the schedule again (yk pickup on)')
 }
 
+/** After `yk up` (a start, a swap, or a server that was already ready): the guard supervisor lives on the server, so a new server has none until the loop saves it. Started here,
+ * not only before a run, so the supervisor is there as soon as the server is. */
+export async function guardResume(): Promise<void> {
+  process.env.YUKTA_SERVER_URL = DEV_URL
+  await startThrottle()
+}
+
 /** Brings the managed worktree $DEV_HOME/main to origin/main (or $YUKTA_DEV_MAIN_REF) and returns its commit. */
 export function mainSync(): string {
   const wt = join(DEV_HOME, 'main')
@@ -338,6 +345,7 @@ export async function serverUp(args: string[] = []): Promise<number> {
       // a server started before yk set an API key is replaced like a stale one
       if (serverEnv('YUKTA_DEV_SHA') === id && serverEnv('YUKTA_DEV_KEYED') === '2') {
         console.log(`ready: ${DEV_URL} (${label})`)
+        await guardResume() // a no-op while the loop is running
         return 0
       }
       const n = await busy()
@@ -350,6 +358,7 @@ export async function serverUp(args: string[] = []): Promise<number> {
     } else if (await portOpen(Number(DEV_PORT))) die(`port ${DEV_PORT} is in use by another program; free it or set YUKTA_DEV_PORT`)
     await serverLaunch(kind, id, label, rules, cmd)
     await pickupResume()
+    await guardResume()
     return 0
   } finally {
     release()

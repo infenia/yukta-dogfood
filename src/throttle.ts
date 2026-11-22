@@ -5,7 +5,7 @@
 // A paused run keeps the node it is in (a Gradle task finishes); only the next node waits. A run somebody else paused is never resumed here.
 import { freemem, loadavg, availableParallelism, totalmem } from 'node:os'
 import { DEV_URL, STATE_DIR, checkSession, http, join, mkdirp, readFileSync, rmSync, sleep, text, tryJson, writeFileSync } from './lib.ts'
-import { type Agent, agent, answerReviews, attachGuard, detachGuard, directives, logLine, readyPath, saveGuard } from './guard.ts'
+import { type Agent, agent, answerReviews, attachGuard, detachGuard, directives, logLine, readyPath, retrying, saveGuard } from './guard.ts'
 import { tryLock } from './server.ts'
 
 export type Sample = { cpu: number; ramFree: number } // cpu: 1-minute load per core; ramFree: available memory as a fraction of the total
@@ -117,6 +117,18 @@ const minePath = (): string => join(STATE_DIR, 'throttle.json')
 
 /** yk throttle [--once]: the loop (one tick with --once). Runs it paused by itself are kept in throttle.json, so a restart of the loop still resumes them.
  * Without `io` it is the decision maker of the guard supervisor: it saves it, takes the credential, attaches it to the runs and answers the reviews while it runs. */
+/** How long the loop waits for a server that is down or has lost the guard before it gives up (yk up and the next run start it again). */
+const GIVE_UP_MS = 10 * 60_000
+
+/** Saves the guard, takes its credential, attaches it to the runs and says it is ready. The cursor is taken before the attach, so no review is missed. */
+async function connect(): Promise<{ a: Agent; cursor: number }> {
+  const a = agent(DEV_URL, await saveGuard())
+  const cursor = tryJson((await a.call('GET', '/snapshot')).body)?.data?.cursor ?? 0
+  await attachGuard()
+  writeFileSync(readyPath(), String(Date.now()))
+  return { a, cursor }
+}
+
 export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
   const c = config()
   if (argv.includes('--once')) c.hold = 1
@@ -126,14 +138,43 @@ export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
   rmSync(readyPath(), { force: true })
   let stopped = false
   const own = !io
+  // Set while the guard is the decision maker: a server restart loses the guard (and its credential), so it is saved and attached again instead of the loop ending.
+  let reconnect: () => Promise<boolean> = async () => false
   if (!io) {
     try {
-      const a = agent(DEV_URL, await saveGuard())
-      const cursor = tryJson((await a.call('GET', '/snapshot')).body)?.data?.cursor ?? 0 // before the attach, so no review is missed
-      await attachGuard()
-      writeFileSync(readyPath(), String(Date.now()))
-      answerReviews(a, () => stopped, cursor).catch((e) => ((stopped = true), logLine(`reviews: ${(e as Error).message}`)))
-      io = guardIo(a)
+      let link = await connect()
+      // the agent the Io and the reviews hold; a reconnect swaps what is behind it
+      const via: Agent = { call: (m, p, b) => link.a.call(m, p, b), token: () => link.a.token() }
+      let pending: Promise<boolean> | undefined
+      reconnect = () =>
+        (pending ??= retrying(
+          connect,
+          () => stopped,
+          (e) => logLine(`the guard is not reachable: ${e.message}`),
+          GIVE_UP_MS,
+        )
+          .then((l) => {
+            if (!l) {
+              stopped = true // the server stayed away: yk up or the next run starts the loop again
+              return false
+            }
+            link = l
+            logLine('the guard is attached again')
+            return true
+          })
+          .finally(() => (pending = undefined)))
+      void (async () => {
+        while (!stopped) {
+          try {
+            return await answerReviews(via, () => stopped, link.cursor)
+          } catch (e) {
+            if (stopped) return
+            logLine(`reviews: ${(e as Error).message}`)
+            if (!(await reconnect())) return
+          }
+        }
+      })()
+      io = guardIo(via)
     } catch (e) {
       logLine(`the guard did not start: ${(e as Error).message}`)
       writeFileSync(readyPath(), 'failed') // yk stops waiting for it
@@ -150,7 +191,8 @@ export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
         io.log((e as Error).message)
         await release(mine, io) // never leave the runs we paused behind a dead loop
         writeFileSync(minePath(), JSON.stringify([...mine])) // what could not be resumed (server down) is resumed by the next start
-        return 0
+        if (once || !(await reconnect())) return 0
+        continue // the server is back and the guard attached again
       }
       writeFileSync(minePath(), JSON.stringify([...mine]))
       if (!once) await sleep(c.interval * 1000)

@@ -170,6 +170,31 @@ export async function answerReviews(a: Agent, stop: () => boolean, after: number
   }
 }
 
+/** Runs `fn` until it succeeds, pausing 2 s, then twice as long up to 30 s, between tries. A 429 (the server's lockout after failed attempts) waits a minute: retrying
+ * faster only feeds it. Returns undefined when `stop()` says so or when it kept failing for `giveUpMs`. `pause` and `now` are for the tests. */
+export async function retrying<T>(
+  fn: () => Promise<T>,
+  stop: () => boolean,
+  onError: (e: Error) => void,
+  giveUpMs: number,
+  pause: (ms: number) => Promise<void> = sleep,
+  now: () => number = Date.now,
+): Promise<T | undefined> {
+  const from = now()
+  let wait = 2000
+  while (!stop()) {
+    try {
+      return await fn()
+    } catch (e) {
+      onError(e as Error)
+      if (now() - from >= giveUpMs) return undefined
+      await pause(/\b429\b/.test((e as Error).message) ? 60000 : wait)
+      wait = Math.min(wait * 2, 30000)
+    }
+  }
+  return undefined
+}
+
 export const logPath = (): string => join(STATE_DIR, 'guard.log')
 /** The loop is detached with no terminal: what it says goes to a file too. */
 export function logLine(msg: string): void {
