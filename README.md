@@ -217,7 +217,7 @@ Steps 3 and 4 repeat per rung; the steps below are the order of events, not a li
 4. **Guard**: what changed on disk decides, not what Claude says. Rejected: edits to `config/`, `build-logic/`, `gradle/`,
    `.github/`, `.claude/` or this folder, added suppressions, removed assertions, test expectations changed with no code
    change, a claimed fix with no change. Fixers never commit.
-   **MCP for fixers**: a fixer reads more of the failed run on demand instead of being handed all of it. claude.ts gives it the server's `/mcp` with the read tools only (`get_failure_digest` and `search_logs` first, which answer in a few KB, then `get_node_output`, `get_execution_tree`, `get_execution_logs`, `get_execution_result`, `get_workflow_status`, `get_workflow_history`, `get_workflow_details`); the mutating tools are denied in `claude.ts` and the key is a named `VIEWER` key (`fixer-key` in the dev state dir, added to `server.properties` when `yk up` starts the server, so a server started before this change needs a restart), which the server enforces. `YUKTA_FIXER_MCP=off` turns it off; another server needs `YUKTA_SERVER_URL` and a `VIEWER` key in `YUKTA_FIXER_MCP_KEY`. Without a key a fixer has no MCP, as before. `test/claude-mcp.test.ts` tests the arguments.
+   **Tools of fixers** (`src/heal/agent-env.ts`, the same for ticket roles and the filing session): `--strict-mcp-config` with codebase-memory only (`YUKTA_AGENT_MCP=codebase-memory-mcp,idea,intellij-index` adds the IDE servers: they add about 43k and 19k input tokens to every session and index the IDE's project, not an issue's worktree), the plugins ponytail, token-optimizer and jdtls-lsp, and `disableAllHooks`. Never the yukta MCP or skill, the yukta plugins or a hook. The failure's full output is a log file the prompt names.
 5. **Verify**: if anything was healed, the Gradle tasks of all stages run once more; a failure goes back to heal.
 
 `licenses` and `security` are never healed. `--no-heal` ends the run at the first failing stage. With two or more Gradle stages planned, a `fast` step first runs all their tasks as one Gradle invocation (one start-up, one task graph); when it passes the Gradle stages are no-ops, when it fails the stages run one by one as before, so the failing stage, `failed_node` and the healing are unchanged. `--no-fast` skips it. `--models haiku,sonnet`
@@ -226,7 +226,7 @@ leaves a model out (its rungs stop at once).
 ### How a fixer is launched
 
 Fixers run through `src/heal/claude.ts`: `--permission-mode auto --permission-prompts none` with a command
-allowlist, the models pinned to `claude-haiku-5-5` and `claude-sonnet-5-5`, no user plugins, skills, MCP servers or CLAUDE.md,
+allowlist, the models pinned to `claude-haiku-5-5` and `claude-sonnet-5-5`, no user hooks, no yukta MCP or skill, only the token-saving plugins and MCP servers of `src/heal/agent-env.ts`, no CLAUDE.md,
 a per-effort budget and time box. `YK_ADVISOR=sonnet` (experimental, off by default) gives a fixer an advisor model. `YUKTA_BUDGET_CHECK` (USD, default `checkBudget` in `heal.json`, $5) caps what all attempts of one check may cost together: once spent, no further rung starts and the stage ends as the ladder does. The prompt of an attempt carries 12-line excerpts around the `file:line` spots in the problem lines (up to 6). The free fix of `reuse` is `scripts/fix-reuse.ts` (the project header on every file `reuse lint` reports, a `.license` sidecar for types it cannot comment), so `healed=reuse:auto` costs no model call.
 
 ### Configuration

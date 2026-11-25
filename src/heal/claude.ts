@@ -10,15 +10,15 @@
 //   YK_ROLE architect|test_writer|implementer|reviewer: a ticket-pipeline role, picks fixer-rules/ticket-<role>.md (wins over YK_STAGE)
 //   YK_TOOLS readonly: Read, Grep and Glob only   YK_MAX_TURNS turn cap
 //   YK_SESSION session id   YK_ADVISOR advisor model (experimental, off when unset)   YK_CLAUDE_BIN a stand-in for `claude` (tests)
-//   YK_MCP_URL and YK_MCP_KEY (both): the Yukta server's MCP endpoint, read tools only; the key should be a VIEWER key, so the server refuses a
-//   change whatever the prompt says, and the mutating tools are denied here as well. The key reaches claude by environment, never by argument.
 //
-// Slim on purpose: none of the user's plugins, skills or settings and no MCP server but that one (their tool schemas cost more than a fix), a
-// fixed tool list and nothing that varies per run in the system prompt. Not --bare: it would also drop the login. The project hooks still load
-// (they keep the gradle guard); YUKTA_HEAL_FIXER=1 lets the session call ./gradlew directly. It never commits or pushes: the workflow does.
+// Slim on purpose: a fixed tool list, nothing that varies per run in the system prompt, and of the user's plugins and MCP servers only the ones that
+// cut token use (agent-env.ts: codebase-memory, idea, intellij-index, ponytail, token-optimizer, jdtls-lsp); never the yukta MCP or skill, never a hook
+// (--settings disableAllHooks). Not --bare: it would also drop the login. YUKTA_HEAL_FIXER=1 stays set for tools that look at it. It never commits or
+// pushes: the workflow does.
 import { mkdtempSync } from 'node:fs'
+import { AGENT_ALLOW, AGENT_DENY, agentMcp, agentSettings } from './agent-env.ts'
 import { tmpdir } from 'node:os'
-import { DEV_HOME, DEV_URL, HERE, fixerKey, isFile, join, readFileSync, rmSync, run, text, writeFileSync } from '../lib.ts'
+import { HERE, isFile, join, readFileSync, rmSync, run, text, writeFileSync } from '../lib.ts'
 
 // A headless claude must not think it is the session that started the server.
 export const CLAUDE_SESSION_ENV = [
@@ -32,32 +32,6 @@ export const CLAUDE_SESSION_ENV = [
   'CLAUDE_CODE_SESSION_ATTENDED',
   'CLAUDE_PID',
 ]
-// the read tools of the endpoint a fixer may call, cheapest first (the digest and the search answer in a few KB; servers before
-// yukta#2614 do not have them, and an allowed tool the server lacks is simply not offered), and the tools that change a run or the
-// server, denied even if the key allowed them
-export const MCP_READ = [
-  'get_failure_digest',
-  'search_logs',
-  'get_node_output',
-  'get_execution_tree',
-  'get_execution_logs',
-  'get_execution_result',
-  'get_workflow_status',
-  'get_workflow_history',
-  'get_workflow_details',
-]
-export const MCP_DENY = [
-  'start_workflow',
-  'control_workflow',
-  'control_node',
-  'set_node_breakpoint',
-  'signal_node',
-  'rollback_workflow',
-  'note_workflow_version',
-  'set_scheduler_limits',
-  'create_session',
-]
-
 export const FIXER_ALLOW = [
   'Read',
   'Edit',
@@ -73,6 +47,7 @@ export const FIXER_ALLOW = [
   'Bash(actionlint:*)',
   'Bash(mint:*)',
   'Bash(cd:*)',
+  ...AGENT_ALLOW,
 ]
 
 /** The claude command line for one session (the tests read it back). */
@@ -85,27 +60,16 @@ export function claudeArgs(o: {
   env: NodeJS.ProcessEnv
 }): string[] {
   const e = o.env
-  const mcp: string[] = []
-  const allow: string[] = []
-  const deny: string[] = []
-  if (e.YK_MCP_URL && e.YK_MCP_KEY) {
-    mcp.push(
-      '--mcp-config',
-      JSON.stringify({ mcpServers: { yukta: { type: 'http', url: e.YK_MCP_URL, headers: { 'X-API-Key': '${YK_MCP_KEY}' } } } }),
-    )
-    for (const t of MCP_READ) allow.push(`mcp__yukta__${t}`)
-    for (const t of MCP_DENY) deny.push(`mcp__yukta__${t}`)
-  }
-  let tools = 'Read,Edit,Write,Grep,Glob,Bash'
+  let tools = 'Read,Edit,Write,Grep,Glob,Bash,Skill,LSP'
   let allowTools = [...FIXER_ALLOW, ...(e.YK_ALLOW ?? '').split('\n').filter(Boolean)] // the exact extra rules of a role (the ticket test writer's self-check)
   if (e.YK_TOOLS === 'readonly') {
-    tools = 'Read,Grep,Glob'
-    allowTools = ['Read', 'Grep', 'Glob']
+    tools = 'Read,Grep,Glob,Skill,LSP'
+    allowTools = ['Read', 'Grep', 'Glob', ...AGENT_ALLOW]
   }
   // read-only plus the exact tool rules in YK_ALLOW (newline-separated, e.g. `Write(/x/draft.json)`, `Bash(cmd:*)`): the ticket architect's self-check
   if (e.YK_TOOLS === 'selfcheck') {
-    tools = 'Read,Grep,Glob,Write,Bash'
-    allowTools = ['Read', 'Grep', 'Glob', ...(e.YK_ALLOW ?? '').split('\n').filter(Boolean)]
+    tools = 'Read,Grep,Glob,Write,Bash,Skill,LSP'
+    allowTools = ['Read', 'Grep', 'Glob', ...AGENT_ALLOW, ...(e.YK_ALLOW ?? '').split('\n').filter(Boolean)]
   }
   const model = ['--model', o.mode]
   if (e.YK_MAX_TURNS) model.push('--max-turns', e.YK_MAX_TURNS)
@@ -120,8 +84,10 @@ export function claudeArgs(o: {
     '--setting-sources',
     'project',
     '--strict-mcp-config',
-    ...mcp,
-    '--disable-slash-commands',
+    '--mcp-config',
+    JSON.stringify(agentMcp()),
+    '--settings',
+    JSON.stringify(agentSettings()),
     '--exclude-dynamic-system-prompt-sections',
     '--tools',
     tools,
@@ -131,11 +97,10 @@ export function claudeArgs(o: {
     'none',
     '--allowedTools',
     ...allowTools,
-    ...allow,
     '--disallowedTools',
     'Bash(git commit:*)',
     'Bash(git push:*)',
-    ...deny,
+    ...AGENT_DENY,
     '--append-system-prompt',
     readFileSync(o.rules, 'utf8'),
     '--max-budget-usd',
@@ -150,21 +115,10 @@ export function claudeArgs(o: {
   ]
 }
 
-/** Read-only MCP access of a fixer to the server that runs the workflow (YUKTA_FIXER_MCP=off disables): the endpoint and the VIEWER key, or null. */
-export function fixerMcp(env: NodeJS.ProcessEnv): { url: string; key: string } | null {
-  if ((env.YUKTA_FIXER_MCP ?? 'on') === 'off') return null
-  const url = env.YUKTA_SERVER_URL || DEV_URL
-  let key = env.YUKTA_FIXER_MCP_KEY ?? ''
-  if (!key && url === DEV_URL && isFile(join(DEV_HOME, 'fixer-key')) && text(join(DEV_HOME, 'fixer-key')).length)
-    key = text(join(DEV_HOME, 'fixer-key')).trim() || fixerKey()
-  return key ? { url: `${url.replace(/\/$/, '')}/mcp`, key } : null
-}
-
-/** Writes the claude --mcp-config file of a fixer (mode 0600; the key stays in the file): its MCP server, or none without a key. */
-export function writeMcpConfig(file: string, env: NodeJS.ProcessEnv): void {
-  const m = fixerMcp(env)
-  const cfg = m ? { yukta: { type: 'http', url: m.url, headers: { 'X-API-Key': m.key } } } : {}
-  writeFileSync(file, JSON.stringify({ mcpServers: cfg }), { mode: 0o600 })
+/** Writes the --mcp-config and --settings files of an agent for the `agent` workflow (AGENT_SESSION takes files): see agent-env.ts. */
+export function writeAgentFiles(mcpFile: string, settingsFile: string): void {
+  writeFileSync(mcpFile, JSON.stringify(agentMcp()))
+  writeFileSync(settingsFile, JSON.stringify(agentSettings()))
 }
 
 /** The system prompt of a stage: the common rules plus fixer-rules/<kind>.md when the stage has one. Returns the text. */
@@ -235,8 +189,6 @@ export function main(argv: string[], stdin?: string): number {
     ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
     ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
   })
-  const mcp = fixerMcp(env)
-  if (mcp) Object.assign(env, { YK_MCP_URL: mcp.url, YK_MCP_KEY: mcp.key })
   if (env.YK_CLAUDE_BIN) env.YUKTA_CLAUDE_BIN = env.YK_CLAUDE_BIN
   let kind: string
   try {

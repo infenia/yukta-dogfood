@@ -20,6 +20,7 @@
 //   bun src/ticket/gen-ticket.ts          write ticket-session.json        bun src/ticket/gen-ticket.ts --check   exit 1 when the committed ticket-session.json is stale (CI-style)
 // Edit this file, run it, commit ticket-session.json.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { AGENT_ALLOW, AGENT_DENY } from '../heal/agent-env.ts'
 import { KIT, type Json, dumps, join } from './lib.ts'
 
 const PATH = process.env.TICKET_SESSION || join(KIT, 'ticket-session.json')
@@ -463,10 +464,11 @@ const AGENT_WF: Json = {
         approvalTimeout: FILING_WAIT,
         timeout: 3600 + FILING_WAIT,
         args: [
-          ...['--setting-sources', 'project', '--disable-slash-commands', '--no-session-persistence'],
-          ...['--tools', 'Read,Grep,Glob,Bash,Write,AskUserQuestion'],
-          ...['--allowedTools', 'Read', 'Grep', 'Glob', S('allowWrite'), S('allowBash')],
-          ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)'], // no Edit: the tool is not offered (--tools), and a bare Edit deny would beat the drafts file's Edit(//...) allow
+          ...['--setting-sources', 'project', '--no-session-persistence'],
+          ...['--strict-mcp-config', '--mcp-config', S('mcpConfig'), '--settings', S('settingsFile')],
+          ...['--tools', 'Read,Grep,Glob,Bash,Write,AskUserQuestion,Skill,LSP'],
+          ...['--allowedTools', 'Read', 'Grep', 'Glob', S('allowWrite'), S('allowBash'), ...AGENT_ALLOW],
+          ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)', ...AGENT_DENY], // no Edit: the tool is not offered (--tools), and a bare Edit deny would beat the drafts file's Edit(//...) allow
           ...[
             '--append-system-prompt-file',
             S('rulesFile'),
@@ -519,6 +521,8 @@ function session(g: G, role: string, next: string): void {
       rulesFile: '${payload.output.rules}',
       allowWrite: '${payload.output.allowWrite}',
       allowBash: '${payload.output.allowBash}',
+      mcpConfig: '${payload.output.mcpConfig}',
+      settingsFile: '${payload.output.settingsFile}',
     }),
     pe(r, ['file', 'answer', role, DIR], 300, { json: true, stdin: true }),
   )

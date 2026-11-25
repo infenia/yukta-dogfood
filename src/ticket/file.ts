@@ -15,6 +15,7 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { relative } from 'node:path'
+import { writeAgentFiles } from '../heal/claude.ts'
 import { fromAgent } from '../heal/heal.ts'
 import { parseTicket, renderTicket, specOf } from './body.ts'
 import { flatSchema } from './call.ts'
@@ -245,7 +246,24 @@ export function main(argv: string[]): number {
       // file rules are Edit rules (they cover Write too), and an absolute path takes a leading // (measured live: Write(/abs) is not matched)
       const allowWrite = a1 === 'analyst' ? 'Read' : `Edit(/${draftOf(a2)})`
       const allowBash = a1 === 'analyst' ? 'Grep' : `Bash(${checkCmd(a2)}:*)`
-      console.log(dumps({ prompt: prompt(a1, a2), schema: flatSchema(SCHEMA[a1]!), allowWrite, allowBash, model, effort, budget, rules }))
+      // the agent's MCP servers and settings (agent-env.ts) are files next to the rules: AGENT_SESSION takes files
+      const mcpConfig = join(resolve(a2), `${a1}.mcp.json`)
+      const settingsFile = join(resolve(a2), `${a1}.settings.json`)
+      writeAgentFiles(mcpConfig, settingsFile)
+      console.log(
+        dumps({
+          prompt: prompt(a1, a2),
+          schema: flatSchema(SCHEMA[a1]!),
+          allowWrite,
+          allowBash,
+          model,
+          effort,
+          budget,
+          rules,
+          mcpConfig,
+          settingsFile,
+        }),
+      )
       return 0
     }
     case 'answer': {
