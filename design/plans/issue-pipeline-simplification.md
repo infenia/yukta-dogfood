@@ -166,10 +166,13 @@ Roles: `analyst`, `architect`, `test_writer`, `implementer`, `reviewer`.
 
 ## 9. Work breakdown
 
-1. **Done (this branch):** `schemas/ticket-body.schema.json` + fixtures, `src/ticket/body.ts` (`renderTicket`, `parseTicket`, `specOf`), `test/ticket/body.test.ts`. The `analysis` schema comes with step 3.
-2. Run roles as `AGENT_SESSION` through the `agent` workflow (as heal does); a structured stop ends in one `ASK_INPUT`.
-3. Filing: from plain text (analyst, architect, validate, issue in Backlog) and from a plan file (split into issues with dependencies).
-4. Run: parse, re-validate on the current base, test writer (haiku, locked red), implementer (sonnet), gate, reviewer (sonnet), PR. Reuse `step`, `ladder`, `finalize`. New default model table.
-5. Delete section 5 (with `implementer_tricky` out of `ticket-body.schema.json` and its fixtures in the same commit), regenerate `ticket-session.json` with `gen-ticket.ts`.
-6. Rename (section 6) in one mechanical commit.
-7. Docs: `README.md`, `ARCHITECTURE.md` §10 and §11, `CLAUDE.md` layout, `yk stats`/`report` names.
+Order changed: the deletions ran before the launcher change, so fewer role call sites have to move.
+
+1. **Done** (`e16cd5f`): `schemas/ticket-body.schema.json` + fixtures, `src/ticket/body.ts` (`renderTicket`, `parseTicket`, `specOf`), `test/ticket/body.test.ts`.
+2. **Done** (`ac3373b`): removed pickup, `channel/`, `input-bridge.ts`, ticket-advice (`saveGuard` deletes a stale one); CI drops `test (channel)`; `YUKTA_PICKUP_*` → `YUKTA_TICKET_*`.
+3. **Done** (`383a36e`): serial steps (`flow next-step`), no waves, no mutation, no spec approval or merge gate in the run.
+4. **Next: roles as `AGENT_SESSION`.** Check first: (a) what `timeout`/`approvalTimeout`/`idleTimeout` do while the conversation is `WAITING` on a person (if the session is killed, use stop + `ASK_INPUT` + resume instead); (b) how the offline tests keep a fake claude (`YK_CLAUDE_BIN`) once roles run on the server; (c) whether AGENT_SESSION `args`/`approvals` take `${start.*}` (one parameterized `agent` workflow) or a ticket variant is needed. Shape: a PE that writes prompt/rules/schema/MCP files → `SUB_WORKFLOW agent` → a PE that validates the answer and routes retries (split `call.ts` in two). Pre-allow each role's tools; deny the rest; no `--permission-prompts none`.
+5. Filing: `yk ticket new "<text>"` (analyst + architect → ticket in Backlog) and `yk ticket from-plan <plan-file>`; the `analysis` schema; replace `roles.ts` `renderBody` and `ticket-template.md`.
+6. Run reads the ticket body (`parseTicket` → `specOf`) instead of running the architect; re-validate on the current base; new default model table (section 7), tier-up replaces `implementer_tricky` (drop it from `ticket-body.schema.json` and fixtures in the same commit).
+7. Renames of section 6 (`ticket-new`/`ticket-from-plan`/`ticket-run`, `round`, `revise`, `type`) in one mechanical commit.
+8. Docs: `README.md` and `ARCHITECTURE.md` still describe pickup, waves, mutation and the approvals; rewrite §10/§11 and the `yk stats`/`report` names.
