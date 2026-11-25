@@ -70,11 +70,13 @@ export async function sweep(argv: string[]): Promise<number> {
   for (const e of ex) {
     if (budget <= 0) break
     const id: string = e.executionId
-    if (known.has(id) || seen[id] || e.workflowId === 'pickup') continue
+    if (known.has(id) || seen[id] || e.workflowId === 'pickup') continue // the retired schedule: busy() stops it
     const ended = e.endTime && !String(e.endTime).startsWith('0001') ? secs(e.endTime) : 0
     const status = String(e.status)
     if (!ended) {
-      if (status === 'RUNNING' && e.startTime && secs(e.startTime) < stuck && !seen[`${id}:stuck`]) {
+      // filing may wait a day for a person's answer (ticket-new, ticket-from-plan, ticket-agent): long, not stuck
+      const waits = /^ticket-(new|from-plan|agent)$/.test(String(e.workflowId))
+      if (status === 'RUNNING' && !waits && e.startTime && secs(e.startTime) < stuck && !seen[`${id}:stuck`]) {
         recordFailure({
           kind: 'result',
           where: e.workflowId,

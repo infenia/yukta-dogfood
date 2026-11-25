@@ -8,5 +8,4 @@ bun.lock
 # prompts: byte-stable, read at runtime
 fixer-rules.md
 fixer-rules/
-ticket-template.md
 hooks

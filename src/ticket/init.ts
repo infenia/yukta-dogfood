@@ -5,10 +5,29 @@
 // Creates .yukta-dev/ticket/<run_id>/ (design section 4), branch issue/<n> and worktree ../yukta-issue-<n>.
 // Prints RUN_DIR=... and WORKTREE=...; prints SKIPPED <why> and exits 3 when the run must not start (no acceptance criteria, branch or
 // worktree exists, unless `yk ticket worktree` marked it to be continued): no tokens are spent. Only the acceptance criteria count as requirements; the rest of the issue is data.
+// A body that is a whole ticket spec (body.ts, written at filing time and reviewed by a person) becomes spec/spec.json, so the run skips the architect;
+// only for an issue assigned to the person running the pipeline: the spec's done_when commands run as shell.
 import { attach, isReleased, takeContinue } from './branch.ts'
+import { parseTicket, specOf } from './body.ts'
+import { atBase, stubPatch } from './stubs.ts'
 import { rolesOf } from './roles.ts'
 import { measure, sizingOf, trackedFiles } from './sizing.ts'
-import { type Json, KIT, die, kindOf, existsSync, git, join, load, mkdirp, parseArgs, resolve, run, save, writeFileSync } from './lib.ts'
+import {
+  type Json,
+  KIT,
+  die,
+  ticketType,
+  existsSync,
+  git,
+  join,
+  load,
+  mkdirp,
+  parseArgs,
+  resolve,
+  run,
+  save,
+  writeFileSync,
+} from './lib.ts'
 
 /** The list items under an 'Acceptance criteria' heading, up to the next heading. */
 export function criteria(body: string | null | undefined): string[] {
@@ -81,6 +100,26 @@ export function main(argv: string[]): number {
   while (existsSync(join(state, 'ticket', runId))) runId = `${baseId}-${++k}` // two runs of one issue in the same second
   const dir = join(state, 'ticket', runId)
   for (const d of ['spec', 'steps', 'review']) mkdirp(join(dir, d))
+  const parsed = raw.body_roles_untrusted ? null : parseTicket(raw.body ?? '')
+  const planned = parsed && !parsed.errors.length ? parsed.ticket : null
+  if (parsed && !planned && /^##\s+Steps\b/m.test(raw.body ?? ''))
+    console.error(`NOTE the body's spec is not valid (${parsed.errors.slice(0, 3).join('; ')}): the architect writes one`)
+  if (planned) {
+    const spec = specOf(planned, n)
+    save(join(dir, 'spec', 'spec.json'), spec)
+    save(join(dir, 'spec', 'spec.v1.json'), spec)
+    // the body's stubs (the files the tests compile against) become the scaffold patch, made on a clean tree of the base
+    let patch = ''
+    try {
+      patch = atBase(root, opt.base ?? 'origin/main', (wt) => stubPatch(wt, planned.stubs))
+    } catch (e) {
+      console.error(`NOTE the stubs could not be turned into a patch (${(e as Error).message}): the run goes on without them`)
+    }
+    writeFileSync(join(dir, spec.scaffold_patch), patch)
+    console.error(
+      `NOTE the spec comes from the issue body (${planned.steps.length} steps${planned.base_sha ? `, written against ${planned.base_sha}` : ''})`,
+    )
+  }
   const modules = [...new Set(labels.filter((l) => l in project.module_labels))].sort()
   const base = opt.base ?? 'origin/main'
   // the sizing facts, checked against the tree the run starts from; a bad item is dropped with a note (the router then has less to go on, never less safety)
@@ -93,7 +132,8 @@ export function main(argv: string[]): number {
   save(join(dir, 'ticket.json'), {
     ticket_id: n,
     title: raw.title,
-    kind: kindOf(raw.title, labels),
+    type: planned ? planned.type : ticketType(raw.title, labels),
+    planned: planned ? { complexity: planned.complexity, risk: planned.risk, tests_mode: planned.tests_mode } : null,
     labels,
     modules,
     acceptance_criteria: ac,

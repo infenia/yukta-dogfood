@@ -2,7 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // ticketkit flow ACTION RUN [STEP] [--worktree W]: the glue of the `ticket` and `step` workflows (design 6, 8.2, 15.5), no model.
 //
-//   preflight   RUN                    the walking skeleton runs one step of a low or medium risk spec; anything else stops here (approval, waves: later issues)
+//   preflight   RUN                    the walking skeleton runs one step of a low or medium risk spec; anything else stops here
+//   has-spec    RUN                    exit 0 when init took the spec from the issue body (the run skips the architect), else 1
 //   retry-spec  RUN                    the test writer was blocked or the gate failed: the reason goes to spec/downstream.json for the next architect, the worktree is reset
 //   commit-tests RUN                   commit the stubs and locked tests; the base of every step not done is reset to it
 //   step-begin  RUN STEP               commit the scaffold and locked tests as the base, record it, write the step packet (pack-step)
@@ -20,8 +21,7 @@ import {
   type Json,
   costByRole,
   die,
-  existsSync,
-  findFiles,
+  dumps,
   fmt,
   git,
   isFile,
@@ -31,7 +31,6 @@ import {
   mkdirp,
   parseArgs,
   readFileSync,
-  readdirSync,
   resolveAttempt,
   resolve,
   save,
@@ -43,7 +42,14 @@ import { event } from './stepkit.ts'
 
 /** A gate error from the machine, not the spec or the tests: the runner is missing or cannot start. */
 export const ENV_FAILURE = /^compile_or_setup: .*(\(exit 12[67]\)|command not found|missing packages|Cannot find module 'vitest'|ENOENT)/
-const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
+const TYPES: Record<string, string> = {
+  feature: 'feat',
+  enhancement: 'feat',
+  bug: 'fix',
+  refactor: 'refactor',
+  docs: 'docs',
+  chore: 'chore',
+}
 const trim = (p: string): string => readFileSync(p, 'utf8').trim()
 
 function commit(wt: string, msg: string): void {
@@ -91,68 +97,6 @@ function attemptEvent(run: string, sid: string, attempt: number, status: string,
     `effort=${m.effort}`,
     `complexity=${cx}`,
   ])
-}
-
-/** pitest on the changed classes (design 15.6), only at medium or high risk, never for :boot, :plus:* or :test-support. Survivors above the
- * threshold go to the reviewer as a finding (review/mutation.json). Never fails the run: a missing tool is a note. */
-function mutation(run: string, wt: string): void {
-  const p = load(join(run, 'project.json'))
-  const routing = load(join(run, 'routing.json'))
-  const out = join(run, 'review', 'mutation.json')
-  mkdirp(join(run, 'review'))
-  if (routing.risk === 'low') {
-    save(out, { skipped: 'low risk' })
-    console.log('SKIPPED mutation: low risk')
-    return
-  }
-  const bases = existsSync(join(run, 'steps'))
-    ? readdirSync(join(run, 'steps'))
-        .sort()
-        .map((s) => join(run, 'steps', s, 'base'))
-        .filter(isFile)
-    : []
-  const first = bases.length ? trim(bases[0]!) : 'origin/main'
-  const files = git(['diff', '--name-only', first, 'HEAD'], { cwd: wt })
-    .stdout.split(/\s+/)
-    .filter((f) => f.includes('/src/main/java/') && f.endsWith('.java'))
-  const mods: Record<string, string[]> = {}
-  for (const f of files) {
-    const i = f.indexOf('/src/main/java/')
-    const mod = f.slice(0, i)
-    const rest = f.slice(i + '/src/main/java/'.length)
-    if (['boot', 'plus', 'test-support'].includes(mod.split('/')[0]!) || mod.startsWith('test-support')) continue
-    ;(mods[mod.replaceAll('/', ':')] ??= []).push(rest.slice(0, -5).replaceAll('/', '.'))
-  }
-  if (!Object.keys(mods).length) {
-    save(out, { skipped: 'no mutable Java classes changed' })
-    console.log('SKIPPED mutation: nothing to mutate')
-    return
-  }
-  let survived = 0
-  let total = 0
-  for (const [mod, classes] of Object.entries(mods).sort()) {
-    let cmd = process.env.TICKET_MUTATION_CMD ?? '-'
-    cmd = cmd === '' || cmd === '-' ? p.commands.mutation : cmd
-    sh(fmt(cmd, { module: mod, classes: classes.join(',') }), wt)
-    for (const rep of findFiles(join(wt, mod.replaceAll(':', '/'), 'build', 'reports', 'pitest'), 'mutations.xml')) {
-      for (const m of readFileSync(rep, 'utf8').matchAll(/<mutation\b[^>]*>/g)) {
-        total++
-        if (/status=["']SURVIVED["']/.test(m[0])) survived++
-      }
-    }
-  }
-  const thr = p.mutation?.max_survivor_rate ?? 0.25
-  const rate = total ? survived / total : 0
-  save(out, {
-    modules: Object.keys(mods).sort(),
-    classes: Object.values(mods).reduce((n, c) => n + c.length, 0),
-    survivors: survived,
-    total,
-    rate: Math.round(rate * 100) / 100,
-    threshold: thr,
-    exceeds: total > 0 && rate > thr,
-  })
-  console.log(`MUTATION survivors=${survived}/${total} threshold=${thr}`)
 }
 
 /** A clean checkout has no changes against origin/main, so `--stage S --base origin/main` runs no stage and exits non-zero ("no stage of the plan is left"):
@@ -222,6 +166,9 @@ export function main(argv: string[]): number {
   const sd = join(run, 'steps', step ?? 'S0')
   const attemptOpt = opt.attempt ?? 'cur'
   switch (action) {
+    case 'has-spec':
+      // the issue body held the spec (init): validate it on the current base instead of asking the architect
+      return isFile(join(run, 'spec', 'spec.json')) ? 0 : 1
     case 'preflight': {
       const r = load(join(run, 'routing.json'))
       const spec = load(join(run, 'spec', 'spec.json'))
@@ -256,7 +203,7 @@ export function main(argv: string[]): number {
     }
     case 'commit-tests': {
       // the stubs and locked tests become the base of every step not yet done (also after a revision)
-      commit(wt, `${TYPES[t.kind]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
+      commit(wt, `${TYPES[t.type]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
       for (const s of load(join(run, 'spec', 'spec.json')).steps)
         if (!isFile(join(run, 'steps', s.id, 'status.json'))) rmSync(join(run, 'steps', s.id, 'base'), { force: true })
       console.log('COMMITTED tests')
@@ -266,7 +213,7 @@ export function main(argv: string[]): number {
       mkdirp(sd)
       if (!isFile(join(sd, 'base'))) {
         // a retry builds on the same base; the failed attempt's edits are reset first
-        commit(wt, `${TYPES[t.kind]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
+        commit(wt, `${TYPES[t.type]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
         writeFileSync(join(sd, 'base'), git(['rev-parse', 'HEAD'], { cwd: wt }).stdout.trim() + '\n')
       } else {
         git(['reset', '-q', '--hard', trim(join(sd, 'base'))], { cwd: wt })
@@ -302,7 +249,7 @@ export function main(argv: string[]): number {
     case 'commit-step': {
       const spec = load(join(run, 'spec', 'spec.json'))
       const title: string = spec.steps.find((s: Json) => s.id === step).title
-      commit(wt, `${TYPES[t.kind]}: ${title.slice(0, 60).toLowerCase()} (#${t.ticket_id} ${step})`)
+      commit(wt, `${TYPES[t.type]}: ${title.slice(0, 60).toLowerCase()} (#${t.ticket_id} ${step})`)
       const n = resolveAttempt(sd, 'cur')
       save(join(sd, 'status.json'), { status: 'DONE', baseline_failure: isFile(join(sd, `attempt-${n}`, 'baseline.json')) })
       console.log(`DONE ${step}`)
@@ -310,9 +257,6 @@ export function main(argv: string[]): number {
     }
     case 'full-checks':
       return gate(run, wt, undefined, 1, p.commands.gate_final, 'TICKET_GATE_FINAL', 'full') ? 1 : 0
-    case 'mutation':
-      mutation(run, wt)
-      return 0
     case 'close': {
       const [by, total] = costByRole(run)
       const evf = join(run, 'events.jsonl')

@@ -92,7 +92,7 @@ export function promptFor(role: string, run: string, step: string | undefined, w
       prior =
         '\nYour previous spec was rejected by the validator; fix every error:\n' +
         block('validator_errors', (load(vf).errors as string[]).join('\n').slice(0, 3000))
-    const ticket = pickKeys(t, ['ticket_id', 'title', 'kind', 'labels', 'modules', 'acceptance_criteria'])
+    const ticket = pickKeys(t, ['ticket_id', 'title', 'type', 'labels', 'modules', 'acceptance_criteria'])
     const prof = pickKeys(p, ['commands', 'high_risk_paths', 'default_limits', 'tests'])
     const af = join(run, 'spec', 'clarification-answers.json')
     if (isFile(af))
@@ -163,38 +163,39 @@ Then answer with that JSON.`
   const base =
     step && isFile(join(run, 'steps', step, 'base')) ? readFileSync(join(run, 'steps', step, 'base'), 'utf8').trim() : 'origin/main'
   const stat = git(['diff', '--stat', base], { cwd: wt, check: false }).stdout.slice(-3000)
-  let mut = ''
-  const mf = join(run, 'review', 'mutation.json')
-  if (isFile(mf) && load(mf).exceeds) {
-    // a pre-computed finding: the tests let too many mutants of the changed classes survive
-    const m = load(mf)
-    mut =
-      '\n' +
-      block(
-        'mutation_finding',
-        `${m.survivors} of ${m.total} mutants survived (${Math.round(m.rate * 100)}%, threshold ${Math.round(m.threshold * 100)}%) in ${m.classes} changed classes. Treat it as a finding: say which behaviour the tests do not pin down.`,
-      )
-  }
   return (
     'Review the change against the spec: does it meet every acceptance criterion, and do the tests prove the cases?\n' +
     block('spec', j(spec, 1)) +
     '\n' +
-    block('diff_stat', stat) +
-    mut
+    block('diff_stat', stat)
   )
 }
 
 /** The schema text for claude: cross-file $refs (revision-result -> ticket-spec) are inlined, as claude cannot resolve files, every `$schema` is dropped and top-level allOf/anyOf/oneOf too:
  * claude's validator does not know draft 2020-12 and refuses the schema ("no schema with key or ref ...") */
 export function flatSchema(name: string): string {
-  const sch = JSON.parse(readFileSync(join(KIT, 'schemas', `${name}.schema.json`), 'utf8'))
-  const ext = JSON.parse(readFileSync(join(KIT, 'schemas', 'ticket-spec.schema.json'), 'utf8'))['$defs'] ?? {}
-  let text = dumps(sch)
-  if (text.includes('ticket-spec.schema.json#/$defs/')) {
-    sch['$defs'] = { ...(sch['$defs'] ?? {}), ...ext }
-    text = dumps(sch).replaceAll('ticket-spec.schema.json#/$defs/', '#/$defs/')
+  const files: Record<string, Json> = {}
+  const file = (f: string): Json => (files[f] ??= JSON.parse(readFileSync(join(KIT, 'schemas', f), 'utf8')))
+  const at = (doc: Json, ptr: string): Json =>
+    ptr
+      .split('/')
+      .filter(Boolean)
+      .reduce((o, k) => o[k.replaceAll('~1', '/').replaceAll('~0', '~')], doc)
+  // every $ref, local ("#/$defs/x") or to another schema file ("ticket-spec.schema.json#/$defs/step", "ticket-body.schema.json"), is inlined:
+  // claude's validator cannot resolve files; the schemas have no cycles
+  const inline = (v: Json, f: string): Json => {
+    if (Array.isArray(v)) return v.map((x) => inline(x, f))
+    if (!v || typeof v !== 'object') return v
+    if (typeof v.$ref === 'string') {
+      const [target, ptr = ''] = v.$ref.split('#')
+      const tf = target || f
+      const { $ref: _, ...rest } = v
+      void _
+      return { ...inline(at(file(tf), ptr), tf), ...inline(rest, f) }
+    }
+    return Object.fromEntries(Object.entries(v).flatMap(([k, x]) => (['$schema', '$id', '$defs'].includes(k) ? [] : [[k, inline(x, f)]])))
   }
-  const out = JSON.parse(JSON.stringify(JSON.parse(text), (k, v) => (k === '$schema' && typeof v === 'string' ? undefined : v)))
+  const out = inline(file(`${name}.schema.json`), `${name}.schema.json`)
   for (const k of ['allOf', 'anyOf', 'oneOf']) delete out[k] // the API refuses them at the top of a tool schema (400); ajv still enforces them on the answer, with one retry
   return JSON.stringify(out)
 }

@@ -20,10 +20,6 @@
 //   yk tool [--detach] [-C dir] <cmd...>     run any other command once, e.g. -C ui pnpm lint | -C cli go test ./...
 //   (check, gradle, tool) --detach --notify  also post the RESULT into the Claude Code session that started the run when it ends (YUKTA_NOTIFY=off: never)
 //   yk ticket run <issue> [--detach [--notify]] | status|resume|stop <issue|execution>  an issue with acceptance criteria to a tested change
-//   yk pickup session [--name N]             open an interactive Claude Code session that receives issues through its yukta-pickup channel (several may be open)
-//   yk pickup bridge                         push the questions of ticket runs to the session that works the ticket (input-bridge.ts, #1920); runs until stopped
-//   yk pickup on|off|now [--to N] [--issue 12,34]|status  the schedule that hands each idle session the next assigned, Ready issue every 30 min (now: one round at once; --issue hands out only those)
-//   yk pickup list                           the issues the next round would take, [free] or [taken: ...]; the filter in force (--issue, or the file $DEV_HOME/pickup-issues)
 //
 // A run's last line is machine readable; exit 0 only on success:
 //   RESULT status=<S> failed_node=<node|-> healed=<stage:step,..|-> execution=<id> session=<id> wall=<s> cost=$<heal spend> bytes=<shown to you>
@@ -38,7 +34,6 @@ import { main as healReport } from './heal/heal-report.ts'
 import { plan, main as planMain } from './plan.ts'
 import { cmdThrottle } from './throttle.ts'
 import {
-  api,
   cmdAnswer,
   cmdBreak,
   cmdDetail,
@@ -66,7 +61,6 @@ import {
   changesSum,
   checkSession,
   cliJson,
-  devKey,
   mcpKey,
   die,
   ensureServer,
@@ -82,11 +76,8 @@ import {
   lock,
   lockHeld,
   mkdirp,
-  need,
   onPath,
   ours,
-  pickupAlive,
-  pickupStart,
   readJson,
   renderSession,
   rmSync,
@@ -414,167 +405,6 @@ async function cmdCheck(argv: string[]): Promise<number> {
   }
 }
 
-/** the value of --issue: at least one issue number, so a typo cannot lift the filter */
-function issueArg(v: string | undefined): string {
-  if (!v || !/\d/.test(v)) die('--issue needs issue numbers, e.g. 12,34')
-  return v
-}
-
-async function cmdPickup(argv: string[]): Promise<number> {
-  const sub = argv[0] ?? ''
-  const rest = argv.slice(1)
-  switch (sub) {
-    case 'session': {
-      let name = 'yukta-pickup'
-      for (let i = 0; i < rest.length; i++) {
-        if (rest[i] === '--name') name = rest[++i] ?? die('--name needs a session name')
-        else die('usage: yk pickup session [--name NAME]')
-      }
-      need('claude')
-      need('bun')
-      if (!isDir(join(HERE, 'channel/node_modules'))) {
-        const r = run(['bun', 'install', '--frozen-lockfile'], { cwd: join(HERE, 'channel') })
-        if (r.code) {
-          console.error(r.stderr)
-          die('could not install the channel dependencies (bun install in the channel folder)')
-        }
-      }
-      mkdirp(DEV_HOME)
-      if (!isFile(join(DEV_HOME, 'pickup-token')) || !statSync(join(DEV_HOME, 'pickup-token')).size) {
-        writeFileSync(
-          join(DEV_HOME, 'pickup-token'),
-          Buffer.from(crypto.getRandomValues(new Uint8Array(24)))
-            .toString('base64')
-            .replace(/[/+=\n]/g, ''),
-          { mode: 0o600 },
-        )
-      }
-      // the channel inherits only a filtered environment from claude, so what it needs goes in its config: where the token and the registry are, its name and,
-      // when you fixed one, its port (default: any free port; it registers itself, see channel/src/main.ts)
-      const env: Record<string, string> = { YUKTA_CHANNEL_PROFILE: 'pickup', YUKTA_DEV_HOME: DEV_HOME, YUKTA_PICKUP_NAME: name }
-      if (process.env.YUKTA_PICKUP_PORT) env.YUKTA_PICKUP_PORT = process.env.YUKTA_PICKUP_PORT
-      // a file, not inline JSON: claude 2.1.x did not load the inline config (no yukta-pickup server in the session)
-      const cfg = join(DEV_HOME, `pickup-${name}.mcp.json`)
-      writeFileSync(
-        cfg,
-        JSON.stringify({ mcpServers: { 'yukta-pickup': { command: 'bun', args: ['run', join(HERE, 'channel/src/main.ts')], env } } }),
-        { mode: 0o600 },
-      )
-      // without the bridge no question or end of a ticket run reaches the session
-      await ensureServer()
-      console.log(`bridge: pid ${(await import('./input-bridge.ts')).ensureBridge()} (log ${join(DEV_HOME, 'bridge.log')})`)
-      const p = Bun.spawnSync(
-        ['claude', '--name', name, '--mcp-config', cfg, '--dangerously-load-development-channels', 'server:yukta-pickup'],
-        { cwd: REPO_ROOT, env: { ...process.env, YUKTA_MCP_KEY: 'session' }, stdio: ['inherit', 'inherit', 'inherit'] },
-      )
-      return p.exitCode ?? 1
-    }
-    case 'on': {
-      await ensureServer()
-      if (await pickupAlive()) {
-        console.log(`pickup: already on (execution ${text(join(DEV_HOME, 'pickup.exec')).trim()})`)
-        return 0
-      }
-      const id = pickupStart() ?? die('could not start the pickup workflow')
-      console.log(`pickup: on (execution ${id})`)
-      return 0
-    }
-    case 'off':
-      if (await pickupAlive()) {
-        try {
-          await api('POST', `/api/executions/${text(join(DEV_HOME, 'pickup.exec')).trim()}/stop?tree=true`)
-        } catch {
-          /* best effort */
-        }
-      }
-      rmSync(join(DEV_HOME, 'pickup.exec'), { force: true })
-      console.log('pickup: off')
-      return 0
-    case 'now': {
-      const a = [...rest]
-      while (a.length) {
-        if (a[0] === '--to') {
-          process.env.YUKTA_PICKUP_ONLY = a[1] ?? die('--to needs a session name')
-          a.splice(0, 2)
-        } else if (a[0] === '--issue') {
-          process.env.YUKTA_PICKUP_ISSUES = issueArg(a[1])
-          a.splice(0, 2)
-        } else die('usage: yk pickup now [--to NAME] [--issue N,M]')
-      }
-      return (await import('./pickup.ts')).main(['tick'])
-    }
-    case 'list': {
-      const a = [...rest]
-      while (a.length) {
-        if (a[0] === '--issue') {
-          process.env.YUKTA_PICKUP_ISSUES = issueArg(a[1])
-          a.splice(0, 2)
-        } else die('usage: yk pickup list [--issue N,M]')
-      }
-      return (await import('./pickup.ts')).main(['list'])
-    }
-    case 'bridge': {
-      const b = await import('./input-bridge.ts')
-      if (!b.claimBridge()) {
-        console.log(`bridge: already running (pid ${b.bridgePid()})`)
-        return 0
-      }
-      return b.watch().then(() => 0)
-    }
-    case 'status': {
-      let e: string
-      if (await pickupAlive()) e = `on (execution ${text(join(DEV_HOME, 'pickup.exec')).trim()})`
-      else if (text(join(DEV_HOME, 'pickup.exec')).trim()) e = 'on, but not running (the next yk call restarts it)'
-      else e = 'off'
-      console.log(`schedule: ${e}`)
-      const bridge = (await import('./input-bridge.ts')).bridgePid()
-      console.log(
-        `bridge: ${bridge ? `running (pid ${bridge})` : 'not running: questions and results do not reach a session (yk pickup session starts it, or yk pickup bridge)'}`,
-      )
-      let rows = 0
-      const dir = join(DEV_HOME, 'pickup')
-      const files = isDir(dir)
-        ? (await import('node:fs'))
-            .readdirSync(dir)
-            .filter((f) => f.endsWith('.json'))
-            .sort()
-            .map((f) => join(dir, f))
-        : []
-      for (const f of files) {
-        const j = tryJson(text(f))
-        if (!j) continue
-        try {
-          process.kill(j.pid, 0)
-        } catch {
-          continue
-        }
-        const r = await fetch(`http://127.0.0.1:${j.port}/v1/status`, { signal: AbortSignal.timeout(3000) })
-          .then((x) => x.json() as Promise<Json>)
-          .catch(() => null)
-        const st = r
-          ? r.busy
-            ? `busy with #${r.meta?.issue ?? r.event_id}, since ${new Date(r.since * 1000).toISOString().replace(/\.\d+Z$/, 'Z')}`
-            : 'idle'
-          : 'not answering'
-        console.log(`session: ${j.name}  :${j.port}  ${st}`)
-        rows++
-      }
-      if (!rows) console.log('sessions: none (yk pickup session)')
-      if (text(join(DEV_HOME, 'pickup.jsonl')).length) {
-        console.log('last:')
-        console.log(
-          lines(text(join(DEV_HOME, 'pickup.jsonl')))
-            .slice(-5)
-            .join('\n'),
-        )
-      }
-      return 0
-    }
-    default:
-      return die('usage: yk pickup session [--name NAME]|on|off|now [--to NAME] [--issue N,M]|list [--issue N,M]|status')
-  }
-}
-
 // ---- stats
 const med = (xs: number[]): number => {
   if (!xs.length) return 0
@@ -774,8 +604,6 @@ async function dispatch(argv: string[]): Promise<number> {
       return cmdGradle(rest)
     case 'tool':
       return cmdTool(rest)
-    case 'pickup':
-      return cmdPickup(rest)
     case 'ticket':
       return (await import('./ticket/yk-ticket.ts')).cmdTicket(rest, { ykPath: YK })
     case 'plan':

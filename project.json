@@ -10,7 +10,6 @@
     "ui_test": "yk tool -C ui npx --no-install vitest run",
     "ui_test_files": "yk tool -C ui npx --no-install vitest run {files}",
     "ui_typecheck": "yk tool -C ui npx --no-install tsc --noEmit",
-    "mutation": "yk gradle :{module}:pitest -Pmutation -PmutationTargets={classes}",
     "heal_stage": "yk check --stage {stage} --base {base}"
   },
   "conventions_sources": {
@@ -72,7 +71,6 @@
   },
   "tier_mode": "two_tier",
   "implementer_override": null,
-  "max_parallel": 2,
   "run_dir": ".yukta-dev/ticket",
   "efforts": {
     "low": {
@@ -149,6 +147,5 @@
       "M": 120,
       "L": 240
     }
-  },
-  "merge_gate": "high_risk"
+  }
 }

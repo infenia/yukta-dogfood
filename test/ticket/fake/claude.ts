@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // A fake `claude` for the offline tests: the role comes from the prompt; $FAKE (a file) holds the mode:
-// happy | blocked | badjson | badonce | scope | high | twostep | parallel | chain | blockonce | tagged.
+// happy | blocked | badjson | badonce | scope | high | twostep | parallel | chain | blockonce | tagged | ask (the analyst has a question).
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
@@ -120,7 +120,35 @@ if (prompt.startsWith('Write the TicketSpec')) {
   })
 } else if (prompt.startsWith('Write the test files')) answer(fixture('test-writer-result/valid.json'))
 else if (prompt.startsWith('Review the change')) answer(fixture('review-result/valid.json'))
-else {
+else if (prompt.startsWith('Analyse this request.'))
+  // ask: one open question, which the walk answers with $TEST_ANSWER
+  answer({
+    type: 'feature',
+    confidence: 0.9,
+    title: 'feat(core): rate limiter',
+    questions: mode === 'ask' ? ['Per client or global?'] : [],
+  })
+else if (prompt.startsWith('Plan this request as one ticket.') || prompt.startsWith('Split this plan into tickets.')) {
+  // a ticket the throwaway repo's validate-spec accepts (the same as the run's happy spec)
+  const b = fixture('ticket-body/valid.json')
+  const cmd = 'yk gradle :core:test --tests com.infenia.ATest'
+  Object.assign(b, { tests_mode: 'implementer_writes', locked_files: [] })
+  delete b.plan_file
+  delete b.base_sha
+  b.acceptance_criteria[0].verification.command = cmd
+  b.steps[0].write_files = ['core/src/main/java/A.java']
+  b.steps[0].done_when.commands = [cmd]
+  if (prompt.includes('<answers>')) b.decisions.push('Answered: ' + prompt.split('<answers>\n')[1]!.split('\n</answers>')[0])
+  const split = prompt.startsWith('Split')
+  answer({
+    tickets: split
+      ? [
+          { title: 'feat(core): rate limiter', after: [], ticket: b },
+          { title: 'docs: rate limiter', after: [0], ticket: { ...b, type: 'docs', tests_mode: 'existing' } },
+        ]
+      : [{ title: 'feat(core): rate limiter', after: [], ticket: b }],
+  })
+} else {
   console.error(`fake claude: unknown prompt: ${prompt}`)
   process.exit(1)
 }

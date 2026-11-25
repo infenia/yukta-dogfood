@@ -79,13 +79,16 @@ test('an unknown role must fail', () => {
   void json
 })
 
-test('the schema given to claude declares no $schema (claude refuses draft 2020-12) and keeps the inlined $defs', () => {
-  for (const n of ['ticket-spec', 'revision-result', 'step-result', 'review-result']) {
+test('the schema given to claude declares no $schema (claude refuses draft 2020-12) and has every $ref inlined, across files too', () => {
+  for (const n of ['ticket-spec', 'revision-result', 'step-result', 'review-result', 'analysis', 'ticket-drafts']) {
     const text = flatSchema(n)
     expect(text, n).not.toContain('$schema')
-    expect(text, n).not.toContain('ticket-spec.schema.json#')
+    expect(text, n).not.toContain('$ref')
   }
-  expect(JSON.parse(flatSchema('revision-result'))['$defs']).toBeDefined()
+  // ticket-drafts -> ticket-body -> ticket-spec: the step's required fields arrive two files deep
+  expect(JSON.parse(flatSchema('ticket-drafts')).properties.tickets.items.properties.ticket.properties.steps.items.required).toContain(
+    'done_when',
+  )
   for (const n of ['step-result', 'ticket-spec', 'review-result'])
     for (const k of ['allOf', 'anyOf', 'oneOf'])
       expect(JSON.parse(flatSchema(n))[k], `${n} ${k}: the API refuses it at the top level`).toBeUndefined()

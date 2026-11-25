@@ -44,38 +44,30 @@ test('measure expands globs and directories against the tree; sizingRoute applie
 test('modelsFor: the table, the architect one effort up for open decisions, then the ticket roles', () => {
   const t = (sizing: any, roles: any = {}): any => ({ sizing, roles })
   const C = 'cases_to_code'
-  expect(modelsFor(t(null), P, 'S', 'low', C).architect).toEqual({ model: 'sonnet', effort: 'medium' })
-  expect(modelsFor(t({ open_decisions: 1 }), P, 'S', 'low', C).architect).toEqual({ model: 'sonnet', effort: 'high' })
+  expect(modelsFor(t(null), P, 'S', 'low', C).architect).toEqual({ model: 'opus', effort: 'medium' })
+  expect(modelsFor(t({ open_decisions: 1 }), P, 'S', 'low', C).architect).toEqual({ model: 'opus', effort: 'high' })
   expect(modelsFor(t({ open_decisions: 1 }), P, 'L', 'low', C).architect, 'high stays high').toEqual({ model: 'opus', effort: 'high' })
-  expect(modelsFor(t(null), P, 'L', 'high', C).test_writer).toEqual({ model: 'sonnet', effort: 'medium' })
+  expect(modelsFor(t(null), P, 'L', 'high', C).test_writer).toEqual({ model: 'haiku', effort: 'medium' })
   const tw = { test_writer: { model: 'opus', effort: 'high' } }
   for (const mode of ['existing', 'implementer_writes'])
     expect(modelsFor(t(null, tw), P, 'L', 'high', mode).test_writer, `${mode}: no tests up front, no test writer call`).toBeNull()
   const own = modelsFor(t({ open_decisions: 1 }, { architect: { model: 'haiku', effort: 'low' } }), P, 'L', 'high', C)
   expect([own.architect, own.reviewer]).toEqual([
     { model: 'haiku', effort: 'low' },
-    { model: 'opus', effort: 'medium' },
+    { model: 'sonnet', effort: 'high' },
   ])
 })
 
-test('stepModel: the ladder choice, else implementer_tricky for a tricky step, else implementer', () => {
+test('stepModel: the ladder choice, else implementer (a tricky step has no model of its own)', () => {
   const run = join(d, 'run')
-  const routing = {
-    models: { implementer: { model: 'haiku', effort: 'medium' }, implementer_tricky: { model: 'sonnet', effort: 'medium' } },
-  }
-  put(join(run, 'routing.json'), routing)
+  put(join(run, 'routing.json'), { models: { implementer: { model: 'sonnet', effort: 'medium' } } })
   put(join(run, 'spec/spec.json'), {
     steps: [
       { id: 'S1', complexity: 'trivial' },
-      { id: 'S2', complexity: 'standard' },
       { id: 'S3', complexity: 'tricky' },
     ],
   })
-  expect(['S1', 'S2', 'S3', 'S9'].map((s) => stepModel(run, s).model)).toEqual(['haiku', 'haiku', 'sonnet', 'haiku'])
-  const noTricky = { models: { implementer: routing.models.implementer, implementer_tricky: null } }
-  expect(stepModel(run, 'S3', noTricky).model, 'no implementer_tricky: implementer').toBe('haiku')
-  put(join(run, 'steps/S3/model.json'), { model: 'sonnet', effort: 'high' })
-  expect(stepModel(run, 'S3'), 'the ladder moved it').toEqual({ model: 'sonnet', effort: 'high' })
-  rm(join(run, 'spec'))
-  expect(stepModel(run, 'S2').model, 'no spec yet').toBe('haiku')
+  expect(['S1', 'S3', 'S9'].map((s) => stepModel(run, s).model)).toEqual(['sonnet', 'sonnet', 'sonnet'])
+  put(join(run, 'steps/S3/model.json'), { model: 'opus', effort: 'high' })
+  expect(stepModel(run, 'S3'), 'the ladder moved it').toEqual({ model: 'opus', effort: 'high' })
 })

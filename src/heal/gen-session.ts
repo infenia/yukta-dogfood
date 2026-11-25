@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// Writes the generated workflows of session.json: tool, agent, attempt, heal, check and pickup (the hand-written rest stays as it is).
+// Writes the generated workflows of session.json: tool, agent, attempt, heal and check (the hand-written rest stays as it is).
 //
 //   tool       run one shell command in one project (src/tool.ts)
 //   check      one SUB_WORKFLOW call of `tool` per stage, in STAGES order (cheap first). `yk check` puts each stage's command in the start payload
@@ -13,7 +13,6 @@
 //   attempt    L1  one repair attempt: prepare -> agent -> claimed -> format -> judge (the guard) -> recheck -> report
 //   heal       L1  free automatic fix, then the ladder of heal.json: model/effort rungs (haiku low, medium, high, then sonnet), one attempt each; a failed
 //                  rung hands over to the next, the end of the ladder gives up. The efforts (budget, time box) come from heal.json too.
-//   pickup     a SCHEDULE_TRIGGER every INTERVAL_MS that runs `pickup tick`, which hands the next assigned, Ready issue to the yukta-pickup channel.
 //
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
 // HEAL_SESSION and HEAL_POLICY point the generator at another session file and policy (the tests do). Edit this file or heal.json, run it, commit session.json.
@@ -309,40 +308,6 @@ export function checkWorkflow(): Json {
     },
     (id) => CHECK_DESC[id] ?? stageText(id),
   )
-}
-
-// ---------------------------------------------------------------- pickup
-const INTERVAL_MS = 30 * 60 * 1000
-export function pickupWorkflow(): Json {
-  return {
-    workflowId: 'pickup',
-    description: 'Scheduled pickup: every 30 minutes hand the next assigned, Ready issue to the yukta-pickup channel (yk pickup on)',
-    nodes: [
-      {
-        nodeId: 'every',
-        type: 'SCHEDULE_TRIGGER',
-        config: { intervalMs: INTERVAL_MS, timeoutSeconds: Math.floor(INTERVAL_MS / 1000) + 600 },
-      },
-      {
-        nodeId: 'tick',
-        type: 'PROCESS_EXECUTOR',
-        config: {
-          command: cmd('__DOGFOOD__/src/pickup.ts', 'tick'),
-          workingDir: '__PROJECT_PATH__',
-          timeout: 120,
-          failureMode: 'CONTINUE',
-          routeByExitCode: true,
-        },
-      },
-      { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: { displayOutput: true } },
-      { nodeId: 'failed', type: 'CONSOLE_TERMINAL', config: { displayOutput: true } },
-    ],
-    edges: [
-      { source: 'every', target: 'tick' },
-      { source: 'tick', target: 'ok', sourcePort: 'success' },
-      { source: 'tick', target: 'failed', sourcePort: 'failure' },
-    ],
-  }
 }
 
 // ---------------------------------------------------------------- attempt, heal
@@ -669,7 +634,7 @@ export function agentWorkflow(): Json {
             ...Object.fromEntries(CLAUDE_SESSION_ENV.map((k) => [k, ''])),
           },
           timeout: 1800, // ponytail: AGENT_SESSION's timeout is a fixed number, not a start variable; the longest effort of heal.json, per-effort when it matters
-          engine: { concurrencyGroup: 'claude' },
+          engine: { concurrencyGroup: 'agent' },
         },
       },
       { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: {} },
@@ -706,7 +671,7 @@ export function generate(session: Json, policy: Json): Json {
   healGroups(d.workflows.heal)
   delete d.workflows['check-plain']
   d.workflows.check = checkGroups(paint(checkWorkflow()))
-  d.workflows.pickup = paint(pickupWorkflow())
+  delete d.workflows.pickup // removed: tickets run on demand (yk ticket run)
   return d
 }
 
@@ -728,7 +693,7 @@ export function main(argv: string[]): number {
   }
   writeFileSync(PATH, out)
   const d = JSON.parse(out)
-  console.log(['tool', 'agent', 'attempt', 'heal', 'check', 'pickup'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '), 'nodes')
+  console.log(['tool', 'agent', 'attempt', 'heal', 'check'].map((k) => `${k} ${d.workflows[k].nodes.length}`).join(', '), 'nodes')
   return 0
 }
 

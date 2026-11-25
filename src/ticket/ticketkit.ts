@@ -10,7 +10,7 @@
 //   pack-step | scope-check | regen | free-fix | digest | event   per-step tools (src/ticket/stepkit.ts, design 5.2, 5.4, 8.2, 15.7)
 //   call ROLE RUN_DIR | flow ACTION RUN_DIR   one Claude call of a role; the glue of the workflows (src/ticket/call.ts, flow.ts)
 //   gate-tests RUN_DIR          after the test writer: tags, compile, red check, lint, then lock the tests (design 8.1b)
-//   github | ladder | report | waves   intake and PR, the retry ladder, the cost report, step waves
+//   github | ladder | report   intake and PR, the retry ladder, the cost report
 import { readFileSync } from 'node:fs'
 
 type Module = { main: (argv: string[]) => number | Promise<number> | void }
@@ -19,14 +19,13 @@ const MODULES: Record<string, () => Promise<Module>> = {
   init: () => import('./init.ts'),
   route: () => import('./route.ts'),
   'validate-spec': () => import('./validate-spec.ts'),
+  file: () => import('./file.ts'),
   call: () => import('./call.ts'),
   flow: () => import('./flow.ts'),
   'gate-tests': () => import('./gate-tests.ts'),
   github: () => import('./github.ts'),
   ladder: () => import('./ladder.ts'),
   report: () => import('./report.ts'),
-  waves: () => import('./waves.ts'),
-  advice: () => import('./advice.ts'),
 }
 const STEPKIT = new Set(['pack-step', 'scope-check', 'regen', 'free-fix', 'digest', 'event'])
 

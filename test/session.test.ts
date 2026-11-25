@@ -12,7 +12,20 @@ test('renderSession writes the dogfood and the ticket workflows into the one ses
     const r = ts('src/session-render.ts', [out], { env: { YUKTA_DEV_HOME: join(d, 'home') } }) // no $DEV_HOME/main: the checkout's own files
     expect(r.code, r.all).toBe(0)
     const s = JSON.parse(read(out))
-    for (const w of ['tool', 'check', 'heal', 'ticket', 'attempt_round', 'steps_round', 'step', 'finalize', 'escalate'])
+    for (const w of [
+      'tool',
+      'check',
+      'heal',
+      'ticket-run',
+      'ticket-new',
+      'ticket-from-plan',
+      'ticket-agent',
+      'round',
+      'round_steps',
+      'step',
+      'finalize',
+      'revise',
+    ])
       expect(Object.keys(s.workflows), w).toContain(w)
     expect(JSON.stringify(s)).not.toContain('__TICKET__')
   } finally {

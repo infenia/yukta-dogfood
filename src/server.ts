@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// Dogfood helpers: the dev server (built from origin/main), pickup start, locks, up/ensure. `lib.ts` re-exports every module.
+// Dogfood helpers: the dev server (built from origin/main), locks, up/ensure. `lib.ts` re-exports every module.
 import { spawn } from 'node:child_process'
 import { closeSync, openSync, utimesSync } from 'node:fs'
 import { detachGuard, readyPath } from './guard.ts'
 import { createConnection } from 'node:net'
-import { tmpdir } from 'node:os'
 import {
   DEV_HOME,
   DEV_PORT,
@@ -37,18 +36,7 @@ import {
   tryJson,
   writeFileSync,
 } from './base.ts'
-import {
-  checkSession,
-  cliJson,
-  executable,
-  findCli,
-  http,
-  keyHeader,
-  newestBuildCli,
-  renderSession,
-  serverEnv,
-  serverProperties,
-} from './client.ts'
+import { executable, http, keyHeader, newestBuildCli, serverEnv, serverProperties } from './client.ts'
 
 // ---- the dev server: built from origin/main, one per machine, on $DEV_PORT
 export async function healthy(url = DEV_URL): Promise<boolean> {
@@ -64,46 +52,18 @@ export async function executions(): Promise<Json[] | null> {
   return Array.isArray(j) ? j : (j.data ?? null)
 }
 
-/** The number of executions not yet ended, on any session, except the `pickup` schedule. When it cannot be read it says 1: never stop a server we cannot see idle. */
+/** The number of executions not yet ended, on any session. When it cannot be read it says 1: never stop a server we cannot see idle.
+ * The 30-minute `pickup` schedule of earlier versions never ends and its command is gone: it is stopped here (and pickup.exec removed), else
+ * it would keep every swap pending. ponytail: drop this once no dev server started before the removal is left. */
 export async function busy(): Promise<number> {
   const ex = await executions()
-  return ex ? ex.filter((e) => e.workflowId !== 'pickup' && RUNNING.test(e.status ?? '')).length : 1
-}
-
-export async function pickupAlive(): Promise<boolean> {
-  const id = text(join(DEV_HOME, 'pickup.exec')).trim()
-  if (!id) return false
-  const ex = await executions()
-  return !!ex?.some((e) => e.executionId === id && RUNNING.test(e.status ?? ''))
-}
-
-/** Applies the library and starts `pickup` on session dogfood; prints the execution id and keeps it in pickup.exec. */
-export function pickupStart(): string | null {
-  const tmp = join(tmpdir(), `yk-pickup-${process.pid}`)
-  mkdirp(tmp)
-  try {
-    renderSession(join(tmp, 'session.json'))
-    const a = run([findCli(), 'session', 'apply', join(tmp, 'session.json')])
-    if (a.code) {
-      console.error(a.stdout + a.stderr)
-      return null
-    }
-    const id = cliJson(['workflow', 'start', checkSession(), 'pickup', '--payload', '{}']).data?.executionId
-    if (!id) return null
-    mkdirp(DEV_HOME)
-    writeFileSync(join(DEV_HOME, 'pickup.exec'), id + '\n')
-    return id
-  } finally {
-    rmSync(tmp, { recursive: true, force: true })
-  }
-}
-
-/** After a server swap or start, start the schedule again when it was on (the execution dies with the old server). */
-export async function pickupResume(): Promise<void> {
-  if (text(join(DEV_HOME, 'pickup.exec')).trim() === '' || (await pickupAlive())) return
-  process.env.YUKTA_SERVER_URL = DEV_URL
-  if (pickupStart()) console.error('pickup: schedule started again')
-  else console.error('WARN pickup: could not start the schedule again (yk pickup on)')
+  if (!ex) return 1
+  const old = ex.filter((e) => e.workflowId === 'pickup' && RUNNING.test(e.status ?? ''))
+  for (const e of old)
+    await http('POST', `${DEV_URL}/api/executions/${e.executionId}/stop?tree=true`, { headers: keyHeader(), timeoutMs: 5000 })
+  if (old.length) console.error(`stopped the retired pickup schedule (${old.length} execution${old.length > 1 ? 's' : ''})`)
+  rmSync(join(DEV_HOME, 'pickup.exec'), { force: true })
+  return ex.filter((e) => e.workflowId !== 'pickup' && RUNNING.test(e.status ?? '')).length
 }
 
 /** Brings the managed worktree $DEV_HOME/main to origin/main (or $YUKTA_DEV_MAIN_REF) and returns its commit. */
@@ -349,7 +309,6 @@ export async function serverUp(args: string[] = []): Promise<number> {
       await serverStop()
     } else if (await portOpen(Number(DEV_PORT))) die(`port ${DEV_PORT} is in use by another program; free it or set YUKTA_DEV_PORT`)
     await serverLaunch(kind, id, label, rules, cmd)
-    await pickupResume()
     return 0
   } finally {
     release()

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ticket-drafts.schema.json",
+  "title": "TicketDrafts",
+  "description": "The architect's tickets at filing time: one for yk ticket new, one per deliverable for yk ticket from-plan, in the order they are to be filed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tickets"],
+  "properties": {
+    "tickets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "after", "ticket"],
+        "properties": {
+          "title": { "type": "string", "minLength": 3, "maxLength": 100 },
+          "after": {
+            "type": "array",
+            "items": { "type": "integer", "minimum": 0 },
+            "description": "Indexes (0-based) of earlier tickets in this list that must be done first; filing turns them into issue numbers."
+          },
+          "ticket": { "$ref": "ticket-body.schema.json" }
+        }
+      }
+    }
+  }
+}

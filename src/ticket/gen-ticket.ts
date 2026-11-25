@@ -3,19 +3,19 @@
 // Writes the workflows of the ticket pipeline into session.json (design 6.1 to 6.3, 9, 15.3, 15.5), the way
 // dogfood/src/gen-heal.ts does. `yk ticket` adds them to the `dogfood` session, so they call its `tool` workflow.
 //
-//   ticket        issue -> intake -> init -> claim -> route -> architect (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect) -> [spec approval]
-//                 -> plan comment -> attempt_round, recovered up to 3 times (revise: `escalate`; pause: a human packet and an ASK_INPUT) -> [merge gate]
+//   ticket-run    issue -> intake -> init -> claim -> route -> [the spec of the issue body, else the architect] (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
+//                 -> plan comment -> round, recovered up to 3 times (a revision: `revise`; a pause: a human packet and an ASK_INPUT)
 //                 -> finish (draft PR) -> close
-//   attempt_round steps_round -> finalize
-//   steps_round   the steps whose depends_on are DONE, one `step` run each, in order (8 slots)
+//   round         round_steps -> finalize
+//   round_steps   the next step whose depends_on are DONE, one `step` run each, in order (8 slots)
 //   step          one step, up to 4 attempts: begin -> implementer -> validate-step; a failure goes to `ladder decide`: retry, tier_up (one model tier up),
 //                 heal (yk check --stage <stage> heals, then everything outside write_files is reverted), baseline (the stage also fails on origin/main),
 //                 or an escalation (revise, human, pause: escalation.json)
 //   finalize      full checks -> reviewer -> verdict (a blocker or an unfaithful test overrides APPROVE)
-//   escalate      RevisionRequest -> architect revision -> spec v+1 -> validate-spec -> test writer (changed cases) -> gate-tests
+//   revise        RevisionRequest -> architect revision -> spec v+1 -> validate-spec -> test writer (changed cases) -> gate-tests
 //
 // Every node is a PROCESS_EXECUTOR running `ticketkit` (no Java); a Claude call is `ticketkit call ROLE`, which runs the claude command with --role ROLE. Claude calls
-// share the `claude` concurrency group; Gradle runs inside `yk check`, which queues in the `tool` group.
+// share the `agent` concurrency group; Gradle runs inside `yk check`, which queues in the `tool` group.
 //
 //   bun src/ticket/gen-ticket.ts          write ticket-session.json        bun src/ticket/gen-ticket.ts --check   exit 1 when the committed ticket-session.json is stale (CI-style)
 // Edit this file, run it, commit ticket-session.json.
@@ -37,7 +37,6 @@ const START_KEYS = [
   'stateDir',
   'healCmd',
   'baselineCmd',
-  'gateWave',
   'runId',
   'events',
 ]
@@ -46,7 +45,12 @@ type Edge = { source: string; target: string; sourcePort?: string }
 const edges = (src: string, dst: string, ...ports: string[]): Edge[] =>
   ports.length ? ports.map((p) => ({ source: src, target: dst, sourcePort: p })) : [{ source: src, target: dst }]
 
-function pe(nodeId: string, args: string[], timeout = 300, o: { json?: boolean; claude?: boolean; routed?: boolean } = {}): Json {
+function pe(
+  nodeId: string,
+  args: string[],
+  timeout = 300,
+  o: { json?: boolean; claude?: boolean; routed?: boolean; stdin?: boolean } = {},
+): Json {
   const env = {
     YK_CLAUDE_BIN: S('claudeBin'),
     TICKET_GATE_STEP: S('gateStep'),
@@ -54,12 +58,12 @@ function pe(nodeId: string, args: string[], timeout = 300, o: { json?: boolean; 
     YUKTA_DEV_STATE_DIR: S('stateDir'),
     TICKET_HEAL_CMD: S('healCmd'),
     TICKET_BASELINE_CMD: S('baselineCmd'),
-    TICKET_GATE_WAVE: S('gateWave'),
   }
   const cfg: Json = { command: [...CMD, ...args], workingDir: S('project'), env, timeout, timeoutSeconds: timeout, failureMode: 'CONTINUE' }
   if (o.routed ?? true) cfg.routeByExitCode = true
+  if (o.stdin) cfg.inputMode = 'STDIN' // the message as JSON on stdin (a sub-workflow's results)
   if (o.json) cfg.outputFormat = 'JSON'
-  if (o.claude) cfg.engine = { concurrencyGroup: 'claude' }
+  if (o.claude) cfg.engine = { concurrencyGroup: 'agent' }
   return { nodeId, type: 'PROCESS_EXECUTOR', config: cfg }
 }
 
@@ -70,9 +74,8 @@ const select = (nodeId: string, key: string, cases: Json, def: string): Json => 
   type: 'BRANCH',
   config: { mode: 'SELECT_KEY', selector: `payload['output']['${key}']`, cases, defaultPort: def },
 })
-// every question of a run goes on the route `ticket` and says which issue and run it is about (design/plans/ticket-input-routing.md 3.5): the input bridge finds the
-// Claude Code session that works the issue from context.issue
-const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', risk = 'HIGH'): Json => ({
+// every question of a run goes on the route `ticket` and says which issue and run it is about (design/plans/ticket-input-routing.md 3.5)
+const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', risk = 'HIGH', issue = S('issue')): Json => ({
   nodeId,
   type: 'ASK_INPUT',
   config: {
@@ -82,7 +85,7 @@ const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', ris
     ttlSeconds: ttl,
     onTimeout: 'FAIL',
     route: 'ticket',
-    context: { issue: S('issue'), run_id: S('runId'), gate: nodeId },
+    context: { issue, run_id: S('runId'), gate: nodeId },
   },
 })
 const rejected = (nodeId: string): Json => ({
@@ -192,56 +195,27 @@ const STEP_WF = st.workflow(
   'step',
   'One step of a ticket: up to four attempts with the retry ladder, heal for mechanical failures, escalation.',
 )
-STEP_WF.nodes.push(pe('warm', ['waves', 'warm-wait', RUN, S('step')], 400, { routed: false })) // the second step of a wave waits for the cache to be warm
-STEP_WF.edges = [...STEP_WF.edges, ...edges('trigger', 'warm'), ...edges('warm', 'begin1')]
+STEP_WF.edges.push(...edges('trigger', 'begin1'))
 
-// ---------------------------------------------------------------- wave: two steps in parallel, each in its own worktree from the same base (design 11.2)
-const wv = new G()
-wv.add(
-  ok('ok'),
-  pe('prepare', ['waves', 'prepare', RUN, ...W], 120, { json: true }),
-  { nodeId: 'split', type: 'SPLITTER', config: { itemsPath: 'payload.output.items' } },
-  sub('runw', 'step', { step: '${payload.step}', worktree: '${payload.worktree}' }, 2),
-  { nodeId: 'join', type: 'AGGREGATE', config: { size: 2, timeoutMs: 21600000 } },
-  pe('merge', ['waves', 'merge', RUN, ...W], 300),
-  pe('wave_check', ['waves', 'check', RUN, ...W], 3700),
-)
-wv.link('prepare', 'split', 'success')
-wv.fail('prepare', 'the wave could not be prepared')
-wv.link('split', 'runw')
-wv.link('runw', 'join', 'success', 'failure')
-wv.link('join', 'merge')
-wv.link('merge', 'wave_check', 'success')
-wv.fail('merge', 'the wave could not be merged (a conflict is an escalation)')
-wv.link('wave_check', 'ok', 'success')
-wv.fail('wave_check', 'the merged wave fails its post-wave check')
-const WAVE_WF = wv.workflow('wave', 'Two independent steps in parallel worktrees, merged in step order, then a post-wave check.')
-WAVE_WF.edges.push(...edges('trigger', 'prepare'))
-
-// ---------------------------------------------------------------- steps_round: wave after wave (8 slots, the sizing lint caps a spec at 8 steps)
+// ---------------------------------------------------------------- round_steps: step after step (8 slots, the sizing lint caps a spec at 8 steps)
 const SLOTS = 8
 const sr = new G()
 sr.add(ok('ok'))
 for (let k = 1; k <= SLOTS; k++) {
-  const [nx, mode, run, pair] = [`next${k}`, `mode${k}`, `run${k}`, `pair${k}`] as [string, string, string, string]
+  const [nx, more, run] = [`next${k}`, `more${k}`, `run${k}`] as [string, string, string]
   sr.add(
-    pe(nx, ['waves', 'next-wave', RUN], 60, { json: true }),
-    select(mode, 'mode', { single: 'single', pair: 'pair' }, 'none'),
+    pe(nx, ['ladder', 'next-step', RUN], 60, { json: true }),
+    select(more, 'more', { true: 'step' }, 'none'),
     sub(run, 'step', { step: '${payload.output.step}' }),
-    sub(pair, 'wave'),
   )
-  const follow = k < SLOTS ? `next${k + 1}` : 'ok'
-  sr.link(nx, mode, 'success')
-  sr.fail(nx, 'next-wave failed')
-  sr.link(mode, run, 'single')
-  sr.link(mode, pair, 'pair')
-  sr.link(mode, 'ok', 'none')
-  sr.link(run, follow, 'success')
+  sr.link(nx, more, 'success')
+  sr.fail(nx, 'next-step failed')
+  sr.link(more, run, 'step')
+  sr.link(more, 'ok', 'none')
+  sr.link(run, k < SLOTS ? `next${k + 1}` : 'ok', 'success')
   sr.fail(run, 'a step ended without DONE (escalation.json says what to do)')
-  sr.link(pair, follow, 'success')
-  sr.fail(pair, 'a wave failed (escalation.json says what to do)')
 }
-const STEPS_WF = sr.workflow('steps_round', 'Run the ready steps, one or two at a time, in order.')
+const STEPS_WF = sr.workflow('round_steps', 'Run the ready steps one at a time, in order.')
 STEPS_WF.edges.push(...edges('trigger', 'next1'))
 
 // ---------------------------------------------------------------- finalize: full checks, reviewer, verdict
@@ -252,9 +226,7 @@ fz.add(
   terminal('full_checks.failed', 'the final gate failed'),
 )
 fz.add(pe('full_checks', ['flow', 'full-checks', RUN, ...W], 3700), pe('final_fail', ['ladder', 'final-fail', RUN], 60, { routed: false }))
-fz.link('full_checks', 'mutation', 'success')
-fz.add(pe('mutation', ['flow', 'mutation', RUN, ...W], 3700, { routed: false }))
-fz.link('mutation', 'review')
+fz.link('full_checks', 'review', 'success')
 fz.link('full_checks', 'final_fail', 'failure')
 fz.link('final_fail', 'full_checks.failed')
 fz.add(pe('review', ['call', 'reviewer', RUN, '--step', 'S1', ...W], 2400, { json: true, claude: true }))
@@ -271,17 +243,17 @@ fz.link('verdict?', 'changes.failed', 'changes')
 const FINAL_WF = fz.workflow('finalize', 'The final gate, the fresh-context reviewer and a verdict code can override.')
 FINAL_WF.edges.push(...edges('trigger', 'full_checks'))
 
-// ---------------------------------------------------------------- attempt_round: the steps, then the finish line
+// ---------------------------------------------------------------- round: the steps, then the finish line
 const ar = new G()
-ar.add(sub('steps', 'steps_round'), sub('finalize', 'finalize'), ok('ok'))
+ar.add(sub('steps', 'round_steps'), sub('finalize', 'finalize'), ok('ok'))
 ar.link('steps', 'finalize', 'success')
 ar.fail('steps', 'a step did not finish')
 ar.link('finalize', 'ok', 'success')
 ar.fail('finalize', 'the final gate or the review did not pass')
-const ROUND_WF = ar.workflow('attempt_round', 'All steps, the final gate and the review.')
+const ROUND_WF = ar.workflow('round', 'All steps, the final gate and the review.')
 ROUND_WF.edges.push(...edges('trigger', 'steps'))
 
-// ---------------------------------------------------------------- escalate: the architect revises the spec (design 6.3)
+// ---------------------------------------------------------------- revise: the architect revises the spec (design 6.3)
 const es = new G()
 es.add(ok('ok'))
 es.chain(
@@ -302,7 +274,7 @@ es.chain(
   ],
   'ok',
 )
-const ESC_WF = es.workflow('escalate', 'Architect revision: spec v+1, changed cases through the test writer and the gate.')
+const ESC_WF = es.workflow('revise', 'Architect revision: spec v+1, changed cases through the test writer and the gate.')
 ESC_WF.edges.push(...edges('trigger', 'build_revision'))
 
 // ---------------------------------------------------------------- ticket
@@ -327,7 +299,11 @@ t.chain(
   ],
   'route',
 )
-t.chain([[pe('route', ['route', RUN], 120), 'route failed']], 'architect1', true) // complexity and risk come from the ticket's own criteria, labels and paths
+t.chain([[pe('route', ['route', RUN], 120), 'route failed']], 'has_spec', true) // complexity and risk come from the ticket's own criteria, labels and paths
+// a spec filed in the issue is validated on the current base; one that no longer applies goes to the architect with the errors (the re-plan)
+t.add(pe('has_spec', ['flow', 'has-spec', RUN], 60))
+t.link('has_spec', 'validate_spec1', 'success')
+t.link('has_spec', 'architect1', 'failure')
 // the architect, with validate-spec errors and the test stage's feedback fed back, twice at most
 const ARCH_FAIL =
   'the architect call failed (the ERROR line says which: schema_invalid, api_error, limit) or did not ask; a spec the validator rejects is retried, not this'
@@ -397,30 +373,14 @@ for (const k of [1, 2, 3]) {
     t.fail(gt, 'the tests of the third spec did not pass the red check (spec/gate.json)', true)
   }
 }
-t.chain([[pe('commit_tests', ['flow', 'commit-tests', RUN, ...W], 120), 'the tests could not be committed']], 'need_spec', true)
-// approvals: a high-risk spec waits for an answer. MEDIUM, so the orchestrator session (an agent key) may decide it for the person; the budget pause stays
-// HIGH (money: a person only)
-t.add(
-  pe('need_spec', ['ladder', 'need-approval', RUN, 'spec'], 60, { json: true }),
-  select('spec_ask?', 'ask', { true: 'ask' }, 'skip'),
-  ask('approve_spec', 'Approve the spec of run ${start.runId} (high risk)? spec/spec.json in ${start.run}', 86400, 'APPROVAL', 'MEDIUM'),
-  rejected('spec_decision?'),
-  terminal('spec_rejected', 'the spec was rejected'),
-)
-t.link('need_spec', 'spec_ask?', 'success')
-t.fail('need_spec', 'approval policy failed', true)
-t.link('spec_ask?', 'approve_spec', 'ask')
-t.link('spec_ask?', 'plan_comment', 'skip')
-t.link('approve_spec', 'spec_decision?')
-t.link('spec_decision?', 'spec_rejected', 'reject')
-t.link('spec_decision?', 'plan_comment', 'approve')
+t.chain([[pe('commit_tests', ['flow', 'commit-tests', RUN, ...W], 120), 'the tests could not be committed']], 'plan_comment', true)
 t.chain([[pe('plan_comment', ['github', 'plan-comment', RUN], 120), 'the plan could not be posted on the issue']], 'round1', true)
 // rounds: a failed round is recovered by a revision or a pause, 3 times
 const ROUNDS = 4
 for (let k = 1; k <= ROUNDS; k++) {
   const [r, rf] = [`round${k}`, `route_failure${k}`]
-  t.add(sub(r, 'attempt_round'))
-  t.link(r, 'need_merge', 'success')
+  t.add(sub(r, 'round'))
+  t.link(r, 'finish', 'success')
   if (k === ROUNDS) {
     t.fail(r, 'the run did not finish after three recoveries', true)
     continue
@@ -428,7 +388,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.link(r, rf, 'failure')
   const [a, e, pp, aa, ap, ack] = [
     `action${k}`,
-    `escalate${k}`,
+    `revise${k}`,
     `pause_packet${k}`,
     `ask_pause${k}`,
     `pause_decision${k}`,
@@ -437,7 +397,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.add(
     pe(rf, ['ladder', 'route-failure', RUN], 60, { json: true }),
     select(a, 'action', { revise: 'revise', pause: 'pause' }, 'human'),
-    sub(e, 'escalate'),
+    sub(e, 'revise'),
     pe(pp, ['ladder', 'pause-packet', RUN], 60),
     ask(aa, 'Run ${start.runId} is paused over a budget; human-packet.md is in ${start.run}. Approve to continue with doubled budgets.'),
     rejected(ap),
@@ -466,21 +426,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.link(ack, `round${k + 1}`, 'success')
   t.fail(ack, 'the pause could not be acknowledged')
 }
-// merge gate by policy, then the draft PR
-t.add(
-  pe('need_merge', ['ladder', 'need-approval', RUN, 'merge', ...W], 60, { json: true }),
-  select('merge_ask?', 'ask', { true: 'ask' }, 'skip'),
-  ask('approve_merge', 'Open the PR for run ${start.runId}? The change is on its branch, reviewed and green.', 86400, 'APPROVAL', 'MEDIUM'),
-  rejected('merge_decision?'),
-  terminal('merge_rejected', 'the PR was declined'),
-)
-t.link('need_merge', 'merge_ask?', 'success')
-t.fail('need_merge', 'approval policy failed')
-t.link('merge_ask?', 'approve_merge', 'ask')
-t.link('merge_ask?', 'finish', 'skip')
-t.link('approve_merge', 'merge_decision?')
-t.link('merge_decision?', 'merge_rejected', 'reject')
-t.link('merge_decision?', 'finish', 'approve')
+// the draft PR: a person reviews it, nothing is merged
 t.chain(
   [
     [pe('finish', ['github', 'finish', RUN, ...W], 600), 'the draft PR could not be opened'],
@@ -490,18 +436,143 @@ t.chain(
 )
 t.edges.push(...edges('trigger', 'intake'))
 const TICKET_WF = t.workflow(
-  'ticket',
+  'ticket-run',
   'Implement one Ready GitHub issue end to end: architect spec, locked failing tests, step-by-step implementation (retry ladder, heal, escalation), fresh reviewer. Ends with a draft PR (Fixes #<issue>), never merges. Start with `yk ticket run <issue>`.',
 )
 
+// ---------------------------------------------------------------- filing: yk ticket new "<text>" and yk ticket from-plan <plan>
+// ticket-agent: one Claude Code session on AGENT_SESSION. approvals ASK: a tool use outside the pre-allowed ones (and AskUserQuestion) becomes an input
+// request that a person answers in the UI (Agents tab), over REST, the CLI or MCP; the session waits for it up to 24 h (timeout: work time + 24 h).
+const FILING_WAIT = 86400
+const AGENT_WF: Json = {
+  workflowId: 'ticket-agent',
+  description: 'One filing session (analyst or architect) on AGENT_SESSION; its questions go to a person through the input requests.',
+  nodes: [
+    { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { prompt: S('prompt') } } },
+    {
+      nodeId: 'agent',
+      type: 'AGENT_SESSION',
+      config: {
+        harness: 'claude-code',
+        mode: 'TASK',
+        prompt: '${payload.prompt}',
+        model: S('model'),
+        workingDir: S('project'),
+        approvals: 'ASK',
+        approvalRisk: 'MEDIUM',
+        approvalTimeout: FILING_WAIT,
+        timeout: 3600 + FILING_WAIT,
+        args: [
+          ...['--setting-sources', 'project', '--disable-slash-commands', '--no-session-persistence'],
+          ...['--tools', 'Read,Grep,Glob,Bash,Write,AskUserQuestion'],
+          ...['--allowedTools', 'Read', 'Grep', 'Glob', S('allowWrite'), S('allowBash')],
+          ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)'], // no Edit: the tool is not offered (--tools), and a bare Edit deny would beat the drafts file's Edit(//...) allow
+          ...[
+            '--append-system-prompt-file',
+            S('rulesFile'),
+            '--max-budget-usd',
+            S('budget'),
+            '--effort',
+            S('effort'),
+            '--json-schema',
+            S('schema'),
+          ],
+        ],
+        env: {
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5',
+          ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
+          ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
+        },
+        engine: { concurrencyGroup: 'agent' },
+      },
+    },
+    ok('ok'),
+    { nodeId: 'failed', type: 'CONSOLE_TERMINAL', config: {} },
+    { nodeId: 'early', type: 'CONSOLE_TERMINAL', config: {} },
+  ],
+  edges: [
+    ...edges('trigger', 'agent'),
+    ...edges('agent', 'ok', 'success'),
+    ...edges('agent', 'failed', 'failure'),
+    ...edges('agent', 'early', 'incomplete'),
+  ],
+}
+const DIR = S('dir')
+/** A call of ticket-agent: the session may wait a day for a person, and an error routes to the answer like a failure. */
+const agentCall = (nodeId: string, payload: Record<string, string>): Json => {
+  const n = sub(nodeId, 'ticket-agent', payload)
+  n.config = { ...n.config, timeoutSeconds: 3600 + FILING_WAIT + 600, engine: { onError: 'ROUTE' } }
+  return n
+}
+/** prepare ROLE -> ticket-agent -> answer ROLE (every port of the session goes to the answer, which says what went wrong). */
+function session(g: G, role: string, next: string): void {
+  const [p, a, r] = [`prepare_${role}`, role, `answer_${role}`]
+  g.add(
+    pe(p, ['file', 'prepare', role, DIR], 120, { json: true }),
+    agentCall(a, {
+      prompt: '${payload.output.prompt}',
+      project: S('project'),
+      model: '${payload.output.model}',
+      effort: '${payload.output.effort}',
+      budget: '${payload.output.budget}',
+      schema: '${payload.output.schema}',
+      rulesFile: '${payload.output.rules}',
+      allowWrite: '${payload.output.allowWrite}',
+      allowBash: '${payload.output.allowBash}',
+    }),
+    pe(r, ['file', 'answer', role, DIR], 300, { json: true, stdin: true }),
+  )
+  g.link(p, a, 'success')
+  g.fail(p, `the ${role} prompt could not be written`)
+  g.link(a, r, 'success', 'failure', 'error')
+  g.link(r, next, 'success')
+  g.fail(r, `the ${role} did not give a valid answer (the ERROR line says why)`)
+}
+const fileNode = (g: G): void => {
+  g.add(pe('file_issues', ['file', 'issue', DIR], 600), ok('done'))
+  g.link('file_issues', 'done', 'success')
+  g.fail('file_issues', 'the issues could not be filed')
+}
+// ticket-new: analyst -> [the open questions to a person] -> architect -> issue in Backlog
+const tn = new G()
+session(tn, 'analyst', 'ask?')
+tn.add(
+  select('ask?', 'ask', { true: 'ask' }, 'plan'),
+  ask('ask_analyst', '${payload.output.prompt}', FILING_WAIT, 'TEXT', 'MEDIUM', 'new'),
+  pe('save_answers', ['file', 'answers', DIR, '${metadata.input.text}'], 60),
+)
+tn.link('ask?', 'ask_analyst', 'ask')
+tn.link('ask?', 'prepare_architect', 'plan')
+tn.link('ask_analyst', 'save_answers')
+tn.link('save_answers', 'prepare_architect', 'success')
+tn.fail('save_answers', 'the answers could not be saved')
+session(tn, 'architect', 'file_issues')
+fileNode(tn)
+const NEW_WF = tn.workflow(
+  'ticket-new',
+  'File one ticket from a plain-text request: analyst, open questions to a person, architect (the whole spec), issue in Backlog. Start with `yk ticket new "<text>"`.',
+)
+NEW_WF.edges.push(...edges('trigger', 'prepare_analyst'))
+// ticket-from-plan: the architect splits a plan into tickets -> issues in Backlog, in order, with their dependencies
+const tp = new G()
+session(tp, 'split', 'file_issues')
+fileNode(tp)
+const PLAN_WF = tp.workflow(
+  'ticket-from-plan',
+  'File the tickets of a plan (design/plans/*.md): the architect splits it, each ticket is filed in Backlog in order with its dependencies. Start with `yk ticket from-plan <plan>`.',
+)
+PLAN_WF.edges.push(...edges('trigger', 'prepare_split'))
+
 export const WORKFLOWS: Record<string, Json> = {
-  ticket: TICKET_WF,
-  attempt_round: ROUND_WF,
-  steps_round: STEPS_WF,
-  wave: WAVE_WF,
+  'ticket-run': TICKET_WF,
+  'ticket-agent': AGENT_WF,
+  'ticket-new': NEW_WF,
+  'ticket-from-plan': PLAN_WF,
+  round: ROUND_WF,
+  round_steps: STEPS_WF,
   step: STEP_WF,
   finalize: FINAL_WF,
-  escalate: ESC_WF,
+  revise: ESC_WF,
 }
 
 function check(wfs: Record<string, Json>): void {

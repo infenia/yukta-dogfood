@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// ticketkit github ACTION ... : the GitHub side of the pipeline (design 15.9). It reuses pickup's rules.
+// ticketkit github ACTION ... : the GitHub side of the pipeline (design 15.9).
 //
 //   intake  ISSUE               open, assigned to the user, Ready on the project, acceptance criteria. SKIPPED (exit 3) if not; BLOCKED (exit 4) when an
 //                               acceptance criterion asks for secrets, a push to main, other repos, changed settings or skipped checks. Text outside the
@@ -12,7 +12,7 @@
 //   finish  RUN --worktree W    spotlessApply, commit, push issue/<n>, open a DRAFT PR (conventional title, `Fixes #n`, the RESULT line, spec summary,
 //                               cost by role); fails when the body lacks what project.json pr_body_must_contain names. Never merges, never pushes main
 //
-// Env: YUKTA_PICKUP_REPO (infenia/yukta), YUKTA_PICKUP_PROJECT (5), YUKTA_PICKUP_OWNER (infenia), TICKET_FORMAT (override of the format command).
+// Env: YUKTA_TICKET_REPO (infenia/yukta), YUKTA_TICKET_PROJECT (5), YUKTA_TICKET_OWNER (infenia), TICKET_FORMAT (override of the format command).
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
@@ -36,10 +36,17 @@ import { criteria } from './init.ts'
 import { release, releaseFailed } from './branch.ts'
 import { untag } from './gate-tests.ts'
 
-const REPO = process.env.YUKTA_PICKUP_REPO ?? 'infenia/yukta'
-const PROJECT = process.env.YUKTA_PICKUP_PROJECT ?? '5'
-const OWNER = process.env.YUKTA_PICKUP_OWNER ?? 'infenia'
-const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
+export const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
+const PROJECT = process.env.YUKTA_TICKET_PROJECT ?? '5'
+const OWNER = process.env.YUKTA_TICKET_OWNER ?? 'infenia'
+const TYPES: Record<string, string> = {
+  feature: 'feat',
+  enhancement: 'feat',
+  bug: 'fix',
+  refactor: 'refactor',
+  docs: 'docs',
+  chore: 'chore',
+}
 export const CONVENTIONAL = /^(feat|fix|docs|refactor|test|chore|style|ci|build|perf|revert)(\([^)]*\))?!?: \S/
 const SECRET = '(api[ _-]?keys?|secrets?|tokens?|passwords?|credentials?)'
 const FORBIDDEN: [RegExp, string][] = [
@@ -65,7 +72,7 @@ const FORBIDDEN: [RegExp, string][] = [
   ],
 ]
 
-function gh(args: string[], check = true, env?: Record<string, string>): string {
+export function gh(args: string[], check = true, env?: Record<string, string>): string {
   const r = runProc(['gh', ...args], { env })
   if (check && r.code) die(`gh ${args.slice(0, 3).join(' ')}: ${r.stderr.trim().slice(0, 300)}`)
   return r.stdout
@@ -106,7 +113,7 @@ function intake(n: string): number {
 }
 
 /** Adds the issue to the project (a no-op when it is there) and sets the Status field by option name; an unknown field or option is reported and skipped. */
-function projectSetStatus(url: string, status: string, token: string): void {
+export function projectSetStatus(url: string, status: string, token: string): void {
   const env = { GH_TOKEN: token }
   const projectId = JSON.parse(gh(['project', 'view', PROJECT, '--owner', OWNER, '--format', 'json'], true, env)).id as string
   const fields: Json[] = JSON.parse(
@@ -291,7 +298,7 @@ function finish(run: string, wt: string): number {
     git(['commit', '-q', '-m', `style: apply spotless for #${n}`], { cwd: wt })
   const rf = join(run, 'final-result.txt')
   const result = isFile(rf) ? readFileSync(rf, 'utf8').trim() : ''
-  const title = CONVENTIONAL.test(t.title) ? t.title : `${TYPES[t.kind]}: ${t.title}`
+  const title = CONVENTIONAL.test(t.title) ? t.title : `${TYPES[t.type]}: ${t.title}`
   const bl = join(run, 'final-baseline.json')
   const baseline = isFile(bl)
     ? `\n**Baseline failure:** \`${load(bl).stage}\` also fails on a clean \`origin/main\`, so it was not charged to this change.\n`

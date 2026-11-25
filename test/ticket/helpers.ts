@@ -96,7 +96,6 @@ export class World {
       runId?: string
       heal?: string
       baseline?: string
-      gateWave?: string
       env?: Record<string, string>
     } = {},
   ): Promise<void> {
@@ -123,13 +122,18 @@ export class World {
       gateFinal: o.gateFinal ?? this.RESULT_OK,
       healCmd: o.heal ?? 'true',
       baselineCmd: o.baseline ?? 'true',
-      gateWave: o.gateWave ?? 'true',
       events: `${d}/events.jsonl`,
     }
     put(join(d, 'payload.json'), payload)
     const r = await new Promise<Out>((done) => {
       const p = Bun.spawn(
-        [process.execPath, join(KIT, 'src/ticket/walk-workflow.ts'), join(KIT, 'ticket-session.json'), 'ticket', join(d, 'payload.json')],
+        [
+          process.execPath,
+          join(KIT, 'src/ticket/walk-workflow.ts'),
+          join(KIT, 'ticket-session.json'),
+          'ticket-run',
+          join(d, 'payload.json'),
+        ],
         { env: { ...process.env, ...(o.env ?? {}) } as Record<string, string>, stdout: 'pipe', stderr: 'pipe' },
       )
       void Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]).then(([out, err, code]) =>

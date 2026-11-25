@@ -43,7 +43,9 @@ switch (`${a[0]} ${a[1]}`) {
     console.log('{"id":"P1"}')
     break
   case 'project field-list':
-    console.log('{"fields":[{"name":"Status","id":"F1","options":[{"name":"Ready","id":"o1"},{"name":"In progress","id":"o2"}]}]}')
+    console.log(
+      '{"fields":[{"name":"Status","id":"F1","options":[{"name":"Backlog","id":"o0"},{"name":"Ready","id":"o1"},{"name":"In progress","id":"o2"}]}]}',
+    )
     break
   case 'project item-add':
     console.log('{"id":"I1"}')
@@ -53,6 +55,19 @@ switch (`${a[0]} ${a[1]}`) {
   case 'issue comment': {
     const f = flag('-F')
     if (f) appendFileSync(join(dir, 'comments.md'), readFileSync(f, 'utf8') + '----\n')
+    break
+  }
+  case 'issue create': {
+    // numbered from 20 in call order; the bodies are kept as filed-<n>.md
+    const n =
+      20 +
+      readFileSync(join(dir, 'gh.log'), 'utf8')
+        .split('\n')
+        .filter((l) => l.startsWith('issue create')).length -
+      1
+    const f = flag('--body-file')
+    if (f) copyFileSync(f, join(dir, `filed-${n}.md`))
+    console.log(`https://github.com/infenia/yukta/issues/${n}`)
     break
   }
   case 'pr create': {

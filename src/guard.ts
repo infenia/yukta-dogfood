@@ -9,6 +9,7 @@ import { DEV_URL, STATE_DIR, join, mkdirp, sleep, text, tryJson } from './base.t
 import { checkSession, http, keyHeader } from './client.ts'
 
 export const GUARD = 'dogfood-resource-guard'
+/** The ticket-advice supervisor of earlier versions; saveGuard deletes it where it is still installed. */
 export const ADVICE = 'dogfood-ticket-advice'
 const KIT = join(import.meta.dir, '..')
 export const readyPath = (): string => join(STATE_DIR, 'guard.ready')
@@ -21,14 +22,6 @@ const workflows = (file: string): Wfs => tryJson(text(join(KIT, file)))?.workflo
 export const runTargets = (s = checkSession()): string[] =>
   [...new Set([...Object.keys(workflows('session.json')), ...Object.keys(workflows('ticket-session.json'))])].map((w) => `run:${s}/${w}`)
 
-/** What the ticket-advice supervisor keeps: only the ASK_INPUT nodes (a unit has one owner, and the guard has the run level). */
-export function askTargets(s = checkSession()): string[] {
-  return Object.entries(workflows('ticket-session.json')).flatMap(([w, d]) => {
-    const ids = (d.nodes ?? []).filter((n) => n.type === 'ASK_INPUT').map((n) => n.nodeId)
-    return ids.length ? [`workflow:${s}/${w}//${ids.join(',')}`] : []
-  })
-}
-
 const admin = (base: string, method: string, path: string, body?: unknown) =>
   http(method, base + path, {
     headers: { ...keyHeader(), ...JSON_H },
@@ -39,18 +32,10 @@ const ok = (what: string, r: { code: number; body: string }): void => {
   if (r.code < 200 || r.code >= 300) throw new Error(`${what}: HTTP ${r.code} ${r.body.slice(0, 200)}`)
 }
 
-/** ticket-advice keeps only its question nodes. Must run before the guard is attached (409 OWNERSHIP_CONFLICT otherwise). Nothing to do when it is not installed. */
-export async function narrowAdvice(base = DEV_URL): Promise<void> {
+/** Removes the ticket-advice supervisor of earlier versions (questions now go to a person through the input requests). Nothing to do when it is not installed. */
+export async function dropAdvice(base = DEV_URL): Promise<void> {
   if ((await admin(base, 'GET', `/api/supervisors/${ADVICE}`)).code !== 200) return
-  ok(
-    'ticket-advice assignments',
-    await admin(
-      base,
-      'PUT',
-      `/api/supervisors/${ADVICE}/assignments`,
-      askTargets().map((target) => ({ target })),
-    ),
-  )
+  ok('ticket-advice delete', await admin(base, 'DELETE', `/api/supervisors/${ADVICE}`))
 }
 
 /** Saves the supervisor and issues its credential. Nothing is written when the stored supervisor is the same: a save restarts its engine, whose review ids begin at r1 again
@@ -61,7 +46,7 @@ const canon = (v: unknown): string =>
     x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x,
   )
 export async function saveGuard(base = DEV_URL, dir = join(KIT, 'supervisor')): Promise<string> {
-  await narrowAdvice(base)
+  await dropAdvice(base)
   const def = tryJson(text(join(dir, 'resource-guard.json')))
   const have = await admin(base, 'GET', `/api/supervisors/${GUARD}`)
   const same = have.code === 200 && canon(tryJson(have.body)?.data?.settings) === canon(def.settings)

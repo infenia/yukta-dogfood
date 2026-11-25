@@ -54,7 +54,7 @@ export const sessionKey = (): string => devSecret('session-key')
 /** Whether the server built from origin/main knows `agent` on an API key (a property it does not know stops it from starting). */
 export const agentKeysSupported = (): boolean =>
   text(join(DEV_HOME, 'main/core/src/main/java/com/infenia/yukta/security/ApiKeys.java')).includes('boolean agent')
-/** The key of the Yukta MCP: the Claude Code session of `yk pickup session` (YUKTA_MCP_KEY=session) gets an OPERATOR agent key limited to the dogfood session, which may
+/** The key of the Yukta MCP: a Claude Code session started with YUKTA_MCP_KEY=session gets an OPERATOR agent key limited to the dogfood session, which may
  * not answer a request of risk HIGH; every other session keeps the dev key. */
 export const mcpKey = (): string => (process.env.YUKTA_MCP_KEY === 'session' && agentKeysSupported() ? sessionKey() : devKey())
 /** The properties file of the dev server: its keys. */
@@ -86,20 +86,11 @@ export function serverProperties(): string {
   if (routeSettings.some((f) => existsSync(f))) {
     const r = 'yukta.input.routes.ticket.'
     keys.push(
-      r + 'tiers[0].name=supervisor',
-      r + 'tiers[0].responders[0]=supervisor:*',
-      r + 'tiers[0].timeout=20s',
-      r + 'tiers[0].mode=FIRST',
-      r + 'tiers[0].min-confidence=0.85',
-      r + 'tiers[0].type=AUTO',
-      r + 'tiers[1].name=session',
-      r + 'tiers[1].responders[0]=role:OPERATOR',
-      r + 'tiers[1].timeout=30m',
-      r + 'tiers[1].type=AUTO',
-      r + 'tiers[2].name=human',
-      r + 'tiers[2].responders[0]=role:OPERATOR',
-      r + 'tiers[2].timeout=24h',
-      r + 'tiers[2].type=HUMAN',
+      // straight to a person (UI, REST, CLI or MCP): the advice supervisor and the pickup session tiers are gone
+      r + 'tiers[0].name=human',
+      r + 'tiers[0].responders[0]=role:OPERATOR',
+      r + 'tiers[0].timeout=24h',
+      r + 'tiers[0].type=HUMAN',
       r + 'on-final-timeout=FAIL',
     )
   }
