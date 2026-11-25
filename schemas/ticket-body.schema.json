@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ticket-body.schema.json",
+  "title": "TicketBody",
+  "description": "What a ticket's GitHub issue body holds (src/ticket/body.ts renders and parses it). The issue is the source of truth; specOf builds the run's ticket-spec from it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "type",
+    "complexity",
+    "risk",
+    "acceptance_criteria",
+    "architecture",
+    "steps",
+    "tests_mode",
+    "test_cases",
+    "locked_files",
+    "scope",
+    "security",
+    "decisions",
+    "out_of_scope",
+    "assumptions",
+    "roles"
+  ],
+  "properties": {
+    "summary": { "type": "string", "minLength": 1, "maxLength": 400 },
+    "type": { "enum": ["bug", "enhancement", "feature", "refactor", "docs", "chore"] },
+    "complexity": { "enum": ["S", "M", "L"] },
+    "risk": { "enum": ["low", "medium", "high"] },
+    "risk_reason": { "type": "string", "maxLength": 300 },
+    "acceptance_criteria": { "type": "array", "minItems": 1, "items": { "$ref": "ticket-spec.schema.json#/$defs/criterion" } },
+    "architecture": { "type": "string", "minLength": 1 },
+    "steps": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "ticket-spec.schema.json#/$defs/step" } },
+    "tests_mode": { "$ref": "ticket-spec.schema.json#/properties/tests_mode" },
+    "test_cases": { "type": "array", "maxItems": 25, "items": { "$ref": "ticket-spec.schema.json#/$defs/test_case" } },
+    "locked_files": { "type": "array", "items": { "type": "string" } },
+    "scope": { "$ref": "ticket-spec.schema.json#/properties/scope" },
+    "security": { "type": "string", "minLength": 1 },
+    "decisions": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 300 },
+      "description": "Choices settled up front so the implementer does not have to ask."
+    },
+    "out_of_scope": { "type": "array", "items": { "type": "string", "maxLength": 200 } },
+    "assumptions": { "type": "array", "items": { "type": "string", "maxLength": 300 } },
+    "roles": {
+      "type": "object",
+      "description": "The binding role choices of the Pipeline roles section; a role not named here is left to the router.",
+      "propertyNames": { "enum": ["architect", "test_writer", "implementer", "implementer_tricky", "reviewer"] },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["model", "effort"],
+        "properties": { "model": { "enum": ["opus", "sonnet", "haiku"] }, "effort": { "enum": ["low", "medium", "high"] } }
+      }
+    },
+    "plan_file": {
+      "type": "string",
+      "pattern": "^design/plans/[^/]+\\.md$",
+      "description": "The planning-session document this ticket was split from; absent for bugs and small enhancements."
+    },
+    "base_sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "The origin/main commit the spec was written against." }
+  }
+}
