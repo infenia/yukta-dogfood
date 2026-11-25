@@ -235,10 +235,11 @@ export async function http(
   method: string,
   url: string,
   o: { headers?: Record<string, string>; body?: string; timeoutMs?: number } = {},
-): Promise<{ code: number; body: string }> {
+): Promise<{ code: number; body: string; retryAfter?: number }> {
   try {
     const r = await fetch(url, { method, headers: o.headers, body: o.body, signal: AbortSignal.timeout(o.timeoutMs ?? 30000) })
-    return { code: r.status, body: await r.text() }
+    const ra = Number(r.headers.get('retry-after'))
+    return { code: r.status, body: await r.text(), ...(ra > 0 ? { retryAfter: ra } : {}) }
   } catch (e) {
     return { code: 0, body: String((e as Error).message) }
   }
