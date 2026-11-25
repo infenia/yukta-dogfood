@@ -149,3 +149,12 @@ test('a clean log has no findings; events without a run id take the run of the n
   const shown = ts('src/heal/heal-report.ts', ['show', '--events', join(d, 'stamp.jsonl')]).out
   expect(shown.split('\n').filter((l) => l.includes('"run": "9eeeeeeee"'))).toHaveLength(2)
 })
+test('the cost table splits the dollars of a rung into cache write, cache read and output by price ratio', () => {
+  put(
+    join(d, 'usage.jsonl'),
+    '{"v":1,"ts":"2026-10-25T10:01:00Z","run":"-","session":"s9","project":"yukta","event":"fix","stage":"tests","attempt":1,"model":"haiku","effort":"low","fixed":true,"files":[],"cost":0.1,"secs":5,"usage":{"input":0,"cache_creation":800,"cache_read":10000,"output":200}}\n',
+  )
+  const r = JSON.parse(ts('src/heal/heal-report.ts', ['report', '--json', '--events', join(d, 'usage.jsonl')]).out)
+  // weights 1000 : 1000 : 1000 of 3000 in total
+  expect(r.cost['haiku/low'].dollar_share).toEqual({ input: 0, cache_write: 0.33, cache_read: 0.33, output: 0.33 })
+})

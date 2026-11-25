@@ -157,24 +157,46 @@ export function report(ev: Json[]): Json {
     attempts_per_heal: hs.length ? mean(hs.map((h) => h.fix.length)) : 0,
     fixed_at: Object.fromEntries(mostCommon(fixedAt)),
   }
-  const cost = new Map<string, { attempts: number; fixed: number; usd: number; secs: number; cache: number; tokens: number }>()
+  const cost = new Map<
+    string,
+    { attempts: number; fixed: number; usd: number; secs: number; cache: number; tokens: number; out: number; create: number }
+  >()
   for (const e of ev) {
     if (e.event === 'fix' && e.model !== 'auto') {
-      const c = cost.get(rung(e)) ?? cost.set(rung(e), { attempts: 0, fixed: 0, usd: 0, secs: 0, cache: 0, tokens: 0 }).get(rung(e))!
+      const c =
+        cost.get(rung(e)) ??
+        cost.set(rung(e), { attempts: 0, fixed: 0, usd: 0, secs: 0, cache: 0, tokens: 0, out: 0, create: 0 }).get(rung(e))!
       c.attempts++
       c.fixed += e.fixed ? 1 : 0
       c.usd += e.cost || 0
       c.secs += e.secs || 0
       const u = e.usage ?? {}
       c.cache += u.cache_read || 0
+      c.create += u.cache_creation || 0
+      c.out += u.output || 0
       c.tokens += (u.input || 0) + (u.cache_creation || 0) + (u.cache_read || 0)
     }
+  }
+  // Prices are ratios of the input price, the same for every model of the family (haiku 1/1.25/0.1/5 and sonnet 3/3.75/0.3/15 alike):
+  // the share of one component of the cost needs no absolute price. Input is the tokens that were neither read from nor written to the cache.
+  const dollarShare = (v: { tokens: number; cache: number; create: number; out: number }): Json => {
+    const w = { input: v.tokens - v.cache - v.create, cache_write: v.create * 1.25, cache_read: v.cache * 0.1, output: v.out * 5 }
+    const t = sum(Object.values(w))
+    return t ? Object.fromEntries(Object.entries(w).map(([k, x]) => [k, Math.round((x / t) * 100) / 100])) : null
   }
   const r3 = (x: number): number => Math.round(x * 1000) / 1000
   R.cost = Object.fromEntries(
     [...cost]
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([k, v]) => [k, { ...v, usd: r3(v.usd), cache_read_share: v.tokens ? Math.round((v.cache / v.tokens) * 100) / 100 : null }]),
+      .map(([k, v]) => [
+        k,
+        {
+          ...v,
+          usd: r3(v.usd),
+          dollar_share: dollarShare(v),
+          cache_read_share: v.tokens ? Math.round((v.cache / v.tokens) * 100) / 100 : null,
+        },
+      ]),
   )
   R.cost_total_usd = r3(sum([...cost.values()].map((v) => v.usd)))
   // recurring failures
@@ -323,11 +345,11 @@ export function text(R: Json): string {
           .map(([k, v]) => `${k} x${v}`)
           .join(', '),
     )
-  L.push(`\nCost by rung (total $${R.cost_total_usd})      attempts  fixed   $      time   cache-read`)
+  L.push(`\nCost by rung (total $${R.cost_total_usd})      attempts  fixed   $      time   cache-read  of the $: write/read/output`)
   for (const [k, v] of Object.entries<Json>(R.cost)) {
     const cr = v.cache_read_share === null ? '-' : `${(100 * v.cache_read_share).toFixed(0)}%`
     L.push(
-      `  ${pad(k, 26)} ${rpad(v.attempts, 8)} ${rpad(v.fixed, 6)} ${rpad(v.usd.toFixed(2), 7)} ${rpad(fmtS(v.secs), 7)} ${rpad(cr, 8)}`,
+      `  ${pad(k, 26)} ${rpad(v.attempts, 8)} ${rpad(v.fixed, 6)} ${rpad(v.usd.toFixed(2), 7)} ${rpad(fmtS(v.secs), 7)} ${rpad(cr, 8)}  ${v.dollar_share ? `${Math.round(100 * v.dollar_share.cache_write)}/${Math.round(100 * v.dollar_share.cache_read)}/${Math.round(100 * v.dollar_share.output)}%` : '-'}`,
     )
   }
   if (R.recurring.length) {

@@ -10,3 +10,6 @@ Rules:
 - If you cannot fix it within these rules, say so with fixed=false.
 - The prompt shows the failure in short; the full output of the failed run is in the log file it names. Grep that file for what you need, never read it whole.
 - If codebase-memory tools are listed, search_graph and trace_path answer where a symbol is and who calls it for far fewer tokens than reading files.
+- Cost: output tokens are the dearest. Do not narrate, plan aloud or restate the failure; make the edit, run the one verify command, answer.
+- Read narrowly: Grep with -n first, then Read with offset and limit; never Read a whole file over 200 lines. The prompt already shows the code around each failure.
+- The answer's summary is one line under 200 characters: what you changed and why, or why you could not.

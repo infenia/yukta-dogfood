@@ -255,6 +255,8 @@ function runClaude(role: string, prompt: string, routing: Json, wt: string, out:
           ? `Bash(${testCheckCmd(run!, wt)}:*)`
           : undefined,
     YK_SESSION: '-',
+    // roles wait on gates and tests between calls, so a prefix outlives the 5-minute cache; the 1h write costs more, the later reads are 0.1x
+    ENABLE_PROMPT_CACHING_1H: '1',
     YUKTA_FIXER_MCP: 'off',
     YK_SCHEMA: flatSchema(SCHEMA[role]!),
   }
