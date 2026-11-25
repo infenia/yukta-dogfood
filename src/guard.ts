@@ -5,14 +5,16 @@
 // Because the guard owns the run level, a person's own start/stop/pause on those runs (yk, yukta-cli, the UI) is a review that this process answers within
 // the 5 s the server waits (on a timeout everything but a stop is refused), so `yk` starts the loop first and waits for `guard.ready` (server.ts).
 import { appendFileSync } from 'node:fs'
-import { DEV_URL, STATE_DIR, join, mkdirp, sleep, text, tryJson } from './base.ts'
+import { DEV_HOME, DEV_URL, join, mkdirp, sleep, text, tryJson } from './base.ts'
 import { checkSession, http, keyHeader } from './client.ts'
 
 export const GUARD = 'dogfood-resource-guard'
 /** The ticket-advice supervisor of earlier versions; saveGuard deletes it where it is still installed. */
 export const ADVICE = 'dogfood-ticket-advice'
 const KIT = join(import.meta.dir, '..')
-export const readyPath = (): string => join(STATE_DIR, 'guard.ready')
+// One guard per machine, like the one dev server it belongs to: its files live in DEV_HOME, not in a checkout's STATE_DIR (a lock per checkout let every checkout start its own)
+export const readyPath = (): string => join(DEV_HOME, 'guard.ready')
+export const throttleLock = (): string => join(DEV_HOME, 'throttle.lock')
 const JSON_H = { 'Content-Type': 'application/json' }
 
 type Wfs = Record<string, { nodes?: { nodeId: string; type: string }[] }>
@@ -89,10 +91,26 @@ export const detachGuard = async (base = DEV_URL): Promise<void> => {
   await admin(base, 'PUT', `/api/supervisors/${GUARD}/assignments`, [])
 }
 
+/** Waits that grow after each failure, 2 s doubling to a 120 s cap, each with up to half of it cut at random (copies of this process do not move in step); a success resets it.
+ * A server's Retry-After (seconds) wins when it is longer. Never a tight loop. */
+export function backoff(sleepFn: (ms: number) => Promise<void> = sleep, rnd: () => number = Math.random) {
+  let n = 0
+  return {
+    wait: async (retryAfter = 0): Promise<number> => {
+      const ms = Math.max(retryAfter * 1000, Math.min(120000, 2000 * 2 ** n) * (1 - rnd() / 2))
+      n++
+      await sleepFn(ms)
+      return ms
+    },
+    reset: (): void => void (n = 0),
+  }
+}
+
 export type Agent = { call: (method: string, path: string, body?: unknown) => Promise<{ code: number; body: string }>; token: () => string }
 /** The agent API with the credential; a 401 (expired, or rotated) issues a new one once and retries. */
-export function agent(base: string, first: string): Agent {
+export function agent(base: string, first: string, bo = backoff()): Agent {
   let token = first
+  let again = false
   const once = (method: string, path: string, body?: unknown) =>
     http(method, `${base}/api/agent/v1${path}`, {
       headers: { Authorization: `Bearer ${token}`, ...JSON_H },
@@ -102,10 +120,26 @@ export function agent(base: string, first: string): Agent {
   return {
     token: () => token,
     call: async (method, path, body) => {
-      const r = await once(method, path, body)
-      if (r.code !== 401) return r
+      let r = await once(method, path, body)
+      if (r.code === 429) {
+        await bo.wait(r.retryAfter) // rate limited: the caller sees the 429 after the wait, and calls again later
+        return r
+      }
+      if (r.code !== 401) {
+        again = false
+        bo.reset()
+        return r
+      }
+      // the first 401 (an expired credential) is answered with a new one at once; a 401 right after that waits longer each time (a credential post invalidates the others')
+      if (again) await bo.wait()
+      again = true
       token = await issueCredential(base)
-      return once(method, path, body)
+      r = await once(method, path, body)
+      if (r.code !== 401 && r.code !== 429) {
+        again = false
+        bo.reset()
+      }
+      return r
     },
   }
 }
@@ -142,7 +176,7 @@ export async function answerReviews(a: Agent, stop: () => boolean, after: number
     if (r.code === 0) throw new Error('the server is not reachable')
     const b = r.code === 200 ? tryJson(r.body)?.data : null
     if (!b) {
-      await sleep(2000) // not a batch (a 5xx): do not spin
+      await (r.code === 429 || r.code === 401 ? Promise.resolve() : sleep(2000)) // not a batch (a 5xx): do not spin; a 429 or 401 already waited in agent()
       continue
     }
     after = b.cursor ?? after
@@ -155,12 +189,12 @@ export async function answerReviews(a: Agent, stop: () => boolean, after: number
   }
 }
 
-export const logPath = (): string => join(STATE_DIR, 'guard.log')
+export const logPath = (): string => join(DEV_HOME, 'guard.log')
 /** The loop is detached with no terminal: what it says goes to a file too. */
 export function logLine(msg: string): void {
   console.log(`throttle: ${msg}`)
   try {
-    mkdirp(STATE_DIR)
+    mkdirp(DEV_HOME)
     appendFileSync(logPath(), `${new Date().toISOString()} ${msg}\n`)
   } catch {
     /* the log is a convenience */
