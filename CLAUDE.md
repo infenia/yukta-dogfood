@@ -34,6 +34,6 @@ CI (`.github/workflows/ci.yml`) runs exactly these. `yk` itself must be run from
 
 - `src/yk.ts` — CLI dispatcher; `src/{base,client,server,check,plan,runs}.ts` — paths/allowlist, server API, dev-server lifecycle, check payload and scoping, run watching and `RESULT` printing.
 - `src/heal/` — self-heal (free fix → baseline → fixer ladder → guard → verify) and the generator for `session.json`; config in `heal.json`.
-- `src/ticket/` — spec-to-PR ticket pipeline (architect/implementer/test-writer/reviewer roles) and generator for `ticket-session.json`.
+- `src/ticket/` — the ticket pipeline: filing (`file.ts`, `yk ticket new|from-plan`, analyst and architect as AGENT_SESSION), the ticket body that holds the spec (`body.ts`), the run (`ticket-run`: test writer, implementer, reviewer) and the generator for `ticket-session.json`.
 - `mod/` — Claude Code plugin (hooks: gate, plan, rewrite, panes, slash commands); `hooks/` — standalone yk-hook.
 - `test/` mirrors `src/`; fakes in `test/ticket/fake/`.

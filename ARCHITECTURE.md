@@ -12,7 +12,7 @@ them, and the reasons for the design. Read it top to bottom once; after that use
 - [7. Self-heal](#7-self-heal)
 - [8. From a run to the `RESULT` line](#8-from-a-run-to-the-result-line)
 - [9. The Claude Code mod](#9-the-claude-code-mod)
-- [10. Pickup channel](#10-pickup-channel)
+- [10. Filing tickets](#10-filing-tickets)
 - [11. Ticket pipeline](#11-ticket-pipeline)
 - [12. Design principles and gotchas](#12-design-principles-and-gotchas)
 - [13. Testing and changing the dogfood](#13-testing-and-changing-the-dogfood)
@@ -59,53 +59,50 @@ All paths are relative to the repository root. Package: Bun + TypeScript, `ajv` 
 
 ### Core (`src/`)
 
-| File                                   | Role                                                                                                                                                                        |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `yk`                                   | Shell launcher; runs `bun src/yk.ts`. On `PATH` in Claude Code sessions (the mod prepends the folder).                                                                      |
-| `src/yk.ts`                            | The CLI. Dispatches every subcommand (`check`, `gradle`, `tool`, `plan`, `up`, `pickup`, `ticket`, `stats`, `bench`, …).                                                    |
-| `src/base.ts`                          | Paths and constants (`REPO_ROOT`, `STATE_DIR`, `DEV_HOME`, `DEV_PORT`) and `run()`, a process runner with a **binary allowlist** (refuses anything unlisted with exit 126). |
-| `src/client.ts`                        | Talking to the server: API keys, `renderSession`, `findCli` (locating `yukta-cli`), starting workflows, `--notify` delivery.                                                |
-| `src/server.ts`                        | Dev-server lifecycle: sync `main/` worktree, build, launch, swap when idle, `ensureServer`, check lock.                                                                     |
-| `src/check.ts`                         | `yk check` support: payload building, stage filtering (`filterPlan`), heal records → `healed=`, `heal-events.jsonl` path.                                                   |
-| `src/plan.ts`                          | `yk plan`: what changed → which stages to run.                                                                                                                              |
-| `src/runs.ts`                          | Watching runs and printing results: `watch`, `tree`, `pause/resume/stop`, `approve/reject`, `detail`, `printResult`, durations.                                             |
-| `src/tool.ts`                          | The process every `tool` workflow node runs: `sh -c "$YUKTA_TOOL_COMMAND"`.                                                                                                 |
-| `src/failures.ts`, `src/sweep.ts`      | Capture failures to `failures.jsonl`, fingerprint them, file GitHub issues (`yk report`), sweep the server for failures nobody saw.                                         |
-| `src/release.ts`                       | `yk up --release`: download the native binary, verify with cosign.                                                                                                          |
-| `src/pickup.ts`, `src/input-bridge.ts` | Scheduled issue hand-over and the question/result bridge (§10).                                                                                                             |
-| `src/session-render.ts`, `src/lib.ts`  | Thin wrapper to render a session; `lib.ts` just re-exports base/client/server/check.                                                                                        |
+| File                                  | Role                                                                                                                                                                        |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `yk`                                  | Shell launcher; runs `bun src/yk.ts`. On `PATH` in Claude Code sessions (the mod prepends the folder).                                                                      |
+| `src/yk.ts`                           | The CLI. Dispatches every subcommand (`check`, `gradle`, `tool`, `plan`, `up`, `ticket`, `stats`, `bench`, …).                                                              |
+| `src/base.ts`                         | Paths and constants (`REPO_ROOT`, `STATE_DIR`, `DEV_HOME`, `DEV_PORT`) and `run()`, a process runner with a **binary allowlist** (refuses anything unlisted with exit 126). |
+| `src/client.ts`                       | Talking to the server: API keys, `renderSession`, `findCli` (locating `yukta-cli`), starting workflows, `--notify` delivery.                                                |
+| `src/server.ts`                       | Dev-server lifecycle: sync `main/` worktree, build, launch, swap when idle, `ensureServer`, check lock.                                                                     |
+| `src/check.ts`                        | `yk check` support: payload building, stage filtering (`filterPlan`), heal records → `healed=`, `heal-events.jsonl` path.                                                   |
+| `src/plan.ts`                         | `yk plan`: what changed → which stages to run.                                                                                                                              |
+| `src/runs.ts`                         | Watching runs and printing results: `watch`, `tree`, `pause/resume/stop`, `approve/reject`, `detail`, `printResult`, durations.                                             |
+| `src/tool.ts`                         | The process every `tool` workflow node runs: `sh -c "$YUKTA_TOOL_COMMAND"`.                                                                                                 |
+| `src/failures.ts`, `src/sweep.ts`     | Capture failures to `failures.jsonl`, fingerprint them, file GitHub issues (`yk report`), sweep the server for failures nobody saw.                                         |
+| `src/release.ts`                      | `yk up --release`: download the native binary, verify with cosign.                                                                                                          |
+| `src/session-render.ts`, `src/lib.ts` | Thin wrapper to render a session; `lib.ts` just re-exports base/client/server/check.                                                                                        |
 
 ### Heal (`src/heal/`)
 
-| File             | Role                                                                                                                                                  |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `gen-session.ts` | **Generator** for `session.json` (workflows `tool`, `agent`, `attempt`, `heal`, `check`, `pickup`). `--check` exits 1 if the committed JSON is stale. |
-| `heal.ts`        | Subcommands the heal workflows call: `brief`, `prepare`, `claimed`, `judge` (the guard), `report`, `record-auto`, `healed`, baseline check, events.   |
-| `claude.ts`      | Launches headless `claude -p` for a fixer or a ticket role with pinned models and a tool allowlist.                                                   |
-| `fix-reuse.ts`   | The only free auto-fix configured: licence headers via `reuse annotate`.                                                                              |
-| `heal-report.ts` | `yk heal report/show`: reads the events log and reports findings.                                                                                     |
+| File             | Role                                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gen-session.ts` | **Generator** for `session.json` (workflows `tool`, `agent`, `attempt`, `heal`, `check`). `--check` exits 1 if the committed JSON is stale.         |
+| `heal.ts`        | Subcommands the heal workflows call: `brief`, `prepare`, `claimed`, `judge` (the guard), `report`, `record-auto`, `healed`, baseline check, events. |
+| `claude.ts`      | Launches headless `claude -p` for a fixer or a ticket role with pinned models and a tool allowlist.                                                 |
+| `fix-reuse.ts`   | The only free auto-fix configured: licence headers via `reuse annotate`.                                                                            |
+| `heal-report.ts` | `yk heal report/show`: reads the events log and reports findings.                                                                                   |
 
 ### Ticket pipeline (`src/ticket/`) — see §11
 
 `ticketkit.ts` (dispatcher), `yk-ticket.ts` (`yk ticket …`), `gen-ticket.ts` (generator for `ticket-session.json`), `flow.ts`, `ladder.ts`,
-`waves.ts`, `route.ts`, `sizing.ts`, `stepkit.ts`, `call.ts`, `roles.ts`, `github.ts`, `branch.ts`, `init.ts`, `advice.ts`,
+`body.ts`, `file.ts`, `route.ts`, `sizing.ts`, `stepkit.ts`, `call.ts`, `roles.ts`, `github.ts`, `branch.ts`, `init.ts`,
 `gate-tests.ts`, `junit.ts`, `validate-spec.ts`, `validate-schema.ts`, `report.ts`, `lib.ts`, `walk-workflow.ts` (test-only engine stand-in).
 
 ### Other folders
 
 | Path                                 | Role                                                                                                                 |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `channel/`                           | Separate Bun package: an MCP "channel" server (`src/channel.ts`, `http.ts`, `registry.ts`, `pickup.ts`, `main.ts`).  |
 | `mod/`                               | Claude Code plugin `yukta-dogfood`: hooks (`hooks/register.tsx`, `gate.ts`, `rewrite.ts`, `plan.ts`, `panes.tsx`).   |
 | `session.json`                       | **Generated** (do not hand-edit, do not read whole; Claude's `Read` is denied). From `gen-session.ts` + `heal.json`. |
 | `ticket-session.json`                | **Generated** from `gen-ticket.ts` (about 7,500 lines).                                                              |
 | `heal.json`                          | Policy: the ladder, efforts, budgets, give-up rule, extra tool variants.                                             |
 | `rules.json`                         | Server-side supervisor rule `no-kill`: denies `StopWorkflow` with `mode == 'KILL'`.                                  |
 | `project.json`                       | Project facts for the ticket pipeline (commands per role, budgets, high-risk paths, shared files).                   |
-| `supervisor/`                        | `supervisor.json` + `session.json`: the advice supervisor (§11.8); `resource-guard.json`: the resource guard (§4).   |
+| `supervisor/`                        | `resource-guard.json`: the resource guard (§4).                                                                      |
 | `fixer-rules.md`, `fixer-rules/*.md` | System prompt for fixers (constant) plus per-kind and per-ticket-role additions.                                     |
 | `schemas/`, `fixtures/`              | JSON Schemas for ticket role contracts; each schema has a `valid.json` and `invalid-*.json` fixture.                 |
-| `ticket-template.md`                 | The issue body template `yk ticket new` fills.                                                                       |
 | `test/`                              | `bun test` suites mirroring `src/`, fakes in `test/ticket/fake/`.                                                    |
 
 **Generated vs hand-written.** `session.json` and `ticket-session.json` are build outputs. Change the generator (or `heal.json`), run it, commit
@@ -125,18 +122,18 @@ both. `bun src/heal/gen-session.ts --check` and `bun src/ticket/gen-ticket.ts --
 - `serverUp` takes `up.lock`. Healthy and same SHA: no-op. Stale and **busy**: print `STALE`, defer. Stale and **idle**: swap. It refuses if
   port 9858 belongs to something it did not start.
 - `ensureServer` runs before every `yk gradle|tool|check`: no-op if `YUKTA_SERVER_URL` points elsewhere; fetches at most once a minute;
-  starts the server if needed. "Busy" ignores the `pickup` workflow (it never ends).
+  starts the server if needed.
 - Consequence: **workflow JSON comes from your checkout, plugins come from the server build.** A change to a Java plugin only takes effect
   after it is merged to `main` and the server swaps.
 
 ### 3.2 State directories
 
-| Name        | Default                                        | Scope            | Holds                                                                                                                                                                   |
-| ----------- | ---------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `REPO_ROOT` | `$YUKTA_REPO_ROOT` or git toplevel             | checkout         | —                                                                                                                                                                       |
-| `STATE_DIR` | `<repo>/.yukta-dev` (`$YUKTA_DEV_STATE_DIR`)   | **per checkout** | heal records (`heal/<session>/<stage>-<n>.json`, `.prev`), `runs.tsv`, `durations.tsv`, `last-result`, `check.lock`, `notify-*.log`, baseline cache                     |
-| `DEV_HOME`  | `~/.local/state/yukta-dev` (`$YUKTA_DEV_HOME`) | **per machine**  | `main/`, `builds/`, `server.pid/env/log`, `build.log`, `up.lock`, `sessions/`, `heal-events.jsonl`, `failures.jsonl`, `pickup.exec`, `pickup/`, `bridge.pid`, key files |
-| `DEV_PORT`  | 9858 (`$YUKTA_DEV_PORT`)                       | machine          | —                                                                                                                                                                       |
+| Name        | Default                                        | Scope            | Holds                                                                                                                                               |
+| ----------- | ---------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `REPO_ROOT` | `$YUKTA_REPO_ROOT` or git toplevel             | checkout         | —                                                                                                                                                   |
+| `STATE_DIR` | `<repo>/.yukta-dev` (`$YUKTA_DEV_STATE_DIR`)   | **per checkout** | heal records (`heal/<session>/<stage>-<n>.json`, `.prev`), `runs.tsv`, `durations.tsv`, `last-result`, `check.lock`, `notify-*.log`, baseline cache |
+| `DEV_HOME`  | `~/.local/state/yukta-dev` (`$YUKTA_DEV_HOME`) | **per machine**  | `main/`, `builds/`, `server.pid/env/log`, `build.log`, `up.lock`, `sessions/`, `heal-events.jsonl`, `failures.jsonl`, key files                     |
+| `DEV_PORT`  | 9858 (`$YUKTA_DEV_PORT`)                       | machine          | —                                                                                                                                                   |
 
 Never edit these by hand (the yukta skill says so).
 
@@ -175,31 +172,29 @@ yukta-cli, java, make, plus named env binaries). This limits what a bug in the g
 `yk help` prints the header comment of `yk.ts` up to the line starting `// Rebuild step 1`; commands below that marker (`up`, `down`, `status`,
 steering) still work but are not advertised.
 
-| Command                                                                                                                                 | Implemented in                          | What it does                                                               |
-| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------- |
-| `yk gradle <args>`                                                                                                                      | `yk.ts` `cmdGradle` → `runTool`         | Runs `./gradlew <args> -q --console=plain` as the `tool` workflow.         |
-| `yk tool [-C dir] <cmd…>`                                                                                                               | `yk.ts` `cmdTool` → `runTool`           | Runs any command (Go, pnpm, bun) in `dir`. Arguments are shell-quoted.     |
-| `yk check [--full] [--base REF] [--no-heal] [--models …] [--detach] [--stage/--skip]`                                                   | `yk.ts` `cmdCheck`                      | The scoped, self-healing gate.                                             |
-| `yk plan`                                                                                                                               | `plan.ts`                               | Dry run of the same plan, prints stages (tab-separated).                   |
-| `yk up [--background] [--release]`, `down`, `status`                                                                                    | `yk.ts`, `server.ts`, `release.ts`      | Server lifecycle.                                                          |
-| `yk watch`, `tree`, `pause/resume/stop [--tree]`, `skip/unskip/retry`, `break`, `step`, `signals`, `approve/reject`, `detail`, `result` | `runs.ts`                               | Follow or steer a run (§8).                                                |
-| `yk pickup session\|on\|off\|now\|list\|bridge\|status`                                                                                 | `yk.ts`, `pickup.ts`, `input-bridge.ts` | Issue hand-over (§10).                                                     |
-| `yk ticket new\|edit\|run\|status\|resume\|stop\|worktree\|pr\|release\|report…`                                                        | `ticket/yk-ticket.ts`                   | Ticket pipeline (§11).                                                     |
-| `yk heal report\|show`                                                                                                                  | `heal/heal-report.ts`                   | Analyse heal events.                                                       |
-| `yk report [file]`, `report on\|off\|status`, `report scan`                                                                             | `failures.ts`, `sweep.ts`               | Failure capture and GitHub issue filing.                                   |
-| `yk stats`                                                                                                                              | `yk.ts`                                 | Sums runs and heal cost from events or `runs.tsv`.                         |
-| `yk bench`                                                                                                                              | `yk.ts`                                 | Compares direct Gradle with `yk`; fails if ratio > 1.5 and overhead > 3 s. |
-| `yk statusline`                                                                                                                         | `yk.ts`                                 | Reads only cached files (fast).                                            |
-| `yk mcp-headers`                                                                                                                        | `yk.ts`                                 | Prints `X-API-Key` JSON for Claude Code's MCP config.                      |
-| `yk sum`                                                                                                                                | `yk.ts`                                 | `changesSum`: sha1 of diff + status, used by the Stop hook.                |
-| `yk cli …`                                                                                                                              | `yk.ts`                                 | Pass-through to `yukta-cli`.                                               |
+| Command                                                                                                                                 | Implemented in                     | What it does                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `yk gradle <args>`                                                                                                                      | `yk.ts` `cmdGradle` → `runTool`    | Runs `./gradlew <args> -q --console=plain` as the `tool` workflow.         |
+| `yk tool [-C dir] <cmd…>`                                                                                                               | `yk.ts` `cmdTool` → `runTool`      | Runs any command (Go, pnpm, bun) in `dir`. Arguments are shell-quoted.     |
+| `yk check [--full] [--base REF] [--no-heal] [--models …] [--detach] [--stage/--skip]`                                                   | `yk.ts` `cmdCheck`                 | The scoped, self-healing gate.                                             |
+| `yk plan`                                                                                                                               | `plan.ts`                          | Dry run of the same plan, prints stages (tab-separated).                   |
+| `yk up [--background] [--release]`, `down`, `status`                                                                                    | `yk.ts`, `server.ts`, `release.ts` | Server lifecycle.                                                          |
+| `yk watch`, `tree`, `pause/resume/stop [--tree]`, `skip/unskip/retry`, `break`, `step`, `signals`, `approve/reject`, `detail`, `result` | `runs.ts`                          | Follow or steer a run (§8).                                                |
+| `yk ticket new\|edit\|run\|status\|resume\|stop\|worktree\|pr\|release\|report…`                                                        | `ticket/yk-ticket.ts`              | Ticket pipeline (§11).                                                     |
+| `yk heal report\|show`                                                                                                                  | `heal/heal-report.ts`              | Analyse heal events.                                                       |
+| `yk report [file]`, `report on\|off\|status`, `report scan`                                                                             | `failures.ts`, `sweep.ts`          | Failure capture and GitHub issue filing.                                   |
+| `yk stats`                                                                                                                              | `yk.ts`                            | Sums runs and heal cost from events or `runs.tsv`.                         |
+| `yk bench`                                                                                                                              | `yk.ts`                            | Compares direct Gradle with `yk`; fails if ratio > 1.5 and overhead > 3 s. |
+| `yk statusline`                                                                                                                         | `yk.ts`                            | Reads only cached files (fast).                                            |
+| `yk mcp-headers`                                                                                                                        | `yk.ts`                            | Prints `X-API-Key` JSON for Claude Code's MCP config.                      |
+| `yk sum`                                                                                                                                | `yk.ts`                            | `changesSum`: sha1 of diff + status, used by the Stop hook.                |
+| `yk cli …`                                                                                                                              | `yk.ts`                            | Pass-through to `yukta-cli`.                                               |
 
 ---
 
 `yk throttle` (`throttle.ts`, `guard.ts`) is the decision maker of the Yukta supervisor `dogfood-resource-guard` (type `http`). A unit has one owner (`409 OWNERSHIP_CONFLICT`),
-so the ownership is split: the guard owns `run:dogfood/<workflow>` (start, pause, resume, stop, restart) of every workflow in `session.json` and `ticket-session.json`, and the
-ticket-advice supervisor keeps only the `ASK_INPUT` nodes of the ticket workflows (`workflow:dogfood/<wf>//<ids>`, both lists derived from the generated session files).
-`saveGuard` narrows ticket-advice first (when it is installed), saves the guard, issues its credential (rotated on each start, kept in memory, renewed on a 401), takes the cursor of
+and the guard owns `run:dogfood/<workflow>` (start, pause, resume, stop, restart) of every workflow in `session.json` and `ticket-session.json` (derived from the generated files).
+`saveGuard` deletes the ticket-advice supervisor of earlier versions when it is still installed, saves the guard, issues its credential (rotated on each start, kept in memory, renewed on a 401), takes the cursor of
 `/api/agent/v1/snapshot`, then `attachGuard` assigns the runs and the loop writes `guard.ready`. `ensureServer` (`server.ts`) starts the loop, detached, if `throttle.lock` is not held, and waits up to 10 s for
 `guard.ready`: since the guard owns the run level, every start/stop/pause of a person is a _review_ that the loop (`answerReviews`, long poll of `/signals`) answers ALLOW, and the server
 refuses anything but a stop when no answer comes in 5 s. The loop ends when the server is unreachable; the guard stays attached (a detach and attach restarts its engines), and `ensureServer` starts the loop again; `YK_THROTTLE=off` takes the guard off the runs (`detachGuard`). It is **on by default** (`YK_THROTTLE=off` opts out).
@@ -245,7 +240,7 @@ flowchart LR
    and each changed class has a `<Class>Test`, only that test runs and no coverage stage is planned.
 5. **Go**: `cli.fmt-check`, `mod-verify`, `vet`, `lint`, `sec`, `cover-check`; `vuln` only if `go.mod`/`go.sum` changed.
 6. **UI**: tsc, eslint, vitest (related, with scoped coverage), prettier, headers; `ui.build` only with `--full`.
-7. **Dogfood**: `bun fmt --check`, `bun check` (and `-p channel`).
+7. **Dogfood**: `bun fmt --check`, `bun check`.
 8. **Repo-wide**: `reuse`, `actionlint`, `docs`. Each picks the first installed tool variant from `heal.json` `extra`, or emits a "skipped" comment.
 9. Output lines: `stage<TAB>dir<TAB>cmd<TAB>auto-fix`, plus `#` comments. Stages run cheapest first; `--full` plans everything unscoped.
 
@@ -296,7 +291,6 @@ Conventions worth knowing:
 | `attempt` | 11    | One repair attempt: `prepare` → `agent` (sub-workflow) → `claimed` → `format` (sub-workflow `tool`) → `judge` (guard) → `recheck` (sub-workflow `tool`) → `report` → `fixed?`.                                                                                                                                                                                                                                                |
 | `heal`    | 26    | The escalation ladder (§7).                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `check`   | ~108  | One block per stage plus `fast`, `healed?`, `verify`, `done`.                                                                                                                                                                                                                                                                                                                                                                 |
-| `pickup`  | 4     | `SCHEDULE_TRIGGER` every 30 min → `bun src/pickup.ts tick` → console terminals.                                                                                                                                                                                                                                                                                                                                               |
 
 ### 6.1 Shape of one stage block in `check`
 
@@ -445,52 +439,42 @@ spinner, colours per Gradle/UI/Go/Repo; buttons run, refresh, stop). A 120 ms cl
 
 ---
 
-## 10. Pickup channel
+## 10. Filing tickets
 
-Lets a scheduler hand a GitHub issue to an idle interactive Claude Code session.
+A ticket is a GitHub issue whose body holds the whole spec (`src/ticket/body.ts`, schema `ticket-body`), written at filing time by the
+architect and reviewed by a person before it is Ready. Two commands file them; both run workflows on the dev server.
 
 ```mermaid
-sequenceDiagram
-  participant S as pickup workflow (every 30 min)
-  participant T as src/pickup.ts tick
-  participant R as DEV_HOME/pickup/*.json
-  participant C as channel (HTTP + MCP)
-  participant CC as Claude Code session
-  S->>T: bun src/pickup.ts tick
-  T->>R: read registry, drop dead pids
-  T->>C: GET /v1/status (busy?)
-  T->>T: gh: assigned to me, project status Ready, skip issues with PR/branch
-  T->>C: POST /v1/events {content, meta:{issue,url,title,via}}
-  C->>CC: notifications/claude/channel  (<channel source="yukta-pickup" …>)
-  CC->>CC: pickup skill: yk ticket run N --detach --notify
-  CC->>C: pickup_done(issue, outcome=pr|blocked|skipped, url)
+flowchart LR
+  T[yk ticket new 'text'] --> NA[prepare_analyst → ticket-agent: analyst → answer_analyst]
+  NA -->|questions or confidence < 0.7| Q[ASK_INPUT ask_analyst → save_answers]
+  NA --> AR[prepare_architect → ticket-agent: architect → answer_architect]
+  Q --> AR
+  P[yk ticket from-plan design/plans/x.md] --> SP[prepare_split → ticket-agent: architect → answer_split]
+  AR --> F[file_issues: gh issue create, type/&lt;t&gt; label, assigned to you, project status Backlog]
+  SP --> F
 ```
 
-- **Start.** `yk pickup session` installs the channel's dependencies, creates `pickup-token`, writes `pickup-<name>.mcp.json` (inline JSON was
-  not loaded by claude 2.1.x) and starts `claude --name N --mcp-config … --dangerously-load-development-channels server:yukta-pickup`.
-  `yk pickup on` starts the `pickup` workflow; its execution id is `DEV_HOME/pickup.exec`.
-- **Channel server** (`channel/`): generic MCP server over stdio with experimental capability `claude/channel` (and optional permission relay).
-  HTTP on `127.0.0.1` only. Open: `GET /v1/status`, `/v1/openapi.json`. Bearer token (file re-read per request, so it can be rotated):
-  `POST /v1/events`, `GET /v1/stream` (SSE), permission endpoints. `registry.ts` writes `{name, port, pid, started}`; a duplicate live name
-  becomes `<name>-<pid>`. The `pickup` profile is **exclusive**: one issue in flight, 409 otherwise.
-- **`tick`** picks the highest priority (P0 first, then lower issue number) allowed issue, skipping ones with an open PR ("fixes #n") or an
-  `issue/<n>` branch. Allowlist: `--issue` flag or `DEV_HOME/pickup-issues`. `skip()` exits 0 with `PICKUP skipped=<why>`. In ticket mode
-  (`YUKTA_PICKUP_MODE=ticket`) it skips sessions and runs `yk ticket run <n> --detach` directly, one at a time (`pgrep`).
-- **Validation** in `channel.submit`: 64 KB content cap, ≤ 32 meta keys, keys `[A-Za-z0-9_]+` (others are dropped silently by Claude Code),
-  `event_id`/`sender` reserved, sender allowlist, idempotency keys (10 min TTL), then the notification. A 200-event ring buffer feeds `/v1/stream`.
-- **Bridge** (`input-bridge.ts`, `yk pickup bridge`): pushes `kind=input` (a ticket run asks a question; tiers session and human; the content tells the
-  session to decide via `answer_input`, or leave HIGH risk to a person) and `kind=result` (root workflow ended). These do not take the slot.
-- **`pickup_done`** releases the slot only for the matching issue, publishes `done`, appends to `pickup.jsonl`. `pr` requires a URL. A lost call
-  frees itself after 4 h (`outcome:'timeout'`).
-- **Security stance.** Issue text is untrusted; the channel's `INSTRUCTIONS` constrain the session to implementing the issue. The channel
-  refuses permission relay without a sender allowlist. If a fixed port is taken the channel keeps serving MCP without HTTP and without a
-  registry entry, so `tick` will never find it.
+- **`ticket-agent`** is one Claude Code session on `AGENT_SESSION` (harness claude-code, `approvals: ASK`, `approvalTimeout` 24 h, `timeout`
+  work time + 24 h). Read, Grep and Glob are pre-allowed, plus one Write (the drafts file) and one Bash (the self-check); any other tool use, and
+  a question of the agent (`AskUserQuestion`), becomes an **input request**: the conversation shows a REQUEST event and waits in the Agents tab,
+  and a person answers in the UI, with `yukta-cli inputs answer`, over REST or over MCP (`answer_input`).
+- **`file.ts`** is the model-free glue: `prepare ROLE` writes the constant rules and the prompt (the request, the analysis, the answers, the
+  project's commands, the draft path and the check command), `answer ROLE` reads the session's payload from stdin (`fromAgent`), checks it
+  against `analysis` or `ticket-drafts` and, for the architect, runs `check`: the schema, the body round trip (`renderTicket` → `parseTicket`) and
+  `validate-spec` of every ticket in a throwaway run dir against the checkout. `issue` files the tickets in order, turning the `after` indexes into
+  `depends on` issue numbers and recording `base` (the `origin/main` commit) and `plan`. A dry run writes `ticket-<i>.md` only.
+- **State**: `.yukta-dev/filing/<id>/` (`request.json`, `analyst.json`, `answers.txt`, `drafts.out.json`, `ticket-<i>.md`, `filed.json`).
+
+At run time questions are rare by design (the Decisions section settles the choices up front); a run's own questions (a clarification, a policy
+conflict, a budget pause) are `ASK_INPUT` nodes on the route `ticket`, which goes straight to a person (one HUMAN tier, 24 h), shown in the Inputs
+tab and answerable the same four ways.
 
 ---
 
 ## 11. Ticket pipeline
 
-Turns an issue into a tested **draft PR** (`Fixes #n`). Never merges, never pushes `main`. Run state: `.yukta-dev/ticket/<run_id>/`; branch
+Turns a Ready ticket into a tested **draft PR** (`Fixes #n`) with the workflow `ticket-run`. Never merges, never pushes `main`. Run state: `.yukta-dev/ticket/<run_id>/`; branch
 `issue/<n>`; worktree `../yukta-issue-<n>`. Every node is a `PROCESS_EXECUTOR` running `bun src/ticket/ticketkit.ts <sub>`; `ticketkit.ts` is
 a lazy-import dispatcher. A model call is `ticketkit call ROLE` → `claude.ts --role ROLE` → `call.ts`.
 
@@ -512,24 +496,27 @@ architect self-checks with `validate-spec` until `errors=0`; the implementer tou
 
 ### 11.2 Intake
 
-`ticket-template.md` has Goal, Acceptance criteria, Sizing, Pipeline roles. Only the **acceptance criteria** are requirements. `github.ts intake`
+A filed ticket's body is the whole spec (§10); `init` turns a valid one into `spec/spec.json` (`has_spec` → `validate_spec1`: the run skips
+the architect, and a spec that no longer applies on the current base goes to the architect with the errors), but only for an issue assigned to
+the person running the pipeline, because the spec's commands run as shell. Any other body is data and only the **acceptance criteria** are
+requirements; the architect then writes the spec at run time. `github.ts intake`
 exits 3 (SKIPPED) if the issue is not open, not assigned to you, or not Ready on the project; exits 4 (BLOCKED) if a criterion asks for secrets,
 a push to main, other repos, settings changes or skipped checks. `init.ts` extracts criteria; none → SKIPPED, no tokens spent.
 
 ### 11.3 Routing
 
-`route.ts`: complexity from criteria count (≤2 S, ≤5 M, else L; >1 ecosystem raises S to M); risk high for `risk`/`security` labels, >1 module, or
+`route.ts`: a spec from the body keeps its complexity, tests mode and risk (never below the static risk). Otherwise complexity from criteria count (≤2 S, ≤5 M, else L; >1 ecosystem raises S to M); risk high for `risk`/`security` labels, >1 module, or
 `high_risk_paths` globs. `sizing.ts` measures the `- files:` globs against the base tree and the `- change:` kinds (concurrency, schema,
 api_contract, security raise to ≥ M) and `- open_decisions:` (≥2 raises to ≥ M). `decide` takes the **higher** of static and sizing (never
 lowers) and records a `basis`. `modelsFor` picks models from a table by complexity/risk, bumps the architect's effort if there are open
 decisions, nulls the test writer when its output would not be used, and lets ticket-set roles override. `testsModeFor`:
 
-| kind                    | tests_mode                                          |
-| ----------------------- | --------------------------------------------------- |
-| docs / chore            | existing                                            |
-| bug                     | repro_only                                          |
-| feature, S and low risk | implementer_writes                                  |
-| anything else           | cases_to_code (`architect_code` only for high risk) |
+| type                                   | tests_mode                                          |
+| -------------------------------------- | --------------------------------------------------- |
+| docs / chore                           | existing                                            |
+| bug                                    | repro_only                                          |
+| feature or enhancement, S and low risk | implementer_writes                                  |
+| anything else                          | cases_to_code (`architect_code` only for high risk) |
 
 Budgets per run come from `project.json` `budgets_usd` by complexity.
 
@@ -548,14 +535,11 @@ assertion or "not implemented" (setup/import/syntax errors fail the gate); `guar
 are rejected. Then it writes `spec/locked.json` (sha256 per file) and `test_map.json` from the **report**, not from the agent's claim. Modes
 `existing`/`implementer_writes` skip the red check. Parsers: junit (`junit.ts`), vitest JSON, go test.
 
-### 11.6 Execution (`flow.ts`, `ladder.ts`, `waves.ts`)
+### 11.6 Execution (`flow.ts`, `ladder.ts`)
 
-`flow.ts` is model-free glue: `preflight`, `retry-spec`, `commit-tests`, `step-begin`, `validate-step`, `commit-step`, `full-checks`,
-`mutation`, `close`. `validate-step` builds `diff.patch` **from git** (authoritative), runs `regen`, `scope-check`, free formatters, then the step gate
+`flow.ts` is model-free glue: `has-spec`, `preflight`, `retry-spec`, `commit-tests`, `step-begin`, `validate-step`, `commit-step`, `next-step`,
+`full-checks`, `close`. `validate-step` builds `diff.patch` **from git** (authoritative), runs `regen`, `scope-check`, free formatters, then the step gate
 `yk check --no-heal --base B`. A failure writes the digest and exits 1. (`TICKET_GATE_STEP` / `TICKET_GATE_FINAL` override the gates for offline tests.)
-
-> The header comment of `flow.ts` still says `preflight` runs "one step of a low or medium risk spec" (a walking skeleton). The generated
-> workflow has waves, approvals and reviews, so treat that comment as stale.
 
 `ladder.ts decide` returns one of retry, tier_up, heal, baseline, revise, human, pause:
 
@@ -567,51 +551,49 @@ are rejected. Then it writes `spec/locked.json` (sha256 per file) and `test_map.
 | fails on clean `origin/main` too                                                  | baseline                                                                                                      |
 | style, spotbugs, ui__, cli__                                                      | heal once (`yk check --stage`; edits outside `write_files`/locked tests are reverted and logged), then revise |
 | mechanical (scope_violation, locked_file_modified, patch_apply_fail, format_fail) | retry once                                                                                                    |
-| compile, tests, coverage                                                          | attempt 2 same model, attempt 3 one tier up (haiku/medium → sonnet/medium → sonnet/high), then revise         |
+| compile, tests, coverage                                                          | attempt 2 same model, attempt 3 one tier up (sonnet/medium → sonnet/high → opus/high), then revise            |
 | budget exceeded                                                                   | pause (`ack-pause` doubles budgets)                                                                           |
 
 Limits: 3 attempts per step (+1 after a revision), 2 architect revisions per run, wall-clock cap 60/120/240 min, clarification ≤ 2 rounds.
-`review-verdict`: a blocker finding overrides APPROVE; unmet `TESTS_FAITHFUL` is a major finding. `mutation` (pitest) runs for medium/high
-risk; survivors > 0.25 become a reviewer finding and never fail the run.
+`review-verdict`: a blocker finding overrides APPROVE; unmet `TESTS_FAITHFUL` is a major finding. Steps run one at a time (`next-step`: the
+first not DONE whose `depends_on` are DONE). Models (`modelTable`): architect opus, test writer haiku, implementer sonnet, reviewer sonnet; size
+and risk change only the effort.
 
-`waves.ts`: `next-wave` returns none/single/pair. A pair needs `max_parallel ≥ 2`, **disjoint** `write_files`, neither step touching serial files
-(`ui/package.json`, lockfile, `cli/go.mod|sum`, `project.json` `shared_files`). `prepare` gives the second step its own worktree/branch from the
-same base; `warm-wait` makes the sibling wait for the first's prompt-cache prefix (`TICKET_WARM_TIMEOUT`, 300 s); `merge` merges in step
-order and aborts on conflict instead of resolving; `check` runs the post-wave gate.
-
-### 11.7 The generated `ticket` workflow (`gen-ticket.ts` → `ticket-session.json`)
+### 11.7 The generated `ticket-run` workflow (`gen-ticket.ts` → `ticket-session.json`)
 
 ```mermaid
 flowchart TD
-  I[intake → init → claim → route] --> A[architect ×3 passes:<br/>architect → validate_spec → clarify? → test_writer → gate_tests]
-  A -->|spec_conflict / clarify| Q[ASK_INPUT: supervisor → session → human]
+  I[intake → init → claim → route → has_spec?] -->|spec in the body| V1[validate_spec1]
+  I -->|no spec| A[architect ×3 passes:<br/>architect → validate_spec → clarify? → test_writer → gate_tests]
+  V1 -->|fails on the current base| A
+  V1 --> A
+  A -->|spec_conflict / clarify| Q[ASK_INPUT: a person]
   Q --> A
-  A --> P[spec approval if high risk → plan comment]
-  P --> R[attempt_round up to 3×]
-  R --> M[merge gate per merge_gate setting]
-  M --> F[finish: spotlessApply, commit, push, DRAFT PR]
-  subgraph attempt_round
-    ST[steps_round: 8 slots<br/>next → mode? single/pair] --> FIN[finalize: full_checks → mutation → review → verdict]
+  A --> P[plan comment]
+  P --> R[round up to 3×]
+  R --> F[finish: spotlessApply, commit, push, DRAFT PR]
+  subgraph round
+    ST[round_steps: 8 slots<br/>next-step → step] --> FIN[finalize: full_checks → review → verdict]
   end
   subgraph step
     B[begin] --> IM[implement] --> RS{result?} --> V[validate] --> D[decide → action?]
     D -->|heal| H[heal → validate_heal]
     D -->|retry / tier_up| B
-    D -->|escalate| E[escalate sub-workflow:<br/>build_revision → architect_revise → apply_revision → validate_spec → test_writer → gate_tests]
+    D -->|escalate| E[revise sub-workflow:<br/>build_revision → architect_revise → apply_revision → validate_spec → test_writer → gate_tests]
     D -->|ok| CM[commit]
   end
 ```
 
 Every stage has a `.failed` terminal and a `.dead` node calling `github dead-end`. Loops are **unrolled** (architect ×3, step ×4 attempts, 8
-step slots) because the workflow graph is a DAG. Claude calls share the `claude` concurrency group; Gradle goes through `yk check` in `tool`.
-`walk-workflow.ts` is a server-free stand-in engine used by tests: supports CONSTANT_SOURCE, PROCESS_EXECUTOR, BRANCH, ASK_INPUT,
-SUB_WORKFLOW, SPLITTER, terminals; prints `NODE <id> <port>` and `OUTCOME`.
+step slots) because the workflow graph is a DAG. Claude calls share the `agent` concurrency group; Gradle goes through `yk check` in `tool`.
+`walk-workflow.ts` is a server-free stand-in engine used by tests: supports CONSTANT_SOURCE, PROCESS_EXECUTOR (with `inputMode: STDIN`), BRANCH,
+ASK_INPUT (`$TEST_ANSWER`), SUB_WORKFLOW (its child's payload on as `{results}`), AGENT_SESSION (through the fake claude), terminals; prints
+`NODE <id> <port>` and `OUTCOME`.
 
 ### 11.8 Issue → PR, and questions
 
-1. `yk ticket new` files the issue (`--ready` sets project status; `--dry-run` shows body and route); `edit` keeps the rest of the body (`r=auto`
-   returns a role to the router).
-2. `yk ticket run N [--local] [--detach --notify]`: workflow `ticket` is injected into session `dogfood` (or `ticket-local` with `--local`).
+1. `yk ticket new "<text>"` or `yk ticket from-plan <plan>` files the tickets in Backlog (§10); a person reviews and edits them, then sets Ready.
+2. `yk ticket run N [--local] [--detach --notify]`: workflow `ticket-run` is injected into session `dogfood` (or `ticket-local` with `--local`).
 3. `github intake` → `init` (run dir, branch and worktree via `branch.ts`) → `github claim` (issue to In progress).
 4. Spec, tests, steps, review (above). `plan-comment` posts the spec summary to the issue.
 5. `github finish`: `spotlessApply`, commit, push `issue/<n>`, open a DRAFT PR with a Conventional-Commit title and `Fixes #n`, the RESULT line, spec
@@ -620,10 +602,7 @@ SUB_WORKFLOW, SPLITTER, terminals; prints `NODE <id> <port>` and `OUTCOME`.
    an existing PR; `release` detaches the worktree at `origin/main`.
 7. On failure `dead-end` puts the issue back to Ready and comments what blocked it; a worktree with no commits is released and its diff saved
    to `leftover.patch`.
-8. **Questions** (`ASK_INPUT`) follow the routes from §3.3. The `supervisors` session workflow (`supervisor/session.json`) fires on
-   `InputRequested` for route `ticket`: `advice` runs `ticketkit advice` → `hand-up` builds an `EscalateInput` with recommendation, confidence
-   and advice → escalates. It **never answers** (`canAnswer:false`, `maxRisk` LOW); it only informs the next tier. `yk-ticket.ts` substitutes
-   `__TICKET__` and `__STATE__` when it installs it.
+8. **Questions** (`ASK_INPUT`) go on the route `ticket` straight to a person (one HUMAN tier, 24 h; §10).
 
 `call.ts` exit codes: clarify 2, blocked 3, schema 4, api 5, limit 6. Crashes and transient API errors (429, 5xx, overloaded) retry up to twice;
 turn/budget caps and other API errors do not.
@@ -642,7 +621,7 @@ steps are too small). Offline tests use a fake `claude`, a fake `gh` and a throw
 - **Truth from git and test reports**, not from agent claims (`diff.patch`, `test_map.json`, the guard).
 - **Cheapest first, stop early.** Free fix → baseline → small model → larger model; no-op and same-failure stops; budgets per check and per run.
 - **Defence in depth against prompt injection** (ticket pipeline): data delimiters, criteria-only requirements, intake block-list,
-  `denied_write` and guard paths, locked tests (sha256), `INSTRUCTIONS` in the channel, process allowlist.
+  `denied_write` and guard paths, locked tests (sha256), a filed spec trusted only on an issue assigned to you, process allowlist.
 - **Small outputs, fetch detail later.** `RESULT` → `OUTPUT` → `MORE yk detail`.
 - **Idempotent apply.** The whole workflow set is re-applied each run.
 
@@ -652,7 +631,7 @@ steps are too small). Offline tests use a fake `claude`, a fake `gh` and a throw
 - `session.json` / `ticket-session.json` are generated; edit the generator, regenerate, commit (`--check` fails CI otherwise).
 - Stage names: `.`/`-` in plans, `_` in workflows.
 - `fast.ok` lives in the heal dir (`STATE_DIR/heal/<session>/`) and makes later Gradle stages no-ops; it is written only after a fully green `fast` run.
-- A swap of the dev server is deferred while any non-pickup workflow runs (`yk status` shows `STALE`).
+- A swap of the dev server is deferred while any workflow runs (`yk status` shows `STALE`).
 - `heal.json` `efforts` has only `low` and `high`; `claude.ts` accepts `medium` but there is no budget row for it (README open question).
 - Do not edit files or run Gradle in the checkout while a healing `yk check` runs: a fixer is editing it.
 - `yk help` hides commands below the `// Rebuild step 1` marker in `yk.ts`.
@@ -674,10 +653,10 @@ bun src/heal/gen-session.ts --check
 bun src/ticket/gen-ticket.ts --check
 ```
 
-**Test layout.** `test/*.test.ts` mirror `src/` (`plan`, `yk`, `events`, `failures`, `answer`, `pickup`, `input-bridge`, `notify`,
+**Test layout.** `test/*.test.ts` mirror `src/` (`plan`, `yk`, `events`, `failures`, `answer`, `notify`,
 `session`, `stats`, `allowlist`, `session-key`); `test/heal/` covers guard, no-progress stop, `claude.ts` args and MCP tool rules, and the
-report; `test/ticket/` covers ladder, gates, spec, step, waves, schemas, sizing, call, branch, advice and the end-to-end walk with fakes
-(`fake/claude.ts`, `fake/gh.ts`). Files named `*.online.test.ts` need a live server and are not run by default. `channel/test/` tests the channel.
+report; `test/ticket/` covers body, filing, ladder, gates, spec, step, report, schemas, sizing, call, branch and the end-to-end walks with fakes
+(`fake/claude.ts`, `fake/gh.ts`). Files named `*.online.test.ts` need a live server and are not run by default.
 
 **Recipes**
 
@@ -707,8 +686,6 @@ report; `test/ticket/` covers ladder, gates, spec, step, waves, schemas, sizing,
 | `fast`                   | Single combined Gradle run that makes per-stage Gradle commands no-ops.                       |
 | `RESULT` line            | One-line outcome of any `yk` run.                                                             |
 | `DEV_HOME` / `STATE_DIR` | Per-machine / per-checkout state folders.                                                     |
-| Channel                  | MCP server that pushes events into a Claude Code session.                                     |
-| Pickup                   | Scheduled hand-over of a ready issue to an idle session.                                      |
 | Ticket pipeline          | Architect → test writer → implementer → reviewer workflow producing a draft PR.               |
 | Spec / scaffold          | Architect's plan and stub patch for a ticket.                                                 |
 | Locked tests             | Tests whose sha256 is recorded; implementers cannot change them.                              |

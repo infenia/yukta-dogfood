@@ -1,6 +1,6 @@
 # Issue pipeline simplification (ticket + pickup)
 
-Status: **all questions answered 2026-11-25; ready to implement. No code changed.** Related: [workflow-optimization.md](workflow-optimization.md) (heal/check fixes), [ticket-pipeline.md](ticket-pipeline.md) (original design), [ticket-input-routing.md](ticket-input-routing.md).
+Status: **implemented 2026-11-25 (PR #25); section 9 lists what each commit did and what is left.** Related: [workflow-optimization.md](workflow-optimization.md) (heal/check fixes), [ticket-pipeline.md](ticket-pipeline.md) (original design), [ticket-input-routing.md](ticket-input-routing.md).
 
 ## 1. What you asked for
 
@@ -67,7 +67,7 @@ In both cases the issue is created with project status **Backlog** (not Ready). 
 3. **Implementer** (sonnet) writes the code step by step until the locked tests pass. `yk check --no-heal` per step, the heal ladder on mechanical failures, tier-up on retry (all existing).
 4. **Reviewer** (sonnet, short verdict JSON) checks the diff against the spec, the acceptance criteria and the tests. A blocker sends one step back; otherwise a draft PR `Fixes #n`.
 
-**D. Questions** go to the Agents tab (see section 2); the run waits.
+**D. Questions.** _Changed while building it (see section 9, step 4):_ the filing sessions (analyst, architect) run as `AGENT_SESSION` (`ticket-agent`), so their questions show in the **Agents tab** as input requests. The run's roles stay headless (`call.ts`: its retry and classification logic would have to be unrolled into the graph at every call site, and a run should rarely ask: the Decisions section settles the choices up front); a run's questions are `ASK_INPUT` nodes, shown in the **Inputs tab**. Both are input requests answered from the UI, REST, the CLI or MCP; the run waits.
 
 ### Quality guard for the cheap test writer
 
@@ -128,11 +128,10 @@ Rule: **one word per concept, and no word that already means something else in t
 | `yk ticket run <n>`                    | unchanged                                      | run one Ready ticket (C)                                    |
 | `yk ticket status`, `report`           | unchanged                                      |                                                             |
 | workflow `ticket`                      | `ticket-new`, `ticket-from-plan`, `ticket-run` | one workflow per command, named after it                    |
-| `run-issue` in `yk stats`              | `ticket-run`                                   | same as the workflow                                        |
 | `attempt_round` / `steps_round`        | `round` / `round_steps`                        | heal keeps `attempt`; no `round` exists elsewhere           |
 | routing `kind`                         | `type`                                         | the board's `Kind` field means something else               |
 | `escalate`                             | `revise`                                       | matches `revision-request` / `revision-result`              |
-| `claude` group / `call.ts` launcher    | `agent` (the `agent` workflow)                 | one launcher for heal and ticket                            |
+| `claude` concurrency group             | `agent`                                        | one group for every Claude session (heal and ticket)        |
 | `implementer_tricky`                   | removed (tier-up ladder)                       |                                                             |
 | `pickup`, `yk pickup *`, `VIA` modes   | removed                                        |                                                             |
 | -                                      | `ticket-body` (schema), `src/ticket/body.ts`   | the ticket body ⇄ TicketBody ⇄ `spec.json`                  |
@@ -171,8 +170,10 @@ Order changed: the deletions ran before the launcher change, so fewer role call 
 1. **Done** (`e16cd5f`): `schemas/ticket-body.schema.json` + fixtures, `src/ticket/body.ts` (`renderTicket`, `parseTicket`, `specOf`), `test/ticket/body.test.ts`.
 2. **Done** (`ac3373b`): removed pickup, `channel/`, `input-bridge.ts`, ticket-advice (`saveGuard` deletes a stale one); CI drops `test (channel)`; `YUKTA_PICKUP_*` → `YUKTA_TICKET_*`.
 3. **Done** (`383a36e`): serial steps (`flow next-step`), no waves, no mutation, no spec approval or merge gate in the run.
-4. **Next: roles as `AGENT_SESSION`.** Checked (a): in `TASK` mode `timeout` is the wall-clock process timeout (default 600 s) and counts the wait; `approvalTimeout` (default 300 s) refuses the tool when nobody answers, and the agent goes on without the answer. Both are plain numbers, so a role sets `approvalTimeout: 86400` (the 24 h of today's `ASK_INPUT`) and `timeout` = its work time + 86400; the session is not killed while waiting, no tokens are spent, only the prompt cache goes cold (one cache write on resume). Still to check: (b) how the offline tests keep a fake claude (`YK_CLAUDE_BIN`) once roles run on the server; (c) whether AGENT_SESSION `args`/`approvals` take `${start.*}` (one parameterized `agent` workflow) or a ticket variant is needed. Shape: a PE that writes prompt/rules/schema/MCP files → `SUB_WORKFLOW agent` → a PE that validates the answer and routes retries (split `call.ts` in two). Pre-allow each role's tools; deny the rest; no `--permission-prompts none`.
-5. Filing: `yk ticket new "<text>"` (analyst + architect → ticket in Backlog) and `yk ticket from-plan <plan-file>`; the `analysis` schema; replace `roles.ts` `renderBody` and `ticket-template.md`.
-6. Run reads the ticket body (`parseTicket` → `specOf`) instead of running the architect; re-validate on the current base; new default model table (section 7), tier-up replaces `implementer_tricky` (drop it from `ticket-body.schema.json` and fixtures in the same commit).
-7. Renames of section 6 (`ticket-new`/`ticket-from-plan`/`ticket-run`, `round`, `revise`, `type`) in one mechanical commit.
-8. Docs: `README.md` and `ARCHITECTURE.md` still describe pickup, waves, mutation and the approvals; rewrite §10/§11 and the `yk stats`/`report` names.
+4. **Done, changed** (`92de93f`): the filing sessions run as `AGENT_SESSION` (workflow `ticket-agent`: approvals ASK, `approvalTimeout` 24 h, `timeout` work + 24 h, Read/Grep/Glob plus the draft Write and the self-check Bash pre-allowed); the run roles stay headless with their questions as `ASK_INPUT` (section 3D says why). A second workflow, not heal's `agent`: AGENT_SESSION's `timeout` is a fixed number, and heal needs 1800 s. Offline: `walk-workflow.ts` runs AGENT_SESSION through the fake claude.
+5. **Done** (`92de93f`): `yk ticket new "<text>"` (`ticket-new`: analyst, its questions to a person, architect, issue in Backlog) and `yk ticket from-plan <plan>` (`ticket-from-plan`, `depends on` between the tickets); schemas `analysis`, `ticket-drafts`; `src/ticket/file.ts`; the architect's self-check runs `validate-spec` in a throwaway run dir. `roles.ts` `renderBody`, `ticket-template.md` and the flag-driven `new`/`edit` are gone.
+6. **Done** (`c991020`): the run takes the spec from a valid body of an issue assigned to you (`init`, `has_spec` → `validate_spec1`; a spec that no longer applies goes to the architect); one model table (opus / haiku / sonnet / sonnet); `implementer_tricky` gone, the ladder tiers up to opus/high.
+7. **Done** (`cea6b02`): `ticket-run`, `round`, `round_steps`, `revise`, the ticket's `type`, the `agent` concurrency group. (`run-issue` did not exist in the code.)
+8. **Done**: README (ticket pipeline rewritten; Pickup and Channel removed), ARCHITECTURE (§10 Filing tickets, §11 updated), CLAUDE.md.
+
+**Left, not done here:** a live run against the dev server with real models (it costs tokens, and without `--dry-run` it files issues on `infenia/yukta`); the multi-choice question answer depends on the Yukta fix; `README.md` "Design notes" keeps the measurements of the removed waves as history.
