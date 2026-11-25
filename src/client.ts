@@ -28,6 +28,7 @@ import {
   tryJson,
   writeFileSync,
 } from './base.ts'
+import { pgProperties } from './pg.ts'
 
 // ---- keys
 function devSecret(name: string): string {
@@ -51,14 +52,16 @@ export const devKey = (): string => devSecret('api-key')
 /** A second, named VIEWER key of the dev server for the headless fixers (they may read a run over MCP, never change it). */
 export const fixerKey = (): string => devSecret('fixer-key')
 export const sessionKey = (): string => devSecret('session-key')
+/** The password of the dev server's PostgreSQL (pg.ts). */
+export const pgPassword = (): string => devSecret('pg-password')
 /** Whether the server built from origin/main knows `agent` on an API key (a property it does not know stops it from starting). */
 export const agentKeysSupported = (): boolean =>
   text(join(DEV_HOME, 'main/core/src/main/java/com/infenia/yukta/security/ApiKeys.java')).includes('boolean agent')
 /** The key of the Yukta MCP: a Claude Code session started with YUKTA_MCP_KEY=session gets an OPERATOR agent key limited to the dogfood session, which may
  * not answer a request of risk HIGH; every other session keeps the dev key. */
 export const mcpKey = (): string => (process.env.YUKTA_MCP_KEY === 'session' && agentKeysSupported() ? sessionKey() : devKey())
-/** The properties file of the dev server: its keys. */
-export function serverProperties(): string {
+/** The properties file of the dev server: its keys; with `postgres` also the PostgreSQL stores (pg.ts). */
+export function serverProperties(postgres = false): string {
   const keys = [
     'yukta.api-keys[0].name=dev',
     'yukta.api-keys[0].key=' + devKey(),
@@ -94,6 +97,7 @@ export function serverProperties(): string {
       r + 'on-final-timeout=FAIL',
     )
   }
+  if (postgres) keys.push(...pgProperties(pgPassword()))
   return keys.join('\n') + '\n'
 }
 /** Hands the key to the yukta CLI (YUKTA_TOKEN) when it talks to the dev server. */

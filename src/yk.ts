@@ -33,6 +33,7 @@ import { main as reportMain, recordFailure } from './failures.ts'
 import { main as healReport } from './heal/heal-report.ts'
 import { plan, main as planMain } from './plan.ts'
 import { cmdThrottle } from './throttle.ts'
+import { PG_NAME, buildDir, pgPort } from './pg.ts'
 import {
   cmdAnswer,
   cmdBreak,
@@ -157,9 +158,12 @@ async function cmdStatus(): Promise<number> {
     const sha = serverEnv('YUKTA_DEV_SHA')
     let state = 'current'
     if (serverEnv('YUKTA_DEV_KIND') === 'main' && main && main !== sha) {
-      state = `stale (origin/main is ${main.slice(0, 9)}${isFile(join(DEV_HOME, 'builds', main, 'yukta.jar')) && statSync(join(DEV_HOME, 'builds', main, 'yukta.jar')).size ? ', built; swaps when idle' : ''})`
+      state = `stale (origin/main is ${main.slice(0, 9)}${isFile(join(buildDir(main), 'yukta.jar')) && statSync(join(buildDir(main), 'yukta.jar')).size ? ', built; swaps when idle' : ''})`
     }
     console.log(`up: ${DEV_URL} ${serverEnv('YUKTA_DEV_LABEL')} ${state}, running=${await busy()}${building}`)
+    console.log(
+      `store: ${serverEnv('YUKTA_DEV_STORE') || 'memory'}${serverEnv('YUKTA_DEV_STORE') === 'postgres' ? ` (${PG_NAME} on 127.0.0.1:${pgPort()})` : ''}`,
+    )
     console.log(`log: ${join(DEV_HOME, 'server.log')}`)
   }
   return rc

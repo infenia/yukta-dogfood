@@ -36,7 +36,8 @@ import {
   tryJson,
   writeFileSync,
 } from './base.ts'
-import { executable, http, keyHeader, newestBuildCli, serverEnv, serverProperties } from './client.ts'
+import { executable, http, keyHeader, newestBuildCli, pgPassword, serverEnv, serverProperties } from './client.ts'
+import { buildDir, pgEnsure, store } from './pg.ts'
 
 // ---- the dev server: built from origin/main, one per machine, on $DEV_PORT
 export async function healthy(url = DEV_URL): Promise<boolean> {
@@ -82,10 +83,10 @@ export function mainSync(): string {
   return git(['rev-parse', 'HEAD'], wt).stdout.trim()
 }
 
-/** Builds the server jar and the CLI of the main worktree into $DEV_HOME/builds/SHA, unless that build exists. Keeps the three newest builds. */
+/** Builds the server jar and the CLI of the main worktree into buildDir(SHA) (pg.ts; with the PostgreSQL module unless YK_PERSISTENCE=memory), unless that build exists. Keeps the three newest builds. */
 export function mainBuild(sha: string): void {
   const wt = join(DEV_HOME, 'main')
-  const out = join(DEV_HOME, 'builds', sha)
+  const out = buildDir(sha)
   const log = join(DEV_HOME, 'build.log')
   if (isFile(join(out, 'yukta.jar')) && statSync(join(out, 'yukta.jar')).size > 0 && executable(join(out, 'yukta-cli'))) return
   // The ui build needs the node/pnpm toolchain gradle downloaded into ui/.gradle; reuse a checkout's copy.
@@ -98,8 +99,9 @@ export function mainBuild(sha: string): void {
       break
     }
   }
-  console.error(`building main@${sha.slice(0, 9)} (bootJar + CLI; minutes on a new commit, log: ${log}) ...`)
-  const b = sh(`./gradlew :boot:bootJar :cli:goBuild -q --console=plain >${sq(log)} 2>&1`, wt)
+  const pg = store() === 'postgres' ? ' -Pyukta.persistence=postgres' : ''
+  console.error(`building main@${sha.slice(0, 9)}${pg ? ' with postgres' : ''} (bootJar + CLI; minutes on a new commit, log: ${log}) ...`)
+  const b = sh(`./gradlew${pg} :boot:bootJar :cli:goBuild -q --console=plain >${sq(log)} 2>&1`, wt)
   if (b.code) die(`build of main@${sha.slice(0, 9)} failed; see ${log}`)
   const libs = join(wt, 'boot/build/libs')
   const jar = isDir(libs)
@@ -127,7 +129,9 @@ export async function serverLaunch(kind: string, id: string, label: string, rule
   rmSync(join(DEV_HOME, 'server.pid'), { force: true })
   const par = process.env.YUKTA_DEV_GRADLE_PARALLEL ?? '2'
   // The key goes in a file, not the environment: the server's children (the gradle stages and their test JVMs) inherit its environment.
-  writeFileSync(join(DEV_HOME, 'server.properties'), serverProperties(), { mode: 0o600 })
+  const db = kind === 'main' ? store() : 'memory' // a release has no postgres module
+  if (db === 'postgres') await pgEnsure(pgPassword())
+  writeFileSync(join(DEV_HOME, 'server.properties'), serverProperties(db === 'postgres'), { mode: 0o600 })
   const logFd = openSync(join(DEV_HOME, 'server.log'), 'w')
   const child = spawn(cmd[0]!, [...cmd.slice(1), `--spring.config.additional-location=file:${join(DEV_HOME, 'server.properties')}`], {
     cwd: DEV_HOME,
@@ -153,11 +157,11 @@ export async function serverLaunch(kind: string, id: string, label: string, rule
   child.unref()
   closeSync(logFd)
   writeFileSync(join(DEV_HOME, 'server.pid'), `${child.pid}\n`)
-  let cli = join(DEV_HOME, 'builds', id, 'yukta-cli')
+  let cli = join(kind === 'main' ? buildDir(id) : join(DEV_HOME, 'builds', id), 'yukta-cli')
   if (!executable(cli)) cli = newestBuildCli()
   writeFileSync(
     join(DEV_HOME, 'server.env'),
-    `YUKTA_DEV_KIND=${kind}\nYUKTA_DEV_SHA=${id}\nYUKTA_DEV_LABEL=${label}\nYUKTA_DEV_CLI=${cli}\nYUKTA_DEV_KEYED=2\nYUKTA_SERVER_URL=${DEV_URL}\n`,
+    `YUKTA_DEV_KIND=${kind}\nYUKTA_DEV_SHA=${id}\nYUKTA_DEV_LABEL=${label}\nYUKTA_DEV_CLI=${cli}\nYUKTA_DEV_KEYED=2\nYUKTA_DEV_STORE=${db}\nYUKTA_SERVER_URL=${DEV_URL}\n`,
   )
   console.error(`waiting for Yukta at ${DEV_URL} (log: ${join(DEV_HOME, 'server.log')}) ...`)
   for (let i = 0; i < 60; i++) {
@@ -257,6 +261,9 @@ export async function lock(path: string, waitMs = 600000): Promise<() => void> {
   }
 }
 
+/** The store of the running server (server.env); a server started before the store was recorded ran in memory. */
+const storeOf = (): string => serverEnv('YUKTA_DEV_STORE') || 'memory'
+
 /** Makes the dev server run the current origin/main (or a release). A no-op when it already does; when it is stale and busy the swap is left for a later call. */
 export async function serverUp(args: string[] = []): Promise<number> {
   let kind = 'main'
@@ -289,14 +296,18 @@ export async function serverUp(args: string[] = []): Promise<number> {
     } else {
       id = mainSync()
       mainBuild(id)
-      label = `main@${id.slice(0, 9)}`
-      cmd = ['java', '-jar', join(DEV_HOME, 'builds', id, 'yukta.jar')]
+      label = `main@${id.slice(0, 9)}${store() === 'postgres' ? ' (postgres)' : ''}`
+      cmd = ['java', '-jar', join(buildDir(id), 'yukta.jar')]
       rules = join(HERE, 'rules.json')
     }
     if (await healthy()) {
       if (!ours()) die(`port ${DEV_PORT} is used by a server yk did not start; stop it or set YUKTA_DEV_PORT`)
       // a server started before yk set an API key is replaced like a stale one
-      if (serverEnv('YUKTA_DEV_SHA') === id && serverEnv('YUKTA_DEV_KEYED') === '2') {
+      if (
+        serverEnv('YUKTA_DEV_SHA') === id &&
+        serverEnv('YUKTA_DEV_KEYED') === '2' &&
+        storeOf() === (kind === 'main' ? store() : 'memory')
+      ) {
         console.log(`ready: ${DEV_URL} (${label})`)
         return 0
       }
@@ -363,7 +374,14 @@ async function ensureServerUp(): Promise<void> {
   const r = git(['rev-parse', process.env.YUKTA_DEV_MAIN_REF ?? 'origin/main'], join(DEV_HOME, 'main'))
   if (r.code) return
   const sha = r.stdout.trim()
-  const built = isFile(join(DEV_HOME, 'builds', sha, 'yukta.jar')) && statSync(join(DEV_HOME, 'builds', sha, 'yukta.jar')).size > 0
-  if (sha !== serverEnv('YUKTA_DEV_SHA') && !built) run([process.execPath, join(HERE, 'src/yk.ts'), 'up', '--background'])
-  if ((sha !== serverEnv('YUKTA_DEV_SHA') || serverEnv('YUKTA_DEV_KEYED') !== '2') && built && (await busy()) === 0) await serverUp()
+  const jar = join(buildDir(sha), 'yukta.jar')
+  const built = isFile(jar) && statSync(jar).size > 0
+  if ((sha !== serverEnv('YUKTA_DEV_SHA') || storeOf() !== store()) && !built)
+    run([process.execPath, join(HERE, 'src/yk.ts'), 'up', '--background'])
+  if (
+    (sha !== serverEnv('YUKTA_DEV_SHA') || serverEnv('YUKTA_DEV_KEYED') !== '2' || storeOf() !== store()) &&
+    built &&
+    (await busy()) === 0
+  )
+    await serverUp()
 }
