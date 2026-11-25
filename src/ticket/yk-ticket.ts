@@ -5,9 +5,9 @@
 //
 //   yk ticket run <issue> [--local] [--detach [--notify]]   run the `ticket` workflow on an issue: a tested change on branch issue/<n> in ../yukta-issue-<n>;
 //                                                 --local runs this checkout's ticketkit (session ticket-local) instead of the dev server's main checkout
-//   yk ticket new "<text>" [--dry-run] [--detach]  file one ticket from plain text (workflow ticket-new): analyst, its open questions to you, architect
+//   yk ticket new "<text>" [--dry-run] [--local] [--detach]  file one ticket from plain text (workflow ticket-new): analyst, its open questions to you, architect
 //                                                 (the whole spec in the issue body), issue in Backlog; --dry-run writes the body to the filing dir instead
-//   yk ticket from-plan <design/plans/x.md> [--dry-run] [--detach]   the tickets of a plan (workflow ticket-from-plan), filed in order with dependencies
+//   yk ticket from-plan <design/plans/x.md> [--dry-run] [--local] [--detach]   the tickets of a plan (workflow ticket-from-plan), filed in order with dependencies
 //   yk ticket worktree <issue> [--branch B] [--base REF] [--in DIR]   a worktree or branch for the issue, reusing what exists (branch.ts)
 //   yk ticket pr <issue> [--worktree W] [--title T] [--result R]      push the branch and open a DRAFT PR with `Fixes #n` (branch.ts)
 //   yk ticket status <issue|execution>            the run's tree (which node runs or failed) and its last events
@@ -143,10 +143,12 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
 async function ticketFile(wf: 'ticket-new' | 'ticket-from-plan', argv: string[], ykPath: string): Promise<number> {
   let dryRun = false
   let detach = false
+  let local = false
   const words: string[] = []
   for (const a of argv) {
     if (a === '--dry-run') dryRun = true
     else if (a === '--detach') detach = true
+    else if (a === '--local') local = true
     else if (a.startsWith('-')) die(`unknown option '${a}'`)
     else words.push(a)
   }
@@ -175,21 +177,23 @@ async function ticketFile(wf: 'ticket-new' | 'ticket-from-plan', argv: string[],
   const cli = findCli()
   const tmp = mkdtempSync(join(tmpdir(), 'yk-ticket-file-'))
   try {
-    renderTicketSession(join(tmp, 'session.json'))
+    const session = local ? LOCAL_SESSION : 'dogfood'
+    if (local) renderLocalTicketSession(join(tmp, 'session.json'))
+    else renderTicketSession(join(tmp, 'session.json'))
     const a = run([cli, 'session', 'apply', join(tmp, 'session.json')])
     if (a.code) {
       console.error(a.stdout + a.stderr)
       die('session apply failed')
     }
     const payload = { project: root, dir, runId, claudeBin: process.env.YUKTA_CLAUDE_BIN || '-' }
-    const execId = cliJson(['workflow', 'start', 'dogfood', wf, '--payload', JSON.stringify(payload)]).data?.executionId
+    const execId = cliJson(['workflow', 'start', session, wf, '--payload', JSON.stringify(payload)]).data?.executionId
     if (!execId) die(`could not start the ${wf} workflow`)
-    console.log(`STARTED execution=${execId} session=dogfood dir=${dir}`)
+    console.log(`STARTED execution=${execId} session=${session} dir=${dir}`)
     console.log(
       'Questions of the analyst or the architect wait for you in the UI (Agents and Inputs tabs), `yukta-cli inputs`, or MCP answer_input.',
     )
     if (detach) return 0
-    const rc = await watchOwned('dogfood', execId)
+    const rc = await watchOwned(session, execId)
     for (const f of ['filed.json']) if (isFile(join(dir, f))) console.log(`filed: ${text(join(dir, f)).trim()}`)
     if (dryRun) console.log(`dry run: the bodies are ${dir}/ticket-<i>.md`)
     return rc
