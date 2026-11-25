@@ -85,6 +85,13 @@ yk status        # what runs, stale or not (exit 3 when down)
 When main moved, the server is swapped **only while no execution is running**; `yk check` and `yk gradle` complete a pending swap when idle.
 The server runs any process, so it needs an API key: `yk` creates one per machine in `~/.local/state/yukta-dev/api-key` and sends it with every call.
 
+**Persistence (PostgreSQL, the default).** Sessions, workflow definitions, run history, node checkpoints and agent conversations are kept in
+PostgreSQL, so they survive a restart or a swap. `yk up` builds with `-Pyukta.persistence=postgres` (into `builds/<commit>-pg/`), starts the
+Docker container `yukta-dev-pg` (`postgres:18-alpine`, `127.0.0.1:55432` only, `YUKTA_DEV_PG_PORT` to change; data in the volume `yukta-dev-pg`;
+password in `~/.local/state/yukta-dev/pg-password`) and runs the server with the `postgres` profile (`src/pg.ts`). `yk status` shows the store.
+`YK_PERSISTENCE=memory` keeps everything in memory as before; a release (`--release`) always does. `yk down` leaves the database running;
+`docker rm -f yukta-dev-pg && docker volume rm yukta-dev-pg` wipes it. Needs Docker.
+
 ## Commands
 
 Every run ends with one line, exit 0 only on success:

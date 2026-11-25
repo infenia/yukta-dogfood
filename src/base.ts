@@ -47,6 +47,7 @@ const PROGRAMS = new Set([
   'yukta-cli',
   'java',
   'make',
+  'docker',
 ])
 function checkProgram(program: string): void {
   const named = [process.execPath, process.env.YUKTA_BIN, process.env.YUKTA_CLAUDE_BIN, process.env.YK_CLAUDE_BIN]
