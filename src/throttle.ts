@@ -4,8 +4,19 @@
 // It uses the run controls of the server (pause|resume ?tree=true), so every workflow of the session is covered, now and later, with nothing wired into a workflow.
 // A paused run keeps the node it is in (a Gradle task finishes); only the next node waits. A run somebody else paused is never resumed here.
 import { freemem, loadavg, availableParallelism, totalmem } from 'node:os'
-import { DEV_URL, STATE_DIR, checkSession, http, join, mkdirp, readFileSync, rmSync, sleep, text, tryJson, writeFileSync } from './lib.ts'
-import { type Agent, agent, answerReviews, attachGuard, detachGuard, directives, logLine, readyPath, saveGuard } from './guard.ts'
+import { DEV_HOME, DEV_URL, checkSession, http, join, mkdirp, readFileSync, rmSync, sleep, text, tryJson, writeFileSync } from './lib.ts'
+import {
+  type Agent,
+  agent,
+  answerReviews,
+  attachGuard,
+  detachGuard,
+  directives,
+  logLine,
+  readyPath,
+  saveGuard,
+  throttleLock,
+} from './guard.ts'
 import { tryLock } from './server.ts'
 
 export type Sample = { cpu: number; ramFree: number } // cpu: 1-minute load per core; ramFree: available memory as a fraction of the total
@@ -52,6 +63,8 @@ export type Io = {
 export async function tick(s: State, mine: Set<string>, c: Cfg, io: Io): Promise<State> {
   const x = io.sample()
   const d = decide(s, x, c)
+  // healthy, nothing paused by us and no streak towards a pause: nobody to touch, so the server is not asked (the load sample is local and free)
+  if (!s.paused && !mine.size && d.act === 'none' && d.state.streak === 0) return d.state
   const runs = (await io.live()).sort((a, b) => a.start - b.start) // oldest first
   for (const id of [...mine]) if (!runs.some((r) => r.id === id && r.paused)) mine.delete(id) // ended, or somebody resumed it
   const what = `cpu ${x.cpu.toFixed(2)}/core, ram free ${(x.ramFree * 100).toFixed(0)}%`
@@ -112,8 +125,8 @@ export function guardIo(a: Agent): Io {
   }
 }
 
-export const lockPath = (): string => join(STATE_DIR, 'throttle.lock')
-const minePath = (): string => join(STATE_DIR, 'throttle.json')
+export const lockPath = throttleLock
+const minePath = (): string => join(DEV_HOME, 'throttle.json')
 
 /** yk throttle [--once]: the loop (one tick with --once). Runs it paused by itself are kept in throttle.json, so a restart of the loop still resumes them.
  * Without `io` it is the decision maker of the guard supervisor: it saves it, takes the credential, attaches it to the runs and answers the reviews while it runs. */
@@ -121,7 +134,7 @@ export async function cmdThrottle(argv: string[], io?: Io): Promise<number> {
   const c = config()
   if (argv.includes('--once')) c.hold = 1
   const once = argv.includes('--once')
-  mkdirp(STATE_DIR)
+  mkdirp(DEV_HOME)
   if (!once && !tryLock(lockPath())) return (console.log('throttle: already running'), 0)
   rmSync(readyPath(), { force: true })
   let stopped = false

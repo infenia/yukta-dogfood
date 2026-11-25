@@ -3,7 +3,7 @@
 // Dogfood helpers: the dev server (built from origin/main), locks, up/ensure. `lib.ts` re-exports every module.
 import { spawn } from 'node:child_process'
 import { closeSync, openSync, utimesSync } from 'node:fs'
-import { detachGuard, readyPath } from './guard.ts'
+import { detachGuard, readyPath, throttleLock } from './guard.ts'
 import { createConnection } from 'node:net'
 import {
   DEV_HOME,
@@ -226,31 +226,44 @@ export function ours(): boolean {
   return !Number.isNaN(pid) && alive(pid)
 }
 
-// ---- a lock that an exiting process cannot leave behind: a file with the pid of its holder
+// ---- a lock that an exiting process cannot leave behind: a file with the pid and start time of its holder
+/** The start time of a process (field 22 of /proc/PID/stat, in ticks since boot), "" where /proc has none. A reused pid has another one. */
+export function startOf(pid: number): string {
+  try {
+    const s = text(`/proc/${pid}/stat`)
+    return s.slice(s.lastIndexOf(')') + 2).split(' ')[19] ?? '' // ponytail: Linux only; elsewhere the pid alone decides
+  } catch {
+    return ''
+  }
+}
+/** A lock file's content ("pid start"; an older one has the pid only) names a live holder: the pid is alive and is still the process that took the lock. */
+export function holds(content: string): boolean {
+  const [p, start = ''] = content.trim().split(/\s+/)
+  const pid = parseInt(p ?? '', 10)
+  return !Number.isNaN(pid) && alive(pid) && (!start || startOf(pid) === start)
+}
 export function tryLock(path: string): (() => void) | null {
   mkdirp(dirname(path))
   for (let i = 0; i < 2; i++) {
     try {
       const fd = openSync(path, 'wx')
-      writeFileSync(fd, `${process.pid}\n`)
+      writeFileSync(fd, `${process.pid} ${startOf(process.pid)}\n`)
       closeSync(fd)
+      const mine = text(path)
       const release = (): void => {
-        if (text(path).trim() === String(process.pid)) rmSync(path, { force: true })
+        if (text(path) === mine) rmSync(path, { force: true })
       }
       process.on('exit', release)
       return release
     } catch {
-      const pid = parseInt(text(path).trim(), 10)
-      if (!Number.isNaN(pid) && alive(pid)) return null
-      rmSync(path, { force: true }) // a stale lock
+      const seen = text(path)
+      if (holds(seen)) return null
+      if (text(path) === seen) rmSync(path, { force: true }) // a stale lock (a dead holder, or a pid another process now has); ponytail: two takers can still race here, the window is the gap between this read and the remove
     }
   }
   return null
 }
-export function lockHeld(path: string): boolean {
-  const pid = parseInt(text(path).trim(), 10)
-  return !Number.isNaN(pid) && alive(pid)
-}
+export const lockHeld = (path: string): boolean => holds(text(path))
 export async function lock(path: string, waitMs = 600000): Promise<() => void> {
   const end = Date.now() + waitMs
   for (;;) {
@@ -349,7 +362,7 @@ export async function ensureServer(): Promise<void> {
 async function startThrottle(): Promise<void> {
   if (process.env.YUKTA_SERVER_URL !== DEV_URL) return
   if (process.env.YK_THROTTLE === 'off') return void (await detachGuard().catch(() => {}))
-  if (lockHeld(join(STATE_DIR, 'throttle.lock'))) return
+  if (lockHeld(throttleLock())) return
   rmSync(readyPath(), { force: true })
   spawn(process.execPath, [join(HERE, 'yk'), '_throttle'], { detached: true, stdio: 'ignore', env: process.env }).unref()
   for (let i = 0; i < 40 && !existsSync(readyPath()); i++) await sleep(250) // the loop writes it when attached, or when it gave up
