@@ -3387,7 +3387,6 @@
               "${start.allowWrite}",
               "${start.allowBash}",
               "--disallowedTools",
-              "Edit",
               "Bash(git commit:*)",
               "Bash(git push:*)",
               "--append-system-prompt-file",

@@ -219,7 +219,8 @@ export function main(argv: string[]): number {
       writeFileSync(rules, RULES[a1]!)
       const [model, effort, budget] = MODEL[a1]!
       // one --allowedTools rule per argument (a Bash rule has spaces); the analyst reads only, so its two rules repeat a read tool
-      const allowWrite = a1 === 'analyst' ? 'Read' : `Write(${draftOf(a2)})`
+      // file rules are Edit rules (they cover Write too), and an absolute path takes a leading // (measured live: Write(/abs) is not matched)
+      const allowWrite = a1 === 'analyst' ? 'Read' : `Edit(/${draftOf(a2)})`
       const allowBash = a1 === 'analyst' ? 'Grep' : `Bash(${checkCmd(a2)}:*)`
       console.log(dumps({ prompt: prompt(a1, a2), schema: flatSchema(SCHEMA[a1]!), allowWrite, allowBash, model, effort, budget, rules }))
       return 0

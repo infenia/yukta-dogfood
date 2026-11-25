@@ -466,7 +466,7 @@ const AGENT_WF: Json = {
           ...['--setting-sources', 'project', '--disable-slash-commands', '--no-session-persistence'],
           ...['--tools', 'Read,Grep,Glob,Bash,Write,AskUserQuestion'],
           ...['--allowedTools', 'Read', 'Grep', 'Glob', S('allowWrite'), S('allowBash')],
-          ...['--disallowedTools', 'Edit', 'Bash(git commit:*)', 'Bash(git push:*)'],
+          ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)'], // no Edit: the tool is not offered (--tools), and a bare Edit deny would beat the drafts file's Edit(//...) allow
           ...[
             '--append-system-prompt-file',
             S('rulesFile'),
