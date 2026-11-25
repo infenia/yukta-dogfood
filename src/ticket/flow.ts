@@ -43,7 +43,14 @@ import { event } from './stepkit.ts'
 
 /** A gate error from the machine, not the spec or the tests: the runner is missing or cannot start. */
 export const ENV_FAILURE = /^compile_or_setup: .*(\(exit 12[67]\)|command not found|missing packages|Cannot find module 'vitest'|ENOENT)/
-const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
+const TYPES: Record<string, string> = {
+  feature: 'feat',
+  enhancement: 'feat',
+  bug: 'fix',
+  refactor: 'refactor',
+  docs: 'docs',
+  chore: 'chore',
+}
 const trim = (p: string): string => readFileSync(p, 'utf8').trim()
 
 function commit(wt: string, msg: string): void {
@@ -197,7 +204,7 @@ export function main(argv: string[]): number {
     }
     case 'commit-tests': {
       // the stubs and locked tests become the base of every step not yet done (also after a revision)
-      commit(wt, `${TYPES[t.kind]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
+      commit(wt, `${TYPES[t.type]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
       for (const s of load(join(run, 'spec', 'spec.json')).steps)
         if (!isFile(join(run, 'steps', s.id, 'status.json'))) rmSync(join(run, 'steps', s.id, 'base'), { force: true })
       console.log('COMMITTED tests')
@@ -207,7 +214,7 @@ export function main(argv: string[]): number {
       mkdirp(sd)
       if (!isFile(join(sd, 'base'))) {
         // a retry builds on the same base; the failed attempt's edits are reset first
-        commit(wt, `${TYPES[t.kind]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
+        commit(wt, `${TYPES[t.type]}: scaffold and locked tests for #${t.ticket_id} (ticket pipeline)`)
         writeFileSync(join(sd, 'base'), git(['rev-parse', 'HEAD'], { cwd: wt }).stdout.trim() + '\n')
       } else {
         git(['reset', '-q', '--hard', trim(join(sd, 'base'))], { cwd: wt })
@@ -243,7 +250,7 @@ export function main(argv: string[]): number {
     case 'commit-step': {
       const spec = load(join(run, 'spec', 'spec.json'))
       const title: string = spec.steps.find((s: Json) => s.id === step).title
-      commit(wt, `${TYPES[t.kind]}: ${title.slice(0, 60).toLowerCase()} (#${t.ticket_id} ${step})`)
+      commit(wt, `${TYPES[t.type]}: ${title.slice(0, 60).toLowerCase()} (#${t.ticket_id} ${step})`)
       const n = resolveAttempt(sd, 'cur')
       save(join(sd, 'status.json'), { status: 'DONE', baseline_failure: isFile(join(sd, `attempt-${n}`, 'baseline.json')) })
       console.log(`DONE ${step}`)

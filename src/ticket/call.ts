@@ -92,7 +92,7 @@ export function promptFor(role: string, run: string, step: string | undefined, w
       prior =
         '\nYour previous spec was rejected by the validator; fix every error:\n' +
         block('validator_errors', (load(vf).errors as string[]).join('\n').slice(0, 3000))
-    const ticket = pickKeys(t, ['ticket_id', 'title', 'kind', 'labels', 'modules', 'acceptance_criteria'])
+    const ticket = pickKeys(t, ['ticket_id', 'title', 'type', 'labels', 'modules', 'acceptance_criteria'])
     const prof = pickKeys(p, ['commands', 'high_risk_paths', 'default_limits', 'tests'])
     const af = join(run, 'spec', 'clarification-answers.json')
     if (isFile(af))

@@ -53,7 +53,7 @@ test('a reply the engine did not resolve is no reply: clarification stops, a pau
 
 test('the pause note reaches the implementer as data, once written', async () => {
   const { promptFor } = await import('../../src/ticket/call.ts')
-  put(join(run, 'ticket.json'), { ticket_id: 7, title: 't', body: '', acceptance_criteria: [], labels: [], modules: [], kind: 'feature' })
+  put(join(run, 'ticket.json'), { ticket_id: 7, title: 't', body: '', acceptance_criteria: [], labels: [], modules: [], type: 'feature' })
   put(join(run, 'project.json'), {})
   put(join(run, 'routing.json'), {})
   put(join(run, 'prefix.txt'), 'PREFIX')

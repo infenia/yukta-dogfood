@@ -86,7 +86,7 @@ test('a BLOCKED step is a spec problem: no validation, the architect revises, a 
   await w.walk('blocked', 'true')
   expect(w.rc).not.toBe(0)
   expect(w.out).toContain('NODE result1 blocked')
-  expect(w.out).toContain('NODE escalate1 success')
+  expect(w.out).toContain('NODE revise1 success')
   expect(w.out).not.toContain('NODE validate1 ')
 })
 

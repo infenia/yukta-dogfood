@@ -3,19 +3,19 @@
 // Writes the workflows of the ticket pipeline into session.json (design 6.1 to 6.3, 9, 15.3, 15.5), the way
 // dogfood/src/gen-heal.ts does. `yk ticket` adds them to the `dogfood` session, so they call its `tool` workflow.
 //
-//   ticket        issue -> intake -> init -> claim -> route -> [the spec of the issue body, else the architect] (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
-//                 -> plan comment -> attempt_round, recovered up to 3 times (revise: `escalate`; pause: a human packet and an ASK_INPUT)
+//   ticket-run    issue -> intake -> init -> claim -> route -> [the spec of the issue body, else the architect] (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
+//                 -> plan comment -> round, recovered up to 3 times (a revision: `revise`; a pause: a human packet and an ASK_INPUT)
 //                 -> finish (draft PR) -> close
-//   attempt_round steps_round -> finalize
-//   steps_round   the next step whose depends_on are DONE, one `step` run each, in order (8 slots)
+//   round         round_steps -> finalize
+//   round_steps   the next step whose depends_on are DONE, one `step` run each, in order (8 slots)
 //   step          one step, up to 4 attempts: begin -> implementer -> validate-step; a failure goes to `ladder decide`: retry, tier_up (one model tier up),
 //                 heal (yk check --stage <stage> heals, then everything outside write_files is reverted), baseline (the stage also fails on origin/main),
 //                 or an escalation (revise, human, pause: escalation.json)
 //   finalize      full checks -> reviewer -> verdict (a blocker or an unfaithful test overrides APPROVE)
-//   escalate      RevisionRequest -> architect revision -> spec v+1 -> validate-spec -> test writer (changed cases) -> gate-tests
+//   revise        RevisionRequest -> architect revision -> spec v+1 -> validate-spec -> test writer (changed cases) -> gate-tests
 //
 // Every node is a PROCESS_EXECUTOR running `ticketkit` (no Java); a Claude call is `ticketkit call ROLE`, which runs the claude command with --role ROLE. Claude calls
-// share the `claude` concurrency group; Gradle runs inside `yk check`, which queues in the `tool` group.
+// share the `agent` concurrency group; Gradle runs inside `yk check`, which queues in the `tool` group.
 //
 //   bun src/ticket/gen-ticket.ts          write ticket-session.json        bun src/ticket/gen-ticket.ts --check   exit 1 when the committed ticket-session.json is stale (CI-style)
 // Edit this file, run it, commit ticket-session.json.
@@ -63,7 +63,7 @@ function pe(
   if (o.routed ?? true) cfg.routeByExitCode = true
   if (o.stdin) cfg.inputMode = 'STDIN' // the message as JSON on stdin (a sub-workflow's results)
   if (o.json) cfg.outputFormat = 'JSON'
-  if (o.claude) cfg.engine = { concurrencyGroup: 'claude' }
+  if (o.claude) cfg.engine = { concurrencyGroup: 'agent' }
   return { nodeId, type: 'PROCESS_EXECUTOR', config: cfg }
 }
 
@@ -197,7 +197,7 @@ const STEP_WF = st.workflow(
 )
 STEP_WF.edges.push(...edges('trigger', 'begin1'))
 
-// ---------------------------------------------------------------- steps_round: step after step (8 slots, the sizing lint caps a spec at 8 steps)
+// ---------------------------------------------------------------- round_steps: step after step (8 slots, the sizing lint caps a spec at 8 steps)
 const SLOTS = 8
 const sr = new G()
 sr.add(ok('ok'))
@@ -215,7 +215,7 @@ for (let k = 1; k <= SLOTS; k++) {
   sr.link(run, k < SLOTS ? `next${k + 1}` : 'ok', 'success')
   sr.fail(run, 'a step ended without DONE (escalation.json says what to do)')
 }
-const STEPS_WF = sr.workflow('steps_round', 'Run the ready steps one at a time, in order.')
+const STEPS_WF = sr.workflow('round_steps', 'Run the ready steps one at a time, in order.')
 STEPS_WF.edges.push(...edges('trigger', 'next1'))
 
 // ---------------------------------------------------------------- finalize: full checks, reviewer, verdict
@@ -243,17 +243,17 @@ fz.link('verdict?', 'changes.failed', 'changes')
 const FINAL_WF = fz.workflow('finalize', 'The final gate, the fresh-context reviewer and a verdict code can override.')
 FINAL_WF.edges.push(...edges('trigger', 'full_checks'))
 
-// ---------------------------------------------------------------- attempt_round: the steps, then the finish line
+// ---------------------------------------------------------------- round: the steps, then the finish line
 const ar = new G()
-ar.add(sub('steps', 'steps_round'), sub('finalize', 'finalize'), ok('ok'))
+ar.add(sub('steps', 'round_steps'), sub('finalize', 'finalize'), ok('ok'))
 ar.link('steps', 'finalize', 'success')
 ar.fail('steps', 'a step did not finish')
 ar.link('finalize', 'ok', 'success')
 ar.fail('finalize', 'the final gate or the review did not pass')
-const ROUND_WF = ar.workflow('attempt_round', 'All steps, the final gate and the review.')
+const ROUND_WF = ar.workflow('round', 'All steps, the final gate and the review.')
 ROUND_WF.edges.push(...edges('trigger', 'steps'))
 
-// ---------------------------------------------------------------- escalate: the architect revises the spec (design 6.3)
+// ---------------------------------------------------------------- revise: the architect revises the spec (design 6.3)
 const es = new G()
 es.add(ok('ok'))
 es.chain(
@@ -274,7 +274,7 @@ es.chain(
   ],
   'ok',
 )
-const ESC_WF = es.workflow('escalate', 'Architect revision: spec v+1, changed cases through the test writer and the gate.')
+const ESC_WF = es.workflow('revise', 'Architect revision: spec v+1, changed cases through the test writer and the gate.')
 ESC_WF.edges.push(...edges('trigger', 'build_revision'))
 
 // ---------------------------------------------------------------- ticket
@@ -379,7 +379,7 @@ t.chain([[pe('plan_comment', ['github', 'plan-comment', RUN], 120), 'the plan co
 const ROUNDS = 4
 for (let k = 1; k <= ROUNDS; k++) {
   const [r, rf] = [`round${k}`, `route_failure${k}`]
-  t.add(sub(r, 'attempt_round'))
+  t.add(sub(r, 'round'))
   t.link(r, 'finish', 'success')
   if (k === ROUNDS) {
     t.fail(r, 'the run did not finish after three recoveries', true)
@@ -388,7 +388,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.link(r, rf, 'failure')
   const [a, e, pp, aa, ap, ack] = [
     `action${k}`,
-    `escalate${k}`,
+    `revise${k}`,
     `pause_packet${k}`,
     `ask_pause${k}`,
     `pause_decision${k}`,
@@ -397,7 +397,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.add(
     pe(rf, ['ladder', 'route-failure', RUN], 60, { json: true }),
     select(a, 'action', { revise: 'revise', pause: 'pause' }, 'human'),
-    sub(e, 'escalate'),
+    sub(e, 'revise'),
     pe(pp, ['ladder', 'pause-packet', RUN], 60),
     ask(aa, 'Run ${start.runId} is paused over a budget; human-packet.md is in ${start.run}. Approve to continue with doubled budgets.'),
     rejected(ap),
@@ -436,7 +436,7 @@ t.chain(
 )
 t.edges.push(...edges('trigger', 'intake'))
 const TICKET_WF = t.workflow(
-  'ticket',
+  'ticket-run',
   'Implement one Ready GitHub issue end to end: architect spec, locked failing tests, step-by-step implementation (retry ladder, heal, escalation), fresh reviewer. Ends with a draft PR (Fixes #<issue>), never merges. Start with `yk ticket run <issue>`.',
 )
 
@@ -483,7 +483,7 @@ const AGENT_WF: Json = {
           ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
           ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
         },
-        engine: { concurrencyGroup: 'claude' },
+        engine: { concurrencyGroup: 'agent' },
       },
     },
     ok('ok'),
@@ -564,15 +564,15 @@ const PLAN_WF = tp.workflow(
 PLAN_WF.edges.push(...edges('trigger', 'prepare_split'))
 
 export const WORKFLOWS: Record<string, Json> = {
-  ticket: TICKET_WF,
+  'ticket-run': TICKET_WF,
   'ticket-agent': AGENT_WF,
   'ticket-new': NEW_WF,
   'ticket-from-plan': PLAN_WF,
-  attempt_round: ROUND_WF,
-  steps_round: STEPS_WF,
+  round: ROUND_WF,
+  round_steps: STEPS_WF,
   step: STEP_WF,
   finalize: FINAL_WF,
-  escalate: ESC_WF,
+  revise: ESC_WF,
 }
 
 function check(wfs: Record<string, Json>): void {

@@ -41,7 +41,7 @@ test('init', () => {
   for (const f of ['ticket.json', 'project.json', 'events.jsonl', 'spec', 'steps'])
     expect(existsSync(join(run, f)), `init: ${f}`).toBe(true)
   expect(json(join(run, 'ticket.json')).acceptance_criteria, 'only the two criteria under the heading count').toHaveLength(2)
-  expect(json(join(run, 'ticket.json')).kind).toBe('feature')
+  expect(json(join(run, 'ticket.json')).type).toBe('feature')
   const skipped = init(mkticket(8, 'fix(core): bug', ['core'], 'no criteria here\n- a list item'), '--no-worktree')
   expect([skipped.code, skipped.out]).toEqual([3, expect.stringContaining('SKIPPED no acceptance criteria')])
   expect(readdirSync(join(state, 'ticket')), 'a skipped issue must not create a run dir').toHaveLength(1)

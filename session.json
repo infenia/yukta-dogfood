@@ -3868,7 +3868,7 @@
             },
             "timeout": 1800,
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           },
           "color": "sky",

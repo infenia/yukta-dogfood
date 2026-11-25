@@ -1,7 +1,7 @@
 {
   "workflows": {
-    "ticket": {
-      "workflowId": "ticket",
+    "ticket-run": {
+      "workflowId": "ticket-run",
       "description": "Implement one Ready GitHub issue end to end: architect spec, locked failing tests, step-by-step implementation (retry ladder, heal, escalation), fresh reviewer. Ends with a draft PR (Fixes #<issue>), never merges. Start with `yk ticket run <issue>`.",
       "nodes": [
         {
@@ -239,7 +239,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -517,7 +517,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -721,7 +721,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -999,7 +999,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -1203,7 +1203,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -1301,7 +1301,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -1585,7 +1585,7 @@
           "nodeId": "round1",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "attempt_round",
+            "workflowId": "round",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -1644,10 +1644,10 @@
           }
         },
         {
-          "nodeId": "escalate1",
+          "nodeId": "revise1",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "escalate",
+            "workflowId": "revise",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -1831,7 +1831,7 @@
           }
         },
         {
-          "nodeId": "escalate1.failed",
+          "nodeId": "revise1.failed",
           "type": "OUTCOME_TERMINAL",
           "config": {
             "outcome": "FAILED",
@@ -1839,7 +1839,7 @@
           }
         },
         {
-          "nodeId": "escalate1.dead",
+          "nodeId": "revise1.dead",
           "type": "PROCESS_EXECUTOR",
           "config": {
             "command": [
@@ -1849,7 +1849,7 @@
               "dead-end",
               "${start.run}",
               "--stage",
-              "escalate1",
+              "revise1",
               "--reason",
               "the architect's revision did not produce a valid spec",
               "--worktree",
@@ -1889,7 +1889,7 @@
           "nodeId": "round2",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "attempt_round",
+            "workflowId": "round",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -1948,10 +1948,10 @@
           }
         },
         {
-          "nodeId": "escalate2",
+          "nodeId": "revise2",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "escalate",
+            "workflowId": "revise",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -2135,7 +2135,7 @@
           }
         },
         {
-          "nodeId": "escalate2.failed",
+          "nodeId": "revise2.failed",
           "type": "OUTCOME_TERMINAL",
           "config": {
             "outcome": "FAILED",
@@ -2143,7 +2143,7 @@
           }
         },
         {
-          "nodeId": "escalate2.dead",
+          "nodeId": "revise2.dead",
           "type": "PROCESS_EXECUTOR",
           "config": {
             "command": [
@@ -2153,7 +2153,7 @@
               "dead-end",
               "${start.run}",
               "--stage",
-              "escalate2",
+              "revise2",
               "--reason",
               "the architect's revision did not produce a valid spec",
               "--worktree",
@@ -2193,7 +2193,7 @@
           "nodeId": "round3",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "attempt_round",
+            "workflowId": "round",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -2252,10 +2252,10 @@
           }
         },
         {
-          "nodeId": "escalate3",
+          "nodeId": "revise3",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "escalate",
+            "workflowId": "revise",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -2439,7 +2439,7 @@
           }
         },
         {
-          "nodeId": "escalate3.failed",
+          "nodeId": "revise3.failed",
           "type": "OUTCOME_TERMINAL",
           "config": {
             "outcome": "FAILED",
@@ -2447,7 +2447,7 @@
           }
         },
         {
-          "nodeId": "escalate3.dead",
+          "nodeId": "revise3.dead",
           "type": "PROCESS_EXECUTOR",
           "config": {
             "command": [
@@ -2457,7 +2457,7 @@
               "dead-end",
               "${start.run}",
               "--stage",
-              "escalate3",
+              "revise3",
               "--reason",
               "the architect's revision did not produce a valid spec",
               "--worktree",
@@ -2497,7 +2497,7 @@
           "nodeId": "round4",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "attempt_round",
+            "workflowId": "round",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -3060,7 +3060,7 @@
         },
         {
           "source": "action1",
-          "target": "escalate1",
+          "target": "revise1",
           "sourcePort": "revise"
         },
         {
@@ -3078,18 +3078,18 @@
           "target": "human1.failed"
         },
         {
-          "source": "escalate1",
+          "source": "revise1",
           "target": "round2",
           "sourcePort": "success"
         },
         {
-          "source": "escalate1",
-          "target": "escalate1.dead",
+          "source": "revise1",
+          "target": "revise1.dead",
           "sourcePort": "failure"
         },
         {
-          "source": "escalate1.dead",
-          "target": "escalate1.failed"
+          "source": "revise1.dead",
+          "target": "revise1.failed"
         },
         {
           "source": "pause_packet1",
@@ -3151,7 +3151,7 @@
         },
         {
           "source": "action2",
-          "target": "escalate2",
+          "target": "revise2",
           "sourcePort": "revise"
         },
         {
@@ -3169,18 +3169,18 @@
           "target": "human2.failed"
         },
         {
-          "source": "escalate2",
+          "source": "revise2",
           "target": "round3",
           "sourcePort": "success"
         },
         {
-          "source": "escalate2",
-          "target": "escalate2.dead",
+          "source": "revise2",
+          "target": "revise2.dead",
           "sourcePort": "failure"
         },
         {
-          "source": "escalate2.dead",
-          "target": "escalate2.failed"
+          "source": "revise2.dead",
+          "target": "revise2.failed"
         },
         {
           "source": "pause_packet2",
@@ -3242,7 +3242,7 @@
         },
         {
           "source": "action3",
-          "target": "escalate3",
+          "target": "revise3",
           "sourcePort": "revise"
         },
         {
@@ -3260,18 +3260,18 @@
           "target": "human3.failed"
         },
         {
-          "source": "escalate3",
+          "source": "revise3",
           "target": "round4",
           "sourcePort": "success"
         },
         {
-          "source": "escalate3",
-          "target": "escalate3.dead",
+          "source": "revise3",
+          "target": "revise3.dead",
           "sourcePort": "failure"
         },
         {
-          "source": "escalate3.dead",
-          "target": "escalate3.failed"
+          "source": "revise3.dead",
+          "target": "revise3.failed"
         },
         {
           "source": "pause_packet3",
@@ -3405,7 +3405,7 @@
               "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"
             },
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -4096,8 +4096,8 @@
         }
       ]
     },
-    "attempt_round": {
-      "workflowId": "attempt_round",
+    "round": {
+      "workflowId": "round",
       "description": "All steps, the final gate and the review.",
       "nodes": [
         {
@@ -4109,7 +4109,7 @@
           "nodeId": "steps",
           "type": "SUB_WORKFLOW",
           "config": {
-            "workflowId": "steps_round",
+            "workflowId": "round_steps",
             "timeoutSeconds": 21600,
             "routeByOutcome": true,
             "payload": {
@@ -4200,8 +4200,8 @@
         }
       ]
     },
-    "steps_round": {
-      "workflowId": "steps_round",
+    "round_steps": {
+      "workflowId": "round_steps",
       "description": "Run the ready steps one at a time, in order.",
       "nodes": [
         {
@@ -5212,7 +5212,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -5499,7 +5499,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -5786,7 +5786,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -6073,7 +6073,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -6830,7 +6830,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -6941,8 +6941,8 @@
         }
       ]
     },
-    "escalate": {
-      "workflowId": "escalate",
+    "revise": {
+      "workflowId": "revise",
       "description": "Architect revision: spec v+1, changed cases through the test writer and the gate.",
       "nodes": [
         {
@@ -7019,7 +7019,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },
@@ -7128,7 +7128,7 @@
             "routeByExitCode": true,
             "outputFormat": "JSON",
             "engine": {
-              "concurrencyGroup": "claude"
+              "concurrencyGroup": "agent"
             }
           }
         },

@@ -19,7 +19,7 @@ beforeAll(() => {
   put(join(R, 'ticket.json'), {
     ticket_id: '7',
     title: 't',
-    kind: 'feature',
+    type: 'feature',
     labels: [],
     modules: ['core'],
     acceptance_criteria: ['a'],
@@ -56,9 +56,9 @@ const call = (role: string, outs: string[]) => {
 }
 const calls = (): number => Number(read(join(d, 'n')))
 
-test('the ticket workflow sends a blocked test writer, a red-check failure and a validator failure back to the next architect', () => {
+test('the ticket-run workflow sends a blocked test writer, a red-check failure and a validator failure back to the next architect', () => {
   const edges = new Set<string>(
-    json(join(import.meta.dir, '../../ticket-session.json')).workflows.ticket.edges.map(
+    json(join(import.meta.dir, '../../ticket-session.json')).workflows['ticket-run'].edges.map(
       (e: { source: string; target: string; sourcePort?: string }) => `${e.source}:${e.sourcePort ?? ''}>${e.target}`,
     ),
   )

@@ -125,7 +125,7 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
       baselineCmd: e.TICKET_BASELINE_CMD || '-',
       events: e.YUKTA_TICKET_EVENTS || join(DEV_HOME, 'ticket-events.jsonl'),
     }
-    const execId = cliJson(['workflow', 'start', session, 'ticket', '--payload', JSON.stringify(payload)]).data?.executionId
+    const execId = cliJson(['workflow', 'start', session, 'ticket-run', '--payload', JSON.stringify(payload)]).data?.executionId
     if (!execId) die('could not start the ticket workflow')
     writeFileSync(join(STATE_DIR, `ticket-last-${issue}`), `${runId} ${execId}\n`)
     console.log(`STARTED execution=${execId} session=${session} run=${STATE_DIR}/ticket/${runId} worktree=${wt}`)

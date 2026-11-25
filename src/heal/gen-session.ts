@@ -634,7 +634,7 @@ export function agentWorkflow(): Json {
             ...Object.fromEntries(CLAUDE_SESSION_ENV.map((k) => [k, ''])),
           },
           timeout: 1800, // ponytail: AGENT_SESSION's timeout is a fixed number, not a start variable; the longest effort of heal.json, per-effort when it matters
-          engine: { concurrencyGroup: 'claude' },
+          engine: { concurrencyGroup: 'agent' },
         },
       },
       { nodeId: 'ok', type: 'CONSOLE_TERMINAL', config: {} },

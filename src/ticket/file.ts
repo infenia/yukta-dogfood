@@ -146,11 +146,10 @@ export function checkDrafts(d: Json, root: string): string[] {
     const run = mkdtempSync(join(tmpdir(), 'ticket-check-'))
     try {
       const b = x.ticket
-      const kind = b.type === 'enhancement' ? 'feature' : b.type
       const t = {
         ticket_id: '0',
         title: x.title,
-        kind,
+        type: b.type,
         labels: [],
         modules: [],
         acceptance_criteria: b.acceptance_criteria.map((c: Json) => c.text),

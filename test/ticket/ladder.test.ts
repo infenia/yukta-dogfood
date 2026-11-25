@@ -47,7 +47,7 @@ test('10. three failed attempts: attempt 2 on the same model, attempt 3 one tier
       .map((e) => `${e.model}/${e.effort}`)
       .join(' '),
   ).toBe('sonnet/medium sonnet/medium sonnet/high')
-  expect(w.out).toContain('NODE escalate1 success')
+  expect(w.out).toContain('NODE revise1 success')
   expect(json(join(w.run, 'revisions.json'))).toEqual({ count: 1, for: ['S1:tests:'] })
   expect(w.out).toContain('NODE human')
   expect(json(join(w.run, 'escalation.json')).reason).toContain('did not fix it')
@@ -111,7 +111,7 @@ test('a final gate stage that also fails on clean origin/main is a baseline fail
   expect(w.rc, w.out).toBe(0)
   expect(json(join(w.run, 'final-baseline.json')).stage).toBe('dogfood_check')
   expect(read(join(w.d, 'pr-body.md')), 'the PR says so').toContain('Baseline failure')
-  expect(w.out).not.toContain('NODE escalate1')
+  expect(w.out).not.toContain('NODE revise1')
 })
 
 test('a final gate that fails on this change asks for a revision that adds a step, with the final digest', async () => {

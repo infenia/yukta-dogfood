@@ -11,7 +11,22 @@ import { attach, isReleased, takeContinue } from './branch.ts'
 import { parseTicket, specOf } from './body.ts'
 import { rolesOf } from './roles.ts'
 import { measure, sizingOf, trackedFiles } from './sizing.ts'
-import { type Json, KIT, die, kindOf, existsSync, git, join, load, mkdirp, parseArgs, resolve, run, save, writeFileSync } from './lib.ts'
+import {
+  type Json,
+  KIT,
+  die,
+  ticketType,
+  existsSync,
+  git,
+  join,
+  load,
+  mkdirp,
+  parseArgs,
+  resolve,
+  run,
+  save,
+  writeFileSync,
+} from './lib.ts'
 
 /** The list items under an 'Acceptance criteria' heading, up to the next heading. */
 export function criteria(body: string | null | undefined): string[] {
@@ -109,7 +124,7 @@ export function main(argv: string[]): number {
   save(join(dir, 'ticket.json'), {
     ticket_id: n,
     title: raw.title,
-    kind: planned ? (planned.type === 'enhancement' ? 'feature' : planned.type) : kindOf(raw.title, labels),
+    type: planned ? planned.type : ticketType(raw.title, labels),
     planned: planned ? { complexity: planned.complexity, risk: planned.risk, tests_mode: planned.tests_mode } : null,
     labels,
     modules,

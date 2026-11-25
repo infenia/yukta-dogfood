@@ -173,7 +173,7 @@ const TYPE_LABEL: Record<string, string> = {
   'type/test': 'chore',
 }
 
-export function kindOf(title: string, labels: string[]): string {
+export function ticketType(title: string, labels: string[]): string {
   for (const l of labels) if (l in TYPE_LABEL) return TYPE_LABEL[l]!
   const m = /^(\w+)(\([^)]*\))?!?:/.exec(title)
   return m ? (CONVENTIONAL[m[1]!] ?? 'feature') : 'feature'
@@ -182,11 +182,11 @@ export function kindOf(title: string, labels: string[]): string {
 /** The tests modes whose tests are written (and red-checked) before any step: only these need a test writer. */
 export const UP_FRONT = ['repro_only', 'cases_to_code', 'architect_code']
 
-/** Design 3.3 (decided by code, from the kind and size). architect_code is allowed later by validate-spec, not chosen here. */
-export function testsModeFor(kind: string, complexity: string, risk: string): string {
-  if (kind === 'docs' || kind === 'chore') return 'existing'
-  if (kind === 'bug') return 'repro_only'
-  if (kind === 'feature' && complexity === 'S' && risk === 'low') return 'implementer_writes'
+/** Design 3.3 (decided by code, from the type and size). architect_code is allowed later by validate-spec, not chosen here. */
+export function testsModeFor(type: string, complexity: string, risk: string): string {
+  if (type === 'docs' || type === 'chore') return 'existing'
+  if (type === 'bug') return 'repro_only'
+  if ((type === 'feature' || type === 'enhancement') && complexity === 'S' && risk === 'low') return 'implementer_writes'
   return 'cases_to_code'
 }
 

@@ -39,7 +39,14 @@ import { untag } from './gate-tests.ts'
 export const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
 const PROJECT = process.env.YUKTA_TICKET_PROJECT ?? '5'
 const OWNER = process.env.YUKTA_TICKET_OWNER ?? 'infenia'
-const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
+const TYPES: Record<string, string> = {
+  feature: 'feat',
+  enhancement: 'feat',
+  bug: 'fix',
+  refactor: 'refactor',
+  docs: 'docs',
+  chore: 'chore',
+}
 export const CONVENTIONAL = /^(feat|fix|docs|refactor|test|chore|style|ci|build|perf|revert)(\([^)]*\))?!?: \S/
 const SECRET = '(api[ _-]?keys?|secrets?|tokens?|passwords?|credentials?)'
 const FORBIDDEN: [RegExp, string][] = [
@@ -291,7 +298,7 @@ function finish(run: string, wt: string): number {
     git(['commit', '-q', '-m', `style: apply spotless for #${n}`], { cwd: wt })
   const rf = join(run, 'final-result.txt')
   const result = isFile(rf) ? readFileSync(rf, 'utf8').trim() : ''
-  const title = CONVENTIONAL.test(t.title) ? t.title : `${TYPES[t.kind]}: ${t.title}`
+  const title = CONVENTIONAL.test(t.title) ? t.title : `${TYPES[t.type]}: ${t.title}`
   const bl = join(run, 'final-baseline.json')
   const baseline = isFile(bl)
     ? `\n**Baseline failure:** \`${load(bl).stage}\` also fails on a clean \`origin/main\`, so it was not charged to this change.\n`

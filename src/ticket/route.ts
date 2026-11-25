@@ -53,10 +53,10 @@ export function modelsFor(t: Json, p: Json, complexity: string, risk: string, te
 }
 
 export function build(t: Json, p: Json, complexity: string, risk: string, basis: Json = null): Json {
-  const testsMode = t.planned?.tests_mode ?? testsModeFor(t.kind, complexity, risk)
+  const testsMode = t.planned?.tests_mode ?? testsModeFor(t.type, complexity, risk)
   return {
     ticket_id: t.ticket_id,
-    kind: t.kind,
+    type: t.type,
     complexity,
     risk,
     tests_mode: testsMode,
