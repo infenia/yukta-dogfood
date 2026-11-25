@@ -242,6 +242,12 @@ test('validate-spec', () => {
     s.test_cases = []
     s.steps[0].done_when.commands = ['yk gradle :core:compileJava :core:compileTestJava']
   })
+  check('a --stage the plan does not hold for the written files', 'is not in the plan', (s) => {
+    s.steps[0].done_when.commands = ['yk check --stage docs --base abc123']
+  })
+  check('a --stage the plan holds', 'ok', (s) => {
+    s.steps[0].done_when.commands = ['yk check --stage reuse --base abc123']
+  })
   check('three steps for S', 'exceed the 2 allowed', (s) => {
     s.steps.push({ ...S2(), id: 'S3', depends_on: ['S1'] }, { ...S2(), id: 'S4', depends_on: ['S1'], write_files: ['web/Z.java'] })
   })

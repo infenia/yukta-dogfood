@@ -28,6 +28,7 @@
         "timeout",
         "infra_error",
         "blocked_reported",
+        "spec_error",
         "baseline_failure"
       ]
     },

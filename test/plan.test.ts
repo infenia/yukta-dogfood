@@ -48,3 +48,13 @@ test('a class without a test: the whole module', () => {
   expect(testsLine()).toContain(':core:jacocoTestReport')
   void sh
 })
+
+test('a plan of files not changed yet: the stages they would get', () => {
+  const stages = (f: string[]): string[] =>
+    plan(false, 'HEAD', repo, f)
+      .text.split('\n')
+      .filter((l) => l && !l.startsWith('#'))
+      .map((l) => l.split('\t')[0]!)
+  expect(stages(['README.md'])).toContain('reuse')
+  expect(stages(['README.md'])).not.toContain('docs')
+})

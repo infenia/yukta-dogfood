@@ -152,6 +152,9 @@ function decide(run: string, sid: string, afterHeal: boolean, wt: string): numbe
       ? out('revise', `BLOCKED (${cat})`, undefined, undefined, 'step_blocked')
       : out('retry', `BLOCKED (${cat}) is not a spec problem`)
   }
+  // a done_when command that cannot run (usage or config error) is the spec's fault: no implementer attempt can fix it
+  if (cls === 'spec_error')
+    return out('revise', `a done_when command is unusable: ${fail.message ?? ''}`.slice(0, 300), undefined, undefined, 'spec_invalid')
   if (NEVER_MODEL.has(stage)) return out('human', `${stage} is never healed`)
   if (cls === 'infra_error' || cls === 'timeout') {
     state.infra += 1

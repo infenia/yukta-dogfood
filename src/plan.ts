@@ -18,12 +18,13 @@
 //           (corepack's pnpm shim is not reliable). ponytail: when a pnpm workspace appears, pnpm --filter
 //           "...[origin/main]" selects the packages instead.
 //   repo    reuse on any change; actionlint, docs links when their files changed.
-import { HERE, REPO_ROOT, dirname, existsSync, git, isFile, join, onPath, readFileSync, readJson, shq, sq } from './lib.ts'
+import { HERE, REPO_ROOT, filterPlan, dirname, existsSync, git, isFile, join, onPath, readFileSync, readJson, shq, sq } from './lib.ts'
 
 const GRADLE_ROOT = /^(build-logic\/|gradle\/|config\/|settings\.gradle\.kts$|build\.gradle\.kts$|gradle\.properties$)/
 const lines = (s: string): string[] => (s.length ? s.replace(/\n$/, '').split('\n') : [])
 
-export function plan(full: boolean, base: string, root = REPO_ROOT): { text: string; code: number } {
+/** `changedFiles` stands in for the diff (the files a ticket step will write): the plan of a change that is not made yet. */
+export function plan(full: boolean, base: string, root = REPO_ROOT, changedFiles?: string[]): { text: string; code: number } {
   const out: string[] = []
   const emit = (stage: string, dir: string, cmd: string, auto = ''): void => void out.push([stage, dir, cmd, auto].join('\t'))
   const gr = (...a: string[]): string => `./gradlew ${a.join(' ')} -q --console=plain`
@@ -32,7 +33,10 @@ export function plan(full: boolean, base: string, root = REPO_ROOT): { text: str
   // ---- the changed files
   let files: string[] = []
   let mb = ''
-  if (!full) {
+  if (!full && changedFiles) {
+    files = [...new Set(changedFiles)].sort()
+    mb = 'HEAD'
+  } else if (!full) {
     const m = git(['merge-base', 'HEAD', base], root)
     if (m.code) return { text: `plan: no merge base with ${base}\n`, code: 1 }
     mb = m.stdout.trim()
@@ -268,21 +272,32 @@ export function plan(full: boolean, base: string, root = REPO_ROOT): { text: str
 export function main(argv: string[]): number {
   let full = false
   let base = 'origin/main'
+  let only = ''
+  let skip = ''
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--full') full = true
-    else if (argv[i] === '--base') {
+    else if (argv[i] === '--stage' || argv[i] === '--skip') {
+      const v = argv[i + 1]
+      if (!v) {
+        console.error(`${argv[i]} needs stage names, e.g. tests,style`)
+        return 2
+      }
+      if (argv[i++] === '--stage') only = v
+      else skip = v
+    } else if (argv[i] === '--base') {
       base = argv[++i] ?? ''
       if (!base) {
         console.error('--base needs a ref')
         return 2
       }
     } else {
-      console.error('usage: plan [--full] [--base REF]')
+      console.error('usage: plan [--full] [--base REF] [--stage A,B] [--skip A,B]')
       return 2
     }
   }
   const r = plan(full, base)
-  process.stdout.write(r.text)
+  // the same filter yk check applies: what `yk check --stage/--skip` would run
+  process.stdout.write(only || skip ? filterPlan(r.text.replace(/\n$/, ''), only, skip) + '\n' : r.text)
   return r.code
 }
 

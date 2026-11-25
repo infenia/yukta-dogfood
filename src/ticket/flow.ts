@@ -252,7 +252,10 @@ export function main(argv: string[]): number {
           const r = sh(c, wt)
           commands.push({ command: c, exit: r.code, seconds: Math.round((Date.now() - t0) / 100) / 10 })
           if (r.code) {
-            failDigest(run, step!, attempt, 'tests', r.stdout + r.stderr, c, undefined, r.code)
+            const out = r.stdout + r.stderr
+            // exit 2 or a usage / unknown option / empty plan message: the command is wrong, not the code
+            const unusable = r.code === 2 || /\busage:|unknown option|needs (a|stage)|no stage of the plan is left/i.test(out)
+            failDigest(run, step!, attempt, 'tests', out, c, unusable ? 'spec_error' : undefined, r.code)
             rc = r.code
             break
           }

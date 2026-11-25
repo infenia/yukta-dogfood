@@ -27,6 +27,7 @@ import {
   save,
   writeFileSync,
 } from './lib.ts'
+import { plan } from '../plan.ts'
 import { modelsFor } from './route.ts'
 import { validateSchema } from './validate-schema.ts'
 
@@ -179,6 +180,21 @@ export function validate(
     for (const c of s.done_when.commands as string[])
       if (!isProjectCommand(templates, c))
         err(`${i}: done_when command is not a project command template (${Object.values<string>(project.commands).join(' | ')}): ${c}`)
+    // a `--stage X` of yk check must be a stage the plan holds for the files this step writes (a stage that does not apply runs nothing and fails)
+    const wanted = (s.done_when.commands as string[]).flatMap((c) => [...c.matchAll(/--stage[ =](\S+)/g)].map((m) => m[1]!))
+    if (wanted.length) {
+      const have = new Set(
+        plan(false, 'origin/main', wt, s.write_files)
+          .text.split('\n')
+          .filter((l) => l && !l.startsWith('#'))
+          .map((l) => l.split('\t')[0]!.replace(/-/g, '_')),
+      )
+      for (const w of wanted.join(',').split(',').filter(Boolean))
+        if (!have.has(w.replace(/-/g, '_')))
+          err(
+            `${i}: --stage ${w} is not in the plan for ${s.write_files.join(', ')} (stages there: ${[...have].join(', ') || 'none'}); use one of them`,
+          )
+    }
     const mods = [...new Set((s.write_files as string[]).map(moduleOf))]
     if (mods.length > 1)
       err(
