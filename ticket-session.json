@@ -3376,19 +3376,31 @@
             "args": [
               "--setting-sources",
               "project",
-              "--disable-slash-commands",
               "--no-session-persistence",
+              "--strict-mcp-config",
+              "--mcp-config",
+              "${start.mcpConfig}",
+              "--settings",
+              "${start.settingsFile}",
               "--tools",
-              "Read,Grep,Glob,Bash,Write,AskUserQuestion",
+              "Read,Grep,Glob,Bash,Write,AskUserQuestion,Skill,LSP",
               "--allowedTools",
               "Read",
               "Grep",
               "Glob",
               "${start.allowWrite}",
               "${start.allowBash}",
+              "mcp__codebase-memory-mcp",
+              "mcp__idea",
+              "mcp__intellij-index",
+              "Skill",
+              "LSP",
               "--disallowedTools",
               "Bash(git commit:*)",
               "Bash(git push:*)",
+              "Skill(yukta)",
+              "Skill(yukta:*)",
+              "mcp__yukta",
               "--append-system-prompt-file",
               "${start.rulesFile}",
               "--max-budget-usd",
@@ -3511,7 +3523,9 @@
               "schema": "${payload.output.schema}",
               "rulesFile": "${payload.output.rules}",
               "allowWrite": "${payload.output.allowWrite}",
-              "allowBash": "${payload.output.allowBash}"
+              "allowBash": "${payload.output.allowBash}",
+              "mcpConfig": "${payload.output.mcpConfig}",
+              "settingsFile": "${payload.output.settingsFile}"
             },
             "engine": {
               "onError": "ROUTE"
@@ -3681,7 +3695,9 @@
               "schema": "${payload.output.schema}",
               "rulesFile": "${payload.output.rules}",
               "allowWrite": "${payload.output.allowWrite}",
-              "allowBash": "${payload.output.allowBash}"
+              "allowBash": "${payload.output.allowBash}",
+              "mcpConfig": "${payload.output.mcpConfig}",
+              "settingsFile": "${payload.output.settingsFile}"
             },
             "engine": {
               "onError": "ROUTE"
@@ -3949,7 +3965,9 @@
               "schema": "${payload.output.schema}",
               "rulesFile": "${payload.output.rules}",
               "allowWrite": "${payload.output.allowWrite}",
-              "allowBash": "${payload.output.allowBash}"
+              "allowBash": "${payload.output.allowBash}",
+              "mcpConfig": "${payload.output.mcpConfig}",
+              "settingsFile": "${payload.output.settingsFile}"
             },
             "engine": {
               "onError": "ROUTE"

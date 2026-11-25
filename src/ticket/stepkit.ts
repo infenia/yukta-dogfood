@@ -304,7 +304,9 @@ function digest(argv: string[]): number {
   const text = opt.input ? readFileSync(opt.input, 'utf8') : readFileSync(0, 'utf8')
   const all = text.split(/\r?\n/)
   const prefixed = all.filter((l) => l.startsWith(`OUTPUT ${opt.stage}:`))
-  const outLines = prefixed.length ? prefixed : all.filter((l) => l.startsWith('ERROR'))
+  const errLines = all.filter((l) => l.startsWith('ERROR'))
+  // a command's own output carries neither prefix: its last lines are the message, never an empty one
+  const outLines = prefixed.length ? prefixed : errLines.length ? errLines : all.filter((l) => l.trim())
   const failing: string[] = []
   let message = ''
   let frames: string[] = []

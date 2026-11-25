@@ -1,5 +1,6 @@
 [test]
 root = "test"
+preload = ["./test/preload.ts"]
 
 [fmt]
 printWidth = 140

@@ -17,7 +17,8 @@
 //   bun src/heal/gen-session.ts           write session.json       bun src/heal/gen-session.ts --check   exit 1 when the committed session.json is stale
 // HEAL_SESSION and HEAL_POLICY point the generator at another session file and policy (the tests do). Edit this file or heal.json, run it, commit session.json.
 import { ecosystem } from './heal.ts'
-import { FIXER_ALLOW, MCP_DENY, MCP_READ, CLAUDE_SESSION_ENV } from './claude.ts'
+import { AGENT_DENY } from './agent-env.ts'
+import { FIXER_ALLOW, CLAUDE_SESSION_ENV } from './claude.ts'
 import { HERE, type Json, existsSync, join, readFileSync, writeFileSync } from '../lib.ts'
 
 const PATH = process.env.HEAL_SESSION || join(HERE, 'session.json')
@@ -418,6 +419,7 @@ export function healWorkflows(policy: Json): { agent: Json; attempt: Json; heal:
       schema: FIX_SCHEMA,
       rulesFile: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.rules`,
       mcpConfig: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.mcp.json`,
+      settingsFile: `${S('healDir')}/${S('stage')}-\${payload.output.attempt}.settings.json`,
     },
   }
   const aEnv = { YUKTA_MODEL: S('model'), YUKTA_EFFORT: S('effort'), YUKTA_COMMAND: S('command') }
@@ -591,13 +593,12 @@ export function healWorkflows(policy: Json): { agent: Json; attempt: Json; heal:
  * ({status, text, structured, costUsd, numTurns, reason, ...}) reaches the caller whatever the outcome; `status` says which.
  */
 export function agentWorkflow(): Json {
-  const mcp = (t: string): string => `mcp__yukta__${t}`
   const args = [
-    ...['--setting-sources', 'project', '--strict-mcp-config', '--mcp-config', S('mcpConfig')],
-    ...['--disable-slash-commands', '--exclude-dynamic-system-prompt-sections', '--no-session-persistence'],
-    ...['--tools', 'Read,Edit,Write,Grep,Glob,Bash', '--permission-mode', 'auto', '--permission-prompts', 'none'],
-    ...['--allowedTools', ...FIXER_ALLOW, ...MCP_READ.map(mcp)],
-    ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)', ...MCP_DENY.map(mcp)],
+    ...['--setting-sources', 'project', '--strict-mcp-config', '--mcp-config', S('mcpConfig'), '--settings', S('settingsFile')],
+    ...['--exclude-dynamic-system-prompt-sections', '--no-session-persistence'],
+    ...['--tools', 'Read,Edit,Write,Grep,Glob,Bash,Skill,LSP', '--permission-mode', 'auto', '--permission-prompts', 'none'],
+    ...['--allowedTools', ...FIXER_ALLOW],
+    ...['--disallowedTools', 'Bash(git commit:*)', 'Bash(git push:*)', ...AGENT_DENY],
     ...[
       '--append-system-prompt-file',
       S('rulesFile'),

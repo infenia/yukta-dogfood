@@ -40,33 +40,22 @@ const call = (env: Record<string, string | undefined> = {}) => {
   return read(join(d, 'argv'))
 }
 
-test('MCP access: none without a key, read tools only with one, the key by environment', () => {
-  let argv = call()
-  expect(argv).toContain('--strict-mcp-config')
-  expect(argv).not.toContain('--mcp-config')
-  put(join(d, 'home/fixer-key'), 'secretkey\n')
-  argv = call()
-  expect(argv, 'no --mcp-config with the dev fixer key').toContain('--mcp-config')
-  expect(argv).toContain('mcp__yukta__get_failure_digest')
-  expect(argv).toContain('mcp__yukta__search_logs')
-  expect(argv).toContain('mcp__yukta__get_node_output')
-  expect(argv).toContain('mcp__yukta__get_workflow_history')
-  for (const t of ['start_workflow', 'control_workflow', 'control_node', 'signal_node', 'create_session'])
-    expect(argv.split('\n'), `${t} is not denied`).toContain(`mcp__yukta__${t}`)
-  const allowed = argv
-    .split('\n')
-    .slice(0, argv.split('\n').indexOf('--disallowedTools'))
-    .filter((l) => l.startsWith('mcp__yukta__'))
-  expect(
-    allowed.every((l) => l.startsWith('mcp__yukta__get_') || l.startsWith('mcp__yukta__search_')),
-    'a non-read MCP tool is allowed',
-  ).toBe(true)
-  expect(argv).not.toContain('secretkey')
-  expect(read(join(d, 'key')).trim(), 'the key reaches claude by environment').toBe('secretkey')
-  expect(argv).toContain('"X-API-Key":"${YK_MCP_KEY}"')
-  expect(call({ YUKTA_FIXER_MCP: 'off' }), 'YUKTA_FIXER_MCP=off still configures MCP').not.toContain('--mcp-config')
-  expect(call({ YUKTA_SERVER_URL: 'http://other:1' }), 'the dev fixer key was sent to another server').not.toContain('--mcp-config')
-  expect(call({ YUKTA_SERVER_URL: 'http://other:1', YUKTA_FIXER_MCP_KEY: 'k2' })).toContain('http://other:1/mcp')
+test('an agent loads the token-saving MCP servers and plugins, no hooks, nothing of the yukta', () => {
+  const lines = call().split('\n')
+  expect(lines).toContain('--strict-mcp-config')
+  expect(lines).toContain('--mcp-config')
+  const settings = JSON.parse(lines[lines.indexOf('--settings') + 1]!)
+  expect(settings.disableAllHooks).toBe(true)
+  expect(settings.enabledPlugins['ponytail@ponytail']).toBe(true)
+  expect(settings.enabledPlugins['jdtls-lsp@claude-plugins-official']).toBe(true)
+  expect(settings.enabledPlugins['token-optimizer@alexgreensh-token-optimizer']).toBe(true)
+  for (const p of ['yukta@yukta', 'yukta-dogfood@yukta', 'yukta-dogfood@yukta-dogfood']) expect(settings.enabledPlugins[p], p).toBe(false)
+  expect(Object.keys(JSON.parse(lines[lines.indexOf('--mcp-config') + 1]!).mcpServers).filter((k) => /yukta/.test(k))).toEqual([])
+  const allowed = lines.slice(lines.indexOf('--allowedTools'), lines.indexOf('--disallowedTools'))
+  expect(allowed).toContain('mcp__codebase-memory-mcp')
+  expect(allowed.some((l) => l.startsWith('mcp__yukta'))).toBe(false)
+  expect(lines.slice(lines.indexOf('--disallowedTools'))).toContain('mcp__yukta')
+  expect(lines).not.toContain('--disable-slash-commands')
 })
 
 test.each([

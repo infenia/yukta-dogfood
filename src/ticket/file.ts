@@ -15,6 +15,7 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { relative } from 'node:path'
+import { writeAgentFiles } from '../heal/claude.ts'
 import { fromAgent } from '../heal/heal.ts'
 import { parseTicket, renderTicket, specOf } from './body.ts'
 import { flatSchema } from './call.ts'
@@ -91,8 +92,8 @@ ${DATA}`,
 - Acceptance criteria are commands wherever possible (verification kind command), else review.
 - Steps: at most ${MAX_STEPS.S} for S, ${MAX_STEPS.M} for M, ${MAX_STEPS.L} for L; one module each; max_diff_lines 30-150; read_files exist.
 - Every done_when command and every command criterion must match, word for word with its placeholders filled, one of the templates in <project_commands>; any other command (yk tool grep, yk check with other flags, ./gradlew, go, pnpm) is rejected. Chain several with " && ".
-- A step needs covers (the test cases it makes pass) or a test command in done_when; with tests_mode existing (docs, chore) it needs neither. A change to documentation only is tests_mode existing, one step, and done_when is the single command of the template heal_stage with stage docs, never the whole gate_step or a test run; its criteria are kind review.
-- Never put generated files (openapi.json, api.generated.ts, session.json) in write_files, nor files under ${GUARD_PATHS.join(', ')} (build and dogfood tickets only): such a ticket is rejected as scope_violation, so leave that file out and say in out_of_scope what a person must change.
+- A step needs covers (the test cases it makes pass) or a test command in done_when; with tests_mode existing (docs, chore) it needs neither. A change to documentation only is tests_mode existing, one step, and done_when is the single command of the template heal_stage with a stage that the plan holds for the files written: reuse for any change, docs only for files under docs/; never the whole gate_step or a test run; its criteria are kind review. A --stage that does not apply to the written files is rejected.
+- Never put generated files (openapi.json, api.generated.ts, session.json) in write_files, nor files under ${GUARD_PATHS.join(', ')} (build and dogfood tickets only): such a ticket is rejected as scope_violation every time, so leave that file out and say in out_of_scope what a person must change; use AskUserQuestion only when the request itself is to change that file.
 - Self-check: write the whole answer to the draft file named in the prompt (Write tool) and run the check command given there (Bash) until it ends with errors=0. Do not answer with drafts it rejects.
 - If something cannot be settled from the request, the answers and the code, make the most conservative choice and record it in decisions and assumptions. Use the AskUserQuestion tool only for a choice that would change the scope.
 ${DATA}`,
@@ -245,7 +246,24 @@ export function main(argv: string[]): number {
       // file rules are Edit rules (they cover Write too), and an absolute path takes a leading // (measured live: Write(/abs) is not matched)
       const allowWrite = a1 === 'analyst' ? 'Read' : `Edit(/${draftOf(a2)})`
       const allowBash = a1 === 'analyst' ? 'Grep' : `Bash(${checkCmd(a2)}:*)`
-      console.log(dumps({ prompt: prompt(a1, a2), schema: flatSchema(SCHEMA[a1]!), allowWrite, allowBash, model, effort, budget, rules }))
+      // the agent's MCP servers and settings (agent-env.ts) are files next to the rules: AGENT_SESSION takes files
+      const mcpConfig = join(resolve(a2), `${a1}.mcp.json`)
+      const settingsFile = join(resolve(a2), `${a1}.settings.json`)
+      writeAgentFiles(mcpConfig, settingsFile)
+      console.log(
+        dumps({
+          prompt: prompt(a1, a2),
+          schema: flatSchema(SCHEMA[a1]!),
+          allowWrite,
+          allowBash,
+          model,
+          effort,
+          budget,
+          rules,
+          mcpConfig,
+          settingsFile,
+        }),
+      )
       return 0
     }
     case 'answer': {

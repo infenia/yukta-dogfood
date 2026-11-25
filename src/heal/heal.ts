@@ -20,7 +20,7 @@
 // A value of "-" means empty: a start variable of a workflow cannot be.
 // Nothing here commits or reverts.
 import { mkdtempSync } from 'node:fs'
-import { stageRules, writeMcpConfig } from './claude.ts'
+import { stageRules, writeAgentFiles } from './claude.ts'
 import { tmpdir } from 'node:os'
 import { resolve, sep } from 'node:path'
 import {
@@ -443,7 +443,7 @@ ${env.YUKTA_HEAL_TIMEOUT ? `You have about ${Math.floor(Number(env.YUKTA_HEAL_TI
       const rulesFile = join(dir, `${stage}-${n}.rules`)
       const mcpConfig = join(dir, `${stage}-${n}.mcp.json`)
       writeFileSync(rulesFile, env.YUKTA_RULES ? stageRules(env.YUKTA_RULES, stage) : '')
-      writeMcpConfig(mcpConfig, env)
+      writeAgentFiles(mcpConfig, join(dir, `${stage}-${n}.settings.json`))
       console.log(JSON.stringify({ prompt, attempt: n }))
       return 0
     }

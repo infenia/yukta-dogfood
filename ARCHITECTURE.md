@@ -142,11 +142,11 @@ Never edit these by hand (the yukta skill says so).
 Random 32-character keys, mode 0600, in `DEV_HOME`. They reach the server through a Spring properties file
 (`--spring.config.additional-location`), **not** the environment, because Gradle children would inherit environment variables.
 
-| Key               | Role                                      | Used by                                                                                                         |
-| ----------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `api-key` ("dev") | ADMIN                                     | `yk` itself (`useDevKey()` sets `YUKTA_TOKEN` when the target is the dev URL)                                   |
-| `fixer-key`       | VIEWER, all sessions                      | headless fixers: read-only MCP (`get_failure_digest`, `search_logs`, `get_node_output`, `get_workflow_history`) |
-| `session-key`     | OPERATOR, session `dogfood`, `agent=true` | Claude Code's MCP when `YUKTA_MCP_KEY=session` (only if the build's `ApiKeys.java` supports `agent`)            |
+| Key               | Role                                      | Used by                                                                                              |
+| ----------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `api-key` ("dev") | ADMIN                                     | `yk` itself (`useDevKey()` sets `YUKTA_TOKEN` when the target is the dev URL)                        |
+| `fixer-key`       | VIEWER, all sessions                      | unused by agents (they get no yukta MCP, `agent-env.ts`)                                             |
+| `session-key`     | OPERATOR, session `dogfood`, `agent=true` | Claude Code's MCP when `YUKTA_MCP_KEY=session` (only if the build's `ApiKeys.java` supports `agent`) |
 
 The same properties file raises `max-in-memory-size` to 8 MB (the rendered session is over the 256 KB default) and defines the input routing
 tiers `yukta.input.routes.ticket`: supervisor (auto, min-confidence 0.85, 20 s) → session (OPERATOR, 30 min) → human (24 h), final timeout
@@ -364,10 +364,11 @@ flowchart TD
   prompt is the constant `fixer-rules.md`** (13 lines: fix the cause, no suppressions, no weakened tests, no config edits, no commit/push,
   `fixed=false` if stuck) so every attempt shares the cached prefix. `claude.ts` appends `fixer-rules/<kind>.md`: `style→pmd`,
   `spotbugs`, `compile`, `coverage`, `tests→junit`, `ui_vitest→vitest`, other `ui_*→ui`, `cli_*→go`. `YK_ROLE` selects the ticket role files and wins.
-- **Headless Claude** (`claude.ts`): project settings and hooks load (`--setting-sources project`), but `--strict-mcp-config`,
-  `--disable-slash-commands` and `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keep token cost low. Models are pinned (haiku-5-5, sonnet-5-5,
+- **Headless Claude** (`claude.ts`; the `agent` and `ticket-agent` workflows use the same flags): `--settings` turns every hook off and enables only
+  ponytail, token-optimizer and jdtls-lsp; `--strict-mcp-config` loads codebase-memory only (`agent-env.ts`); never the yukta MCP, skill or plugins.
+  `CLAUDE_CODE_DISABLE_CLAUDE_MDS=1` keeps token cost low. Models are pinned (haiku-5-5, sonnet-5-5,
   opus-5-5) so cost does not drift with aliases. Allowed tools: Read, Edit, Write, Grep, Glob and a fixed list of Bash prefixes; `git commit`
-  and `git push` are denied. Optional read-only Yukta MCP uses the `fixer` key. Parent `CLAUDE_*` variables are unset and
+  and `git push` are denied. Parent `CLAUDE_*` variables are unset and
   `YUKTA_HEAL_FIXER=1` is set (the mod disables itself on it, §9).
 - **`format`** runs the stage's formatter; **`recheck`** re-runs the stage command and is **the only judge of "fixed"**.
 - **`judge` (the guard)** decides from what changed on disk, not what Claude claimed. It rejects: a change under a protected path (`config/`,
