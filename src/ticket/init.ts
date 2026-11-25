@@ -9,6 +9,7 @@
 // only for an issue assigned to the person running the pipeline: the spec's done_when commands run as shell.
 import { attach, isReleased, takeContinue } from './branch.ts'
 import { parseTicket, specOf } from './body.ts'
+import { atBase, stubPatch } from './stubs.ts'
 import { rolesOf } from './roles.ts'
 import { measure, sizingOf, trackedFiles } from './sizing.ts'
 import {
@@ -107,7 +108,14 @@ export function main(argv: string[]): number {
     const spec = specOf(planned, n)
     save(join(dir, 'spec', 'spec.json'), spec)
     save(join(dir, 'spec', 'spec.v1.json'), spec)
-    writeFileSync(join(dir, spec.scaffold_patch), '') // stubs come from the steps; a filed spec names none
+    // the body's stubs (the files the tests compile against) become the scaffold patch, made on a clean tree of the base
+    let patch = ''
+    try {
+      patch = atBase(root, opt.base ?? 'origin/main', (wt) => stubPatch(wt, planned.stubs))
+    } catch (e) {
+      console.error(`NOTE the stubs could not be turned into a patch (${(e as Error).message}): the run goes on without them`)
+    }
+    writeFileSync(join(dir, spec.scaffold_patch), patch)
     console.error(
       `NOTE the spec comes from the issue body (${planned.steps.length} steps${planned.base_sha ? `, written against ${planned.base_sha}` : ''})`,
     )

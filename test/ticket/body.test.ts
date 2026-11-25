@@ -17,6 +17,23 @@ test('render then parse gives the same body', () => {
   expect(r.ticket).toEqual(valid)
 })
 
+test('stubs round-trip: whole files, a code fence inside one stays in it', () => {
+  const b = {
+    ...valid,
+    stubs: [
+      {
+        path: 'core/src/main/java/A.java',
+        content: 'class A {\n  /** ```not a fence``` */\n  void allow() { throw new UnsupportedOperationException(); }\n}\n',
+      },
+    ],
+  }
+  const md = renderTicket(b)
+  expect(md).toContain('### `core/src/main/java/A.java`')
+  const r = parseTicket(md)
+  expect(r.errors).toEqual([])
+  expect(r.ticket.stubs).toEqual(b.stubs)
+})
+
 test('dependencies round-trip as issue links', () => {
   const b = { ...valid, depends_on: [12, 15] }
   const md = renderTicket(b)

@@ -173,9 +173,11 @@ test('a spec filed in the issue body is validated and run without an architect c
   b.acceptance_criteria[0].verification.command = cmd
   b.steps[0].write_files = ['core/src/main/java/A.java']
   b.steps[0].done_when.commands = [cmd]
+  b.stubs = [{ path: 'core/src/main/java/A.java', content: 'class A { /* stub */ }\n' }]
   delete b.plan_file
   await w.walk('happy', 'true', { body: renderTicket(b) })
   expect(w.rc, w.out).toBe(0)
+  expect(read(join(w.run, 'spec/scaffold.patch')), 'the stubs are the scaffold').toContain('+class A { /* stub */ }')
   expect(w.out).toContain('NODE has_spec success')
   expect(read(join(w.d, 'calls')), 'no architect call').not.toContain('Write the TicketSpec')
   expect(json(join(w.run, 'routing.json')).tests_mode).toBe('implementer_writes')

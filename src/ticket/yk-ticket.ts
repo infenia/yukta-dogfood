@@ -25,6 +25,7 @@ import {
   ensureServer,
   findCli,
   git,
+  isDir,
   isFile,
   join,
   mkdirp,
@@ -166,7 +167,9 @@ async function ticketFile(wf: 'ticket-new' | 'ticket-from-plan', argv: string[],
     .toISOString()
     .replace(/[-:]/g, '')
     .replace(/\.\d+Z$/, 'Z')
-  const runId = `${wf === 'ticket-new' ? 'new' : 'plan'}-${stamp}`
+  const base = `${wf === 'ticket-new' ? 'new' : 'plan'}-${stamp}`
+  let runId = base
+  for (let k = 2; isDir(join(STATE_DIR, 'filing', runId)); k++) runId = `${base}-${k}` // two filings in the same second
   const dir = join(STATE_DIR, 'filing', runId)
   mkdirp(dir)
   writeFileSync(

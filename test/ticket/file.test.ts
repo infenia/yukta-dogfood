@@ -53,6 +53,10 @@ test('yk ticket new: analyst, architect, one issue in Backlog whose body is the 
   expect(body.errors).toEqual([])
   expect(body.ticket.steps[0].write_files).toEqual(['core/src/main/java/A.java'])
   expect(body.ticket.base_sha, 'the base the spec was written against').toMatch(/^[0-9a-f]{12}$/)
+  // a restarted filing files nothing twice
+  const before = read(join(w.d, 'gh.log')).split('issue create').length
+  expect(kit(['file', 'issue', r.dir]).code).toBe(0)
+  expect(read(join(w.d, 'gh.log')).split('issue create').length).toBe(before)
 })
 
 test('yk ticket new: an open question goes to a person first and the answer reaches the architect', async () => {
@@ -89,4 +93,11 @@ test('a drafts answer that breaks the check is refused, so nothing is filed', ()
   expect(c.code).not.toBe(0)
   expect(c.out).toContain('not a project command template')
   expect(c.out).toMatch(/errors=[1-9]/)
+  // the check runs on a clean origin/main: a file only in the person's checkout does not count
+  const local = json(join(KIT, 'fixtures/ticket-drafts/valid.json'))
+  local.tickets = [local.tickets[0]]
+  local.tickets[0].ticket.steps[0].read_files = [{ path: 'core/src/main/java/Local.java' }]
+  put(join(w.repo, 'core/src/main/java/Local.java'), 'class Local {}\n')
+  put(join(dir, 'drafts.json'), local)
+  expect(kit(['file', 'check', dir, join(dir, 'drafts.json')]).out).toContain('Local.java does not exist')
 })

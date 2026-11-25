@@ -6,7 +6,7 @@
 // `### Sn: title`, Tests, Scope), so an edit stays easy and a broken one is caught by the schema, not guessed at.
 //
 //   ## Summary · ## Type and size · ## Acceptance criteria · ## Architecture · ## Steps · ## Tests · ## Scope · ## Security
-//   ## Decisions · ## Out of scope · ## Assumptions · ## Pipeline roles · ## Source
+//   ## Decisions · ## Out of scope · ## Assumptions · ## Pipeline roles · ## Source · ## Stubs (`### \`path\`` + a ```` fence with the whole file)
 import { type Json } from './lib.ts'
 import { ROLE_NAMES, rolesOf } from './roles.ts'
 import { validateDoc } from './validate-schema.ts'
@@ -53,6 +53,9 @@ export function renderTicket(t: Json): string {
     sec('Assumptions', bullets(t.assumptions)),
     sec('Pipeline roles', bullets(roles, '- none chosen: the router decides every role')),
     ...(source.length ? [sec('Source', source.join('\n'))] : []),
+    ...(t.stubs?.length
+      ? [sec('Stubs', t.stubs.map((s: Json) => `### \`${s.path}\`\n\n\`\`\`\`\n${s.content.replace(/\n$/, '')}\n\`\`\`\``).join('\n\n'))]
+      : []),
   ].join('\n')
 }
 
@@ -98,6 +101,19 @@ const fields = (text: string | undefined): Map<string, string> =>
       return m ? [[m[1]!.trim().toLowerCase(), m[2]!.trim()]] : []
     }),
   )
+
+/** The Stubs section: `### \`path\`` then the first fenced block under it, its lines as they are. */
+function stubsOf(text: string): { path: string; content: string }[] {
+  const out: { path: string; lines: string[]; state: number }[] = [] // state 0 before the fence, 1 inside, 2 after
+  for (const line of text.split('\n')) {
+    const cur = out[out.length - 1]
+    const h = cur?.state === 1 ? null : /^\s{0,3}###\s+`([^`]+)`\s*$/.exec(line)
+    if (h) out.push({ path: h[1]!, lines: [], state: 0 })
+    else if (cur && cur.state < 2 && /^\s*(```+|~~~+)/.test(line)) cur.state++
+    else if (cur?.state === 1) cur.lines.push(line)
+  }
+  return out.map((x) => ({ path: x.path, content: x.lines.join('\n') + '\n' }))
+}
 
 /** A TicketBody read back from the issue Markdown, and the problems found (a missing section, bad YAML, a schema error); `errors` empty means valid. */
 export function parseTicket(md: string): { ticket: Json; errors: string[] } {
@@ -163,6 +179,7 @@ export function parseTicket(md: string): { ticket: Json; errors: string[] } {
     roles: rolesOf(md),
     ...(source.get('plan') ? { plan_file: source.get('plan') } : {}),
     ...(source.get('base') ? { base_sha: source.get('base') } : {}),
+    ...(s.has('stubs') ? { stubs: stubsOf(s.get('stubs')!) } : {}),
     ...(source.get('depends on') ? { depends_on: [...source.get('depends on')!.matchAll(/#?(\d+)/g)].map((m) => Number(m[1])) } : {}),
   }
   if (!errors.length) errors.push(...validateDoc('ticket-body', ticket, 'ticket').lines)

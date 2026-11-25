@@ -4222,7 +4222,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4300,7 +4300,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4378,7 +4378,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4456,7 +4456,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4534,7 +4534,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4612,7 +4612,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4690,7 +4690,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],
@@ -4768,7 +4768,7 @@
             "command": [
               "bun",
               "__TICKET__/src/ticket/ticketkit.ts",
-              "flow",
+              "ladder",
               "next-step",
               "${start.run}"
             ],

@@ -192,7 +192,7 @@ export function testsModeFor(type: string, complexity: string, risk: string): st
 
 export type Proc = { code: number; stdout: string; stderr: string }
 
-/** The programs these tools launch by name. Anything else must be this runtime, or a binary the environment names on purpose (YUKTA_BIN, YUKTA_CLAUDE_BIN, YK_CLAUDE_BIN, YUKTA_PICKUP_YK). */
+/** The programs these tools launch by name. Anything else must be this runtime, or a binary the environment names on purpose (YUKTA_BIN, YUKTA_CLAUDE_BIN, YK_CLAUDE_BIN). */
 const PROGRAMS = new Set([
   'git',
   'gh',
@@ -212,13 +212,7 @@ const PROGRAMS = new Set([
   'make',
 ])
 function checkProgram(program: string): void {
-  const named = [
-    process.execPath,
-    process.env.YUKTA_BIN,
-    process.env.YUKTA_CLAUDE_BIN,
-    process.env.YK_CLAUDE_BIN,
-    process.env.YUKTA_PICKUP_YK,
-  ]
+  const named = [process.execPath, process.env.YUKTA_BIN, process.env.YUKTA_CLAUDE_BIN, process.env.YK_CLAUDE_BIN]
   if (
     PROGRAMS.has(program.split('/').pop()!) ||
     named.includes(program) ||

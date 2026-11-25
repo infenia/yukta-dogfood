@@ -293,20 +293,21 @@ pushes `main`. The run directory is `.yukta-dev/ticket/<run_id>/`, a filing dire
 plain text; the parts the run reads field by field are one fenced YAML block each, so an edit on GitHub stays easy and a broken one is caught by
 the schema.
 
-| Section                   | Content                                                                                              |
-| ------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Summary                   | what and why (the spec's objective)                                                                  |
-| Type and size             | `type` (bug, enhancement, feature, refactor, docs, chore), complexity S/M/L, risk with its reason    |
-| Acceptance criteria       | `- [ ] AC1: text (verify: \`command\`)`or`(verify: review)`; the only requirements                   |
-| Architecture              | files and modules touched, new types, what must not change                                           |
-| Steps                     | `### S1: title` + YAML: write_files, read_files, instructions, contracts, done_when, limits          |
-| Tests                     | YAML: mode, locked_files, cases (given / when / expect)                                              |
-| Scope                     | YAML: allowed and forbidden globs, imports, new dependencies                                         |
-| Security                  | what the change exposes, input handling, which checks matter                                         |
-| Decisions                 | every choice the implementer could otherwise ask about, already made                                 |
-| Out of scope, Assumptions | lists                                                                                                |
-| Pipeline roles            | `- implementer: opus/high` binds a model; nothing listed: the router decides                         |
-| Source                    | `- plan:` the plan file, `- base:` the commit the spec was written against, `- depends on: #12, #15` |
+| Section                   | Content                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Summary                   | what and why (the spec's objective)                                                                                  |
+| Type and size             | `type` (bug, enhancement, feature, refactor, docs, chore), complexity S/M/L, risk with its reason                    |
+| Acceptance criteria       | `- [ ] AC1: text (verify: \`command\`)`or`(verify: review)`; the only requirements                                   |
+| Architecture              | files and modules touched, new types, what must not change                                                           |
+| Steps                     | `### S1: title` + YAML: write_files, read_files, instructions, contracts, done_when, limits                          |
+| Tests                     | YAML: mode, locked_files, cases (given / when / expect)                                                              |
+| Scope                     | YAML: allowed and forbidden globs, imports, new dependencies                                                         |
+| Security                  | what the change exposes, input handling, which checks matter                                                         |
+| Decisions                 | every choice the implementer could otherwise ask about, already made                                                 |
+| Out of scope, Assumptions | lists                                                                                                                |
+| Pipeline roles            | `- implementer: opus/high` binds a model; nothing listed: the router decides                                         |
+| Source                    | `- plan:` the plan file, `- base:` the commit the spec was written against, `- depends on: #12, #15`                 |
+| Stubs                     | per file `### `path`` and its whole content, bodies that only throw: the scaffold the up-front tests compile against |
 
 `init` turns a valid body into `spec/spec.json` and the run skips the architect; `validate-spec` checks it against the current `origin/main`, and
 a spec that no longer applies goes to the architect with the errors. Only an issue **assigned to the person running the pipeline** is trusted this

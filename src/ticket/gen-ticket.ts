@@ -204,7 +204,7 @@ sr.add(ok('ok'))
 for (let k = 1; k <= SLOTS; k++) {
   const [nx, more, run] = [`next${k}`, `more${k}`, `run${k}`] as [string, string, string]
   sr.add(
-    pe(nx, ['flow', 'next-step', RUN], 60, { json: true }),
+    pe(nx, ['ladder', 'next-step', RUN], 60, { json: true }),
     select(more, 'more', { true: 'step' }, 'none'),
     sub(run, 'step', { step: '${payload.output.step}' }),
   )

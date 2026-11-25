@@ -10,7 +10,6 @@
 //   validate-step RUN STEP --attempt N the ladder of 8.2: diff.patch from git, scope-check, regen, free-fix, then the step gate (yk check --no-heal --base B);
 //                                      a failure writes steps/S/attempt-N/failure.json (the digest) and exits 1
 //   commit-step RUN STEP               commit the validated step on the run branch and mark it DONE
-//   next-step   RUN                    {"more": bool, "step": id}: the first step not DONE whose depends_on are DONE
 //   full-checks RUN                    the final gate (yk check --full)
 //   close       RUN [--events FILE]    print the cost by role and append the run's events to the global ticket-events.jsonl
 //
@@ -258,14 +257,6 @@ export function main(argv: string[]): number {
     }
     case 'full-checks':
       return gate(run, wt, undefined, 1, p.commands.gate_final, 'TICKET_GATE_FINAL', 'full') ? 1 : 0
-    case 'next-step': {
-      // the first step not DONE whose depends_on are all DONE; {"more": false} when none is left
-      const spec = load(join(run, 'spec', 'spec.json'))
-      const done = (id: string): boolean => isFile(join(run, 'steps', id, 'status.json'))
-      const next = spec.steps.find((s: Json) => !done(s.id) && (s.depends_on as string[]).every(done))
-      console.log(dumps(next ? { more: true, step: next.id } : { more: false, step: null }))
-      return 0
-    }
     case 'close': {
       const [by, total] = costByRole(run)
       const evf = join(run, 'events.jsonl')

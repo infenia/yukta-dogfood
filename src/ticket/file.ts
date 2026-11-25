@@ -9,7 +9,7 @@
 //                          DIR/ROLE.json; the analyst prints {"ask": bool, "prompt"}: questions, or a confidence under 0.7, go to a person first
 //   answers DIR TEXT       the person's answers to the analyst's questions (DIR/answers.txt), facts for the architect
 //   check DIR DRAFT        the architect's self-check of a TicketDrafts file: the schema, the body round trip (renderTicket -> parseTicket) and
-//                          validate-spec of every ticket against this checkout; prints the errors and errors=N
+//                          validate-spec of every ticket (its stubs as the scaffold) against a clean origin/main; prints the errors and errors=N
 //   issue DIR              files the tickets in order: gh issue create (type/<t> label, assigned to you), project status Backlog, `after` indexes turned
 //                          into issue numbers (depends on); request.json dryRun: only DIR/ticket-<i>.md. Prints FILED #n <url> (or DRAFT <file>) per ticket.
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -36,6 +36,7 @@ import {
   writeFileSync,
 } from './lib.ts'
 import { build } from './route.ts'
+import { atBase, stubPatch } from './stubs.ts'
 import { MAX_STEPS, validate } from './validate-spec.ts'
 import { validateDoc } from './validate-schema.ts'
 
@@ -83,7 +84,9 @@ ${DATA}`,
   steps (ordered; exact files, exact signatures, the exact algorithm: a junior developer who sees only the step can do it), test_cases (given / when / expect, the fewest cases that tell a correct implementation from a wrong one),
   tests_mode (bug: repro_only; docs and chore: existing; otherwise cases_to_code, or implementer_writes for a small low-risk change), locked_files (the test files when tests are written up front), scope (allowed_globs),
   security (what the change exposes, input handling, which of the checks security, licenses, spotbugs, opengrep matter), decisions (every choice the implementer could otherwise ask about, already made),
-  out_of_scope, assumptions, roles ({} unless the request asks for specific models).
+  out_of_scope, assumptions, roles ({} unless the request asks for specific models),
+  stubs when tests are written up front (cases_to_code, repro_only) against code that does not exist yet: for each such source file, its whole new content with the
+  new types and signatures and bodies that only throw (Java: UnsupportedOperationException); only files some step writes. Without them the tests do not compile.
 - Acceptance criteria are commands wherever possible (verification kind command), else review.
 - Steps: at most ${MAX_STEPS.S} for S, ${MAX_STEPS.M} for M, ${MAX_STEPS.L} for L; one module each; max_diff_lines 30-150; every command is one of the project's yk commands (never ./gradlew, go or pnpm); read_files exist.
 - Never put generated files (openapi.json, api.generated.ts, session.json) in write_files.
@@ -93,7 +96,8 @@ ${DATA}`,
   split: `Role: ticket architect splitting a plan into tickets. The plan was made with a person; turn it into the tickets that deliver it, in the order they should be done.
 - Answer with one JSON object valid against the schema: {"tickets": [{"title", "after", "ticket"}]}; "after" lists the indexes (0-based) of earlier tickets that must be done first.
 - One ticket per deliverable a reviewer can judge on its own; each ticket follows every rule for a ticket:
-  complete sections (summary, type, complexity, risk with risk_reason, architecture, steps, test_cases, tests_mode, locked_files, scope, security, decisions, out_of_scope, assumptions, roles {}),
+  complete sections (summary, type, complexity, risk with risk_reason, architecture, steps, test_cases, tests_mode, locked_files, scope, security, decisions, out_of_scope, assumptions, roles {},
+  stubs: the files the up-front tests compile against, bodies that only throw, only files a step writes),
   steps with exact files, signatures and algorithm (sonnet implements, haiku writes the tests), commands only from the project's yk commands, generated files never in write_files.
 - Self-check: write the whole answer to the draft file named in the prompt and run the check command given there until it ends with errors=0.
 ${DATA}`,
@@ -137,38 +141,47 @@ export function checkDrafts(d: Json, root: string): string[] {
   if (s.code) return s.lines
   const errors: string[] = []
   const project = load(join(KIT, 'project.json'))
-  d.tickets.forEach((x: Json, i: number) => {
-    const tag = `ticket ${i} (${x.title})`
-    for (const a of x.after) if (a >= i) errors.push(`${tag}: after ${a} is not an earlier ticket`)
-    const back = parseTicket(renderTicket(x.ticket))
-    for (const e of back.errors) errors.push(`${tag}: body: ${e}`)
-    // validate-spec needs a run dir: a throwaway one with the ticket, the project and the route the spec implies
-    const run = mkdtempSync(join(tmpdir(), 'ticket-check-'))
-    try {
-      const b = x.ticket
-      const t = {
-        ticket_id: '0',
-        title: x.title,
-        type: b.type,
-        labels: [],
-        modules: [],
-        acceptance_criteria: b.acceptance_criteria.map((c: Json) => c.text),
-        roles: b.roles,
-        sizing: null,
-        body: '',
-        planned: { complexity: b.complexity, risk: b.risk, tests_mode: b.tests_mode },
+  // against a clean origin/main, the tree the run starts from (the person's checkout may be any branch, with edits)
+  const check = (wt: string): void =>
+    d.tickets.forEach((x: Json, i: number) => {
+      const tag = `ticket ${i} (${x.title})`
+      for (const a of x.after) if (a >= i) errors.push(`${tag}: after ${a} is not an earlier ticket`)
+      const back = parseTicket(renderTicket(x.ticket))
+      for (const e of back.errors) errors.push(`${tag}: body: ${e}`)
+      // validate-spec needs a run dir: a throwaway one with the ticket, the project and the route the spec implies
+      const run = mkdtempSync(join(tmpdir(), 'ticket-check-'))
+      try {
+        const b = x.ticket
+        const t = {
+          ticket_id: '0',
+          title: x.title,
+          type: b.type,
+          labels: [],
+          modules: [],
+          acceptance_criteria: b.acceptance_criteria.map((c: Json) => c.text),
+          roles: b.roles,
+          sizing: null,
+          body: '',
+          planned: { complexity: b.complexity, risk: b.risk, tests_mode: b.tests_mode },
+        }
+        mkdirp(join(run, 'spec'))
+        save(join(run, 'ticket.json'), t)
+        save(join(run, 'project.json'), project)
+        save(join(run, 'routing.json'), build(t, project, b.complexity, b.risk))
+        save(join(run, 'spec', 'spec.json'), specOf(b, '0'))
+        writeFileSync(join(run, 'spec', 'scaffold.patch'), stubPatch(wt, b.stubs)) // as init makes it
+        for (const e of validate(run, wt).errors) errors.push(`${tag}: ${e}`)
+      } catch (e) {
+        errors.push(`${tag}: ${(e as Error).message}`)
+      } finally {
+        rmSync(run, { recursive: true, force: true })
       }
-      mkdirp(join(run, 'spec'))
-      save(join(run, 'ticket.json'), t)
-      save(join(run, 'project.json'), project)
-      save(join(run, 'routing.json'), build(t, project, b.complexity, b.risk))
-      save(join(run, 'spec', 'spec.json'), specOf(b, '0'))
-      writeFileSync(join(run, 'spec', 'scaffold.patch'), '') // as init writes it for a filed spec
-      for (const e of validate(run, root).errors) errors.push(`${tag}: ${e}`)
-    } finally {
-      rmSync(run, { recursive: true, force: true })
-    }
-  })
+    })
+  try {
+    atBase(root, 'origin/main', check)
+  } catch (e) {
+    errors.push(`no clean origin/main to check against: ${(e as Error).message}`)
+  }
   return errors
 }
 
@@ -176,8 +189,14 @@ function fileIssues(dir: string, dry: boolean): number {
   const req = load(join(dir, 'request.json'))
   const d = load(join(dir, 'drafts.out.json'))
   const base = git(['rev-parse', 'origin/main'], { cwd: req.project, check: false }).stdout.trim()
-  const numbers: number[] = []
+  // filed.json grows after every issue, so a restarted run (a gh failure part way) files only the rest, never one twice
+  const filedFile = join(dir, 'filed.json')
+  const numbers: number[] = isFile(filedFile) && !dry ? load(filedFile).numbers : []
   for (const [i, x] of (d.tickets as Json[]).entries()) {
+    if (numbers[i]) {
+      console.log(`FILED #${numbers[i]} (earlier) ${x.title}`)
+      continue
+    }
     const t: Json = { ...x.ticket }
     if (/^[0-9a-f]{7,40}$/.test(base)) t.base_sha = base.slice(0, 12)
     if (req.plan) t.plan_file = req.plan
@@ -198,6 +217,7 @@ function fileIssues(dir: string, dry: boolean): number {
     if (!/\/issues\/\d+$/.test(url)) url = gh(args).trim() // the label may not exist in the repo: file without it
     const n = Number(url.split('/').pop())
     numbers.push(n)
+    save(filedFile, { numbers })
     try {
       projectSetStatus(url, 'Backlog', gh(['auth', 'token']).trim())
     } catch (e) {

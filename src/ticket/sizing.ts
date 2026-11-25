@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// The "Sizing" section of a ticket body (ticket-template.md): facts the agent that drafts the ticket reads off the code, one `- key: value` line each.
+// The "Sizing" section of a ticket body read by init (the old free-form ticket; a filed spec in body.ts carries its own complexity and risk): facts the agent that drafts the ticket reads off the code, one `- key: value` line each.
 //   - files: ui/src/router.tsx, ui/src/features/overview/**     paths or globs the change writes or deletes (a path not in the tree is a new file)
 //   - change: delete, rewire                                     kinds of change, from CHANGE_KINDS
 //   - open_decisions: 0                                          choices the ticket leaves to the architect

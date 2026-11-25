@@ -143,6 +143,25 @@
         "minimum": 1
       },
       "description": "Issue numbers that must be done first (yk ticket from-plan fills them)."
+    },
+    "stubs": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "content"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "The whole content of each new or changed source file the tests compile against, bodies that only throw; init turns them into the run's scaffold patch. Only files a step writes."
     }
   }
 }

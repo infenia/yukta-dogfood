@@ -52,10 +52,18 @@ export async function executions(): Promise<Json[] | null> {
   return Array.isArray(j) ? j : (j.data ?? null)
 }
 
-/** The number of executions not yet ended, on any session. When it cannot be read it says 1: never stop a server we cannot see idle. */
+/** The number of executions not yet ended, on any session. When it cannot be read it says 1: never stop a server we cannot see idle.
+ * The 30-minute `pickup` schedule of earlier versions never ends and its command is gone: it is stopped here (and pickup.exec removed), else
+ * it would keep every swap pending. ponytail: drop this once no dev server started before the removal is left. */
 export async function busy(): Promise<number> {
   const ex = await executions()
-  return ex ? ex.filter((e) => RUNNING.test(e.status ?? '')).length : 1
+  if (!ex) return 1
+  const old = ex.filter((e) => e.workflowId === 'pickup' && RUNNING.test(e.status ?? ''))
+  for (const e of old)
+    await http('POST', `${DEV_URL}/api/executions/${e.executionId}/stop?tree=true`, { headers: keyHeader(), timeoutMs: 5000 })
+  if (old.length) console.error(`stopped the retired pickup schedule (${old.length} execution${old.length > 1 ? 's' : ''})`)
+  rmSync(join(DEV_HOME, 'pickup.exec'), { force: true })
+  return ex.filter((e) => e.workflowId !== 'pickup' && RUNNING.test(e.status ?? '')).length
 }
 
 /** Brings the managed worktree $DEV_HOME/main to origin/main (or $YUKTA_DEV_MAIN_REF) and returns its commit. */
