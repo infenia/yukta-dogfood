@@ -112,47 +112,28 @@ export const maxRisk = (...rs: Risk[]): Risk => rs.reduce((a, b) => (RISK.indexO
 type Model = { model: string; effort: string }
 const m = (model: string, effort: string): Model => ({ model, effort })
 
-/** Design 3.1: {role: {model, effort} or null}. S+low is its own row; L or high risk is the strong row. */
+/** {role: {model, effort} or null}: opus designs, sonnet implements, haiku writes the test code, sonnet reviews (the cost split of
+ * design/plans/issue-pipeline-simplification.md section 7). Size and risk only change the effort; a step that fails twice goes one tier up
+ * (ladder tier_up), which replaces a separate model for tricky steps. */
 export function modelTable(complexity: string, risk: string, tierMode = 'two_tier', override?: Model | null): Record<string, Model | null> {
-  let t: Record<string, Model | null>
-  if (complexity === 'L' || risk === 'high') {
-    t = {
-      architect: m('opus', 'high'),
-      test_writer: m('sonnet', 'medium'),
-      implementer: m('haiku', 'medium'),
-      implementer_tricky: m('sonnet', 'high'),
-      reviewer: m('opus', 'medium'),
-    }
-  } else if (complexity === 'S' && risk === 'low') {
-    t = {
-      architect: m('sonnet', 'medium'),
-      test_writer: null,
-      implementer: m('haiku', 'medium'),
-      implementer_tricky: m('sonnet', 'medium'),
-      reviewer: m('sonnet', 'low'),
-    }
-  } else {
-    t = {
-      architect: m('sonnet', 'high'),
-      test_writer: m('sonnet', 'low'),
-      implementer: m('haiku', 'medium'),
-      implementer_tricky: m('sonnet', 'medium'),
-      reviewer: m('sonnet', 'medium'),
-    }
+  const small = complexity === 'S' && risk === 'low'
+  const strong = complexity === 'L' || risk === 'high'
+  const t: Record<string, Model | null> = {
+    architect: m('opus', small ? 'medium' : 'high'),
+    test_writer: m('haiku', 'medium'),
+    implementer: m('sonnet', 'medium'),
+    reviewer: m('sonnet', strong ? 'high' : 'medium'),
   }
-  if (tierMode === 'single') t.implementer = t.implementer_tricky = t.architect!
-  if (override) t.implementer = t.implementer_tricky = override
+  if (tierMode === 'single') t.implementer = t.architect!
+  if (override) t.implementer = override
   return t
 }
 
-/** The implementer model of one step (design 3.1): the ladder's choice (steps/S/model.json), else `implementer_tricky` for a step the
- * architect marked tricky, else `implementer`. Every reader of a step's model goes through here, so the call, the ladder and the telemetry agree. */
+/** The implementer model of one step: the ladder's choice (steps/S/model.json, after a tier-up), else `implementer`. Every reader of a step's
+ * model goes through here, so the call, the ladder and the telemetry agree. */
 export function stepModel(run: string, sid: string, routing: Json = load(join(run, 'routing.json'))): Model {
   const mf = join(run, 'steps', sid, 'model.json')
-  if (isFile(mf)) return load(mf)
-  const sf = join(run, 'spec', 'spec.json')
-  const tricky = isFile(sf) && load(sf).steps?.find((x: Json) => x.id === sid)?.complexity === 'tricky'
-  return (tricky && routing.models.implementer_tricky) || routing.models.implementer
+  return isFile(mf) ? load(mf) : routing.models.implementer
 }
 
 /** The list items (`- x` or `* x`) under the first heading matching `rx`, up to the next heading. */

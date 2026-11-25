@@ -3,6 +3,7 @@
 // ticketkit flow ACTION RUN [STEP] [--worktree W]: the glue of the `ticket` and `step` workflows (design 6, 8.2, 15.5), no model.
 //
 //   preflight   RUN                    the walking skeleton runs one step of a low or medium risk spec; anything else stops here
+//   has-spec    RUN                    exit 0 when init took the spec from the issue body (the run skips the architect), else 1
 //   retry-spec  RUN                    the test writer was blocked or the gate failed: the reason goes to spec/downstream.json for the next architect, the worktree is reset
 //   commit-tests RUN                   commit the stubs and locked tests; the base of every step not done is reset to it
 //   step-begin  RUN STEP               commit the scaffold and locked tests as the base, record it, write the step packet (pack-step)
@@ -162,6 +163,9 @@ export function main(argv: string[]): number {
   const sd = join(run, 'steps', step ?? 'S0')
   const attemptOpt = opt.attempt ?? 'cur'
   switch (action) {
+    case 'has-spec':
+      // the issue body held the spec (init): validate it on the current base instead of asking the architect
+      return isFile(join(run, 'spec', 'spec.json')) ? 0 : 1
     case 'preflight': {
       const r = load(join(run, 'routing.json'))
       const spec = load(join(run, 'spec', 'spec.json'))

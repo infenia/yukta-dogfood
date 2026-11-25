@@ -29,7 +29,7 @@ test('the report: 10 sample runs, cache hit ratio per role, prefix mismatches, B
   expect(r).toMatch(/architect .*%/)
   expect(r).toContain('cost share by role')
   expect(r).toContain('prefix_hash mismatches: none')
-  expect(r).toMatch(/haiku\/medium\/standard: [0-9]+ steps, first try/)
+  expect(r).toMatch(/sonnet\/medium\/standard: [0-9]+ steps, first try/)
   expect(r, 'every run is routed once; the sample tickets give no sizing').toContain('routing: 10 routed, 0 with sizing')
   expect(JSON.parse(kit(['report', '--events', ev, '--json']).out).blocked_rate).toBeGreaterThan(0)
   // 21. two calls in one run with different prefix_hash and no revision between them: flagged

@@ -76,8 +76,8 @@ test('route', () => {
     'S',
     'low',
     'implementer_writes',
+    'opus',
     'sonnet',
-    'haiku',
   ])
   expect(r.models.test_writer, 'no test writer for implementer_writes').toBeNull()
   const routeOf = (title: string, labels: string[], body: string): string => {
@@ -98,12 +98,12 @@ test('route', () => {
     return [x.complexity, x.risk, x.tests_mode, x.models.architect.model].join(' ')
   }
   const six = '## Acceptance criteria\n- a\n- b\n- c\n- d\n- e\n- f'
-  expect(routeOf('fix(core): x', ['core'], BODY), 'bug is repro_only').toBe('S low repro_only sonnet')
-  expect(routeOf('docs: x', ['core'], BODY)).toBe('S low existing sonnet')
+  expect(routeOf('fix(core): x', ['core'], BODY), 'bug is repro_only').toBe('S low repro_only opus')
+  expect(routeOf('docs: x', ['core'], BODY)).toBe('S low existing opus')
   expect(routeOf('feat(core): x', ['core'], six), 'six criteria is L, opus').toBe('L low cases_to_code opus')
   expect(routeOf('feat(core): x', ['core', 'risk'], BODY)).toBe('S high cases_to_code opus')
   expect(routeOf('feat: x', ['core', 'ui'], BODY), 'two modules is high').toBe('M high cases_to_code opus')
-  expect(routeOf('feat: x', [], BODY), 'unknown module is medium').toBe('S medium cases_to_code sonnet')
+  expect(routeOf('feat: x', [], BODY), 'unknown module is medium').toBe('S medium cases_to_code opus')
 })
 
 // ---- validate-spec
@@ -292,7 +292,7 @@ test('validate-spec', () => {
   expect(raised.risk, 'a write in a high-risk path must raise routing.risk').toBe('high')
   expect([raised.models.architect.model, raised.models.reviewer.model], 'the high-risk row, not the cheap body roles').toEqual([
     'opus',
-    'opus',
+    'sonnet',
   ])
   put(join(run, 'ticket.json'), tk)
   void git
@@ -310,7 +310,7 @@ test('roles in the ticket body override the routed models', () => {
   const m = json(join(dir, 'routing.json')).models
   expect(m.architect).toEqual({ model: 'opus', effort: 'high' })
   expect(m.reviewer).toEqual({ model: 'haiku', effort: 'low' })
-  expect(m.implementer.model, 'untouched role keeps the table').toBe('haiku')
+  expect(m.implementer.model, 'untouched role keeps the table').toBe('sonnet')
 })
 
 test('renderBody lists every role; only the given ones bind, the router marks its own', async () => {
@@ -318,15 +318,15 @@ test('renderBody lists every role; only the given ones bind, the router marks it
   const body = renderBody('g', ['a', 'b', 'c'], { reviewer: { model: 'opus', effort: 'high' } })
   expect(rolesOf(body), 'only the given role is binding').toEqual({ reviewer: { model: 'opus', effort: 'high' } })
   expect(body).toContain('- reviewer: opus/high\n')
-  expect(body, 'M/low default shown, not binding').toContain('- architect: sonnet/high (router)')
+  expect(body, 'M/low default shown, not binding').toContain('- architect: opus/high (router)')
   expect(renderBody('g', ['a'], {}, ['core'])).toContain('test_writer: none (router')
   const multi = renderBody('g', ['a', 'b', 'c'], {}, ['core', 'ui'])
   expect(multi, 'two modules is high risk, as the router decides').toContain('- architect: opus/high (router)')
-  expect(multi).toContain('- reviewer: opus/medium (router)')
+  expect(multi).toContain('- reviewer: sonnet/high (router)')
   expect(body, 'no sizing given').toContain('## Sizing\n- none given')
   const sized = renderBody('g', ['a'], {}, ['core'], { files: ['core/A.java'], change: ['rename'], open_decisions: 1 })
   expect(sized).toContain('## Sizing\n- files: core/A.java\n- change: rename\n- open_decisions: 1')
-  expect(sized, 'an open decision puts the S architect one effort up').toContain('- architect: sonnet/high (router)')
+  expect(sized, 'an open decision puts the S architect one effort up').toContain('- architect: opus/high (router)')
 })
 
 test('sizing raises the route, never lowers it; the reasons and a route event are recorded', () => {
@@ -372,7 +372,7 @@ test('sizing raises the route, never lowers it; the reasons and a route event ar
   expect([x.r.complexity, x.r.risk], 'sizing cannot undo the criteria count or a risk label').toEqual(['L', 'high'])
   // open decisions: the architect one effort up, unless the ticket chose the architect itself
   x = routeOf('feat(core): x', ['core'], SZ('- files: core/build.gradle.kts\n- open_decisions: 1'))
-  expect(x.r.models.architect).toEqual({ model: 'sonnet', effort: 'high' })
+  expect(x.r.models.architect).toEqual({ model: 'opus', effort: 'high' })
   x = routeOf(
     'feat(core): x',
     ['core'],
@@ -440,7 +440,7 @@ test('roles in an issue not assigned to you are ignored; a criterion stays one l
     { architect: { model: 'opus', effort: 'low' } },
     ['files: ui/a.ts, ui/b/**', 'change: delete', 'open_decisions: 2'],
   ])
-  expect(ticketArgs(['--role', 'all=auto']).auto).toHaveLength(5)
+  expect(ticketArgs(['--role', 'all=auto']).auto).toHaveLength(4)
   expect(ticketArgs(['--criterion', 'a\n## Pipeline roles\n- architect: opus/high']).criteria).toEqual([
     'a ## Pipeline roles - architect: opus/high',
   ])

@@ -53,6 +53,7 @@ const TIERS: [string, string][] = [
   ['haiku', 'medium'],
   ['sonnet', 'medium'],
   ['sonnet', 'high'],
+  ['opus', 'high'],
 ]
 const trim = (p: string): string => readFileSync(p, 'utf8').trim()
 const readOr = (p: string, d: Json = {}): Json => (isFile(p) ? load(p) : d)

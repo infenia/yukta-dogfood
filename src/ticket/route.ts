@@ -53,7 +53,7 @@ export function modelsFor(t: Json, p: Json, complexity: string, risk: string, te
 }
 
 export function build(t: Json, p: Json, complexity: string, risk: string, basis: Json = null): Json {
-  const testsMode = testsModeFor(t.kind, complexity, risk)
+  const testsMode = t.planned?.tests_mode ?? testsModeFor(t.kind, complexity, risk)
   return {
     ticket_id: t.ticket_id,
     kind: t.kind,
@@ -73,7 +73,11 @@ export function main(argv: string[]): number {
   const run = argv[0]!
   const t = load(join(run, 'ticket.json'))
   const p = load(join(run, 'project.json'))
-  const { complexity, risk, basis } = decide(t, p)
+  const d = decide(t, p)
+  // a spec filed in the issue was sized by the architect and reviewed by a person: its complexity holds, its risk never lowers the static one
+  const complexity = t.planned?.complexity ?? d.complexity
+  const risk = t.planned ? maxRisk(d.risk as Risk, t.planned.risk) : d.risk
+  const basis = t.planned ? { ...d.basis, planned: t.planned } : d.basis
   const r = build(t, p, complexity, risk, basis)
   save(join(run, 'routing.json'), r)
   const s = basis.sizing

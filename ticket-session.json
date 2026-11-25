@@ -186,6 +186,32 @@
           }
         },
         {
+          "nodeId": "has_spec",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "flow",
+              "has-spec",
+              "${start.run}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 60,
+            "timeoutSeconds": 60,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true
+          }
+        },
+        {
           "nodeId": "architect1",
           "type": "PROCESS_EXECUTOR",
           "config": {
@@ -2634,7 +2660,7 @@
         },
         {
           "source": "route",
-          "target": "architect1",
+          "target": "has_spec",
           "sourcePort": "success"
         },
         {
@@ -2645,6 +2671,16 @@
         {
           "source": "route.dead",
           "target": "route.failed"
+        },
+        {
+          "source": "has_spec",
+          "target": "validate_spec1",
+          "sourcePort": "success"
+        },
+        {
+          "source": "has_spec",
+          "target": "architect1",
+          "sourcePort": "failure"
         },
         {
           "source": "architect1",

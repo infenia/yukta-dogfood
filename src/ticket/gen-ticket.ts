@@ -3,7 +3,7 @@
 // Writes the workflows of the ticket pipeline into session.json (design 6.1 to 6.3, 9, 15.3, 15.5), the way
 // dogfood/src/gen-heal.ts does. `yk ticket` adds them to the `dogfood` session, so they call its `tool` workflow.
 //
-//   ticket        issue -> intake -> init -> claim -> route -> architect (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
+//   ticket        issue -> intake -> init -> claim -> route -> [the spec of the issue body, else the architect] (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
 //                 -> plan comment -> attempt_round, recovered up to 3 times (revise: `escalate`; pause: a human packet and an ASK_INPUT)
 //                 -> finish (draft PR) -> close
 //   attempt_round steps_round -> finalize
@@ -293,7 +293,11 @@ t.chain(
   ],
   'route',
 )
-t.chain([[pe('route', ['route', RUN], 120), 'route failed']], 'architect1', true) // complexity and risk come from the ticket's own criteria, labels and paths
+t.chain([[pe('route', ['route', RUN], 120), 'route failed']], 'has_spec', true) // complexity and risk come from the ticket's own criteria, labels and paths
+// a spec filed in the issue is validated on the current base; one that no longer applies goes to the architect with the errors (the re-plan)
+t.add(pe('has_spec', ['flow', 'has-spec', RUN], 60))
+t.link('has_spec', 'validate_spec1', 'success')
+t.link('has_spec', 'architect1', 'failure')
 // the architect, with validate-spec errors and the test stage's feedback fed back, twice at most
 const ARCH_FAIL =
   'the architect call failed (the ERROR line says which: schema_invalid, api_error, limit) or did not ask; a spec the validator rejects is retried, not this'

@@ -44,9 +44,9 @@ test('10. three failed attempts: attempt 2 on the same model, attempt 3 one tier
   expect(
     ev('implementer')
       .slice(0, 3)
-      .map((e) => e.model)
+      .map((e) => `${e.model}/${e.effort}`)
       .join(' '),
-  ).toBe('haiku haiku sonnet')
+  ).toBe('sonnet/medium sonnet/medium sonnet/high')
   expect(w.out).toContain('NODE escalate1 success')
   expect(json(join(w.run, 'revisions.json'))).toEqual({ count: 1, for: ['S1:tests:'] })
   expect(w.out).toContain('NODE human')
@@ -183,17 +183,17 @@ test('the decision rules', async () => {
   expect(act(r).trigger).toBe('step_blocked')
 })
 
-test('a step the architect marked tricky starts on implementer_tricky (design 3.1) and the ladder climbs from there', () => {
+test('the implementer starts on sonnet whatever the step complexity; the ladder climbs one tier from there', () => {
   const r = mk('compile', 'typecheck_fail')
   const spec = json(join(r, 'spec/spec.json'))
   spec.steps.find((s: any) => s.id === 'S1').complexity = 'tricky'
   put(join(r, 'spec/spec.json'), spec)
-  expect(json(join(r, 'routing.json')).models.implementer_tricky).toEqual({ model: 'sonnet', effort: 'medium' })
+  expect(json(join(r, 'routing.json')).models.implementer_tricky, 'no tricky model any more').toBeUndefined()
   const first = act(r)
-  expect([first.action, first.model, first.effort], 'attempt 2 stays on the tricky model').toEqual(['retry', 'sonnet', 'medium'])
+  expect([first.action, first.model], 'attempt 2 stays on the implementer model').toEqual(['retry', 'sonnet'])
   copyFailure(r, 2)
   const up = act(r)
-  expect([up.action, up.model, up.effort], 'then one tier above it, not above haiku').toEqual(['tier_up', 'sonnet', 'high'])
+  expect(up.action, 'then one tier up').toBe('tier_up')
 })
 
 test('27. heal edits a locked test and a file outside write_files: reverted and recorded', async () => {

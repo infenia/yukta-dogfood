@@ -6,6 +6,7 @@ import { afterAll, beforeAll, expect, setDefaultTimeout, test } from 'bun:test'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { KIT, World, git, json, put, read, sh } from './helpers.ts'
+import { renderTicket } from '../../src/ticket/body.ts'
 
 setDefaultTimeout(600_000)
 let w: World
@@ -52,7 +53,7 @@ test('happy path: a run dir, a commit, events with cache fields, the GitHub flow
   const ev = w.events(w.d)
   expect([...new Set(ev.map((e) => e.role))].sort().join(' ')).toBe('architect implementer pack reviewer route validate')
   const impl = ev.find((e) => e.role === 'implementer')
-  expect([impl.cache_read_tokens, impl.cache_write_tokens, impl.model, impl.cost_usd]).toEqual([900, 100, 'haiku', 0.02])
+  expect([impl.cache_read_tokens, impl.cache_write_tokens, impl.model, impl.cost_usd]).toEqual([900, 100, 'sonnet', 0.02])
   expect(git(w.d + '/remote.git', 'rev-parse', 'main').out.trim()).toBe(w.main0)
   // claim, plan comment, draft PR
   const log = read(join(w.d, 'gh.log'))
@@ -72,7 +73,7 @@ test('happy path: a run dir, a commit, events with cache fields, the GitHub flow
     '| T1 |',
     'RESULT status=SUCCESS',
     '| role | model | calls | input | output | cache read | cache write | cost |',
-    '| implementer | haiku | 1 | 10 | 5 | 900 | 100 | $0.02 |',
+    '| implementer | sonnet | 1 | 10 | 5 | 900 | 100 | $0.02 |',
     '| **total** |',
   ])
     expect(pr, `PR body lacks '${want}'`).toContain(want)
@@ -162,4 +163,25 @@ test('finish drops the [T#] tags from the locked tests in their own commit and l
   expect(git(remote, 'show', `issue/7:${f}`).out).toContain('@DisplayName("rejects the 101st request")')
   expect(git(remote, 'log', '--format=%s', 'issue/7').out).toContain('test: drop the spec case tags from test names for #7')
   expect(read(join(w.d, 'pr-body.md'))).toContain('| rejects the 101st request |')
+})
+
+test('a spec filed in the issue body is validated and run without an architect call', async () => {
+  const b = json(join(KIT, 'fixtures/ticket-body/valid.json'))
+  const cmd = 'yk gradle :core:test --tests com.infenia.ATest'
+  b.tests_mode = 'implementer_writes'
+  b.locked_files = []
+  b.acceptance_criteria[0].verification.command = cmd
+  b.steps[0].write_files = ['core/src/main/java/A.java']
+  b.steps[0].done_when.commands = [cmd]
+  delete b.plan_file
+  await w.walk('happy', 'true', { body: renderTicket(b) })
+  expect(w.rc, w.out).toBe(0)
+  expect(w.out).toContain('NODE has_spec success')
+  expect(read(join(w.d, 'calls')), 'no architect call').not.toContain('Write the TicketSpec')
+  expect(json(join(w.run, 'routing.json')).tests_mode).toBe('implementer_writes')
+  // a broken body spec falls back to the architect
+  await w.walk('happy', 'true', { body: renderTicket(b).replace('allow_new_dependencies: false', 'allow_new_dependencies: [') })
+  expect(w.rc, w.out).toBe(0)
+  expect(w.out).toContain('NODE has_spec failure')
+  expect(read(join(w.d, 'calls'))).toContain('Write the TicketSpec')
 })

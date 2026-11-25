@@ -47,7 +47,7 @@
     "roles": {
       "type": "object",
       "description": "The binding role choices of the Pipeline roles section; a role not named here is left to the router.",
-      "propertyNames": { "enum": ["architect", "test_writer", "implementer", "implementer_tricky", "reviewer"] },
+      "propertyNames": { "enum": ["architect", "test_writer", "implementer", "reviewer"] },
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,

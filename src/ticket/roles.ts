@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { decide, modelsFor } from './route.ts'
 import { type Sizing, measure, sizingLines } from './sizing.ts'
 
-export const ROLE_NAMES = ['architect', 'test_writer', 'implementer', 'implementer_tricky', 'reviewer']
+export const ROLE_NAMES = ['architect', 'test_writer', 'implementer', 'reviewer']
 const MODELS = ['opus', 'sonnet', 'haiku']
 const EFFORTS = ['low', 'medium', 'high']
 
