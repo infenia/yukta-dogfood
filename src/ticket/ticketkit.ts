@@ -26,7 +26,6 @@ const MODULES: Record<string, () => Promise<Module>> = {
   ladder: () => import('./ladder.ts'),
   report: () => import('./report.ts'),
   waves: () => import('./waves.ts'),
-  advice: () => import('./advice.ts'),
 }
 const STEPKIT = new Set(['pack-step', 'scope-check', 'regen', 'free-fix', 'digest', 'event'])
 

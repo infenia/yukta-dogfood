@@ -4,18 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Tooling (TypeScript on Bun) that develops the sibling [yukta](https://github.com/infenia/yukta) repo _with_ Yukta: `yk` runs builds, tests and checks as workflows on a local dev server (`127.0.0.1:9858`, built from yukta `origin/main`) and prints one `RESULT` line. A failing check goes to a self-healing ladder of Claude fixers. See `README.md` (how to run) and `ARCHITECTURE.md` (how it works inside); read those before changing workflows, heal, pickup or ticket code.
+Tooling (TypeScript on Bun) that develops the sibling [yukta](https://github.com/infenia/yukta) repo _with_ Yukta: `yk` runs builds, tests and checks as workflows on a local dev server (`127.0.0.1:9858`, built from yukta `origin/main`) and prints one `RESULT` line. A failing check goes to a self-healing ladder of Claude fixers. See `README.md` (how to run) and `ARCHITECTURE.md` (how it works inside); read those before changing workflows, heal or ticket code.
 
 ## Commands
 
 ```bash
-bun install --frozen-lockfile && (cd channel && bun install --frozen-lockfile)
+bun install --frozen-lockfile
 bun fmt --check          # formatter (bun fmt to fix); printWidth 140, no semis, single quotes
-bun check && bun check -p channel   # typecheck (root and channel/)
+bun check                # typecheck
 bun test                 # root tests (bunfig sets root = "test")
 bun test test/plan.test.ts            # one file
 bun test -t "name pattern"            # one test by name
-(cd channel && bun test)              # channel tests
 bun src/heal/gen-session.ts --check   # fail if session.json is stale
 bun src/ticket/gen-ticket.ts --check  # fail if ticket-session.json is stale
 ```
@@ -36,6 +35,5 @@ CI (`.github/workflows/ci.yml`) runs exactly these. `yk` itself must be run from
 - `src/yk.ts` — CLI dispatcher; `src/{base,client,server,check,plan,runs}.ts` — paths/allowlist, server API, dev-server lifecycle, check payload and scoping, run watching and `RESULT` printing.
 - `src/heal/` — self-heal (free fix → baseline → fixer ladder → guard → verify) and the generator for `session.json`; config in `heal.json`.
 - `src/ticket/` — spec-to-PR ticket pipeline (architect/implementer/test-writer/reviewer roles) and generator for `ticket-session.json`.
-- `src/pickup.ts`, `src/input-bridge.ts`, `channel/` — hands GitHub issues to open Claude sessions via an MCP channel server with an HTTP API.
 - `mod/` — Claude Code plugin (hooks: gate, plan, rewrite, panes, slash commands); `hooks/` — standalone yk-hook.
 - `test/` mirrors `src/`; fakes in `test/ticket/fake/`.

@@ -3767,69 +3767,6 @@
         "outcome": "stone"
       }
     },
-    "pickup": {
-      "workflowId": "pickup",
-      "description": "Scheduled pickup: every 30 minutes hand the next assigned, Ready issue to the yukta-pickup channel (yk pickup on)",
-      "nodes": [
-        {
-          "nodeId": "every",
-          "type": "SCHEDULE_TRIGGER",
-          "config": {
-            "intervalMs": 1800000,
-            "timeoutSeconds": 2400
-          },
-          "color": "stone"
-        },
-        {
-          "nodeId": "tick",
-          "type": "PROCESS_EXECUTOR",
-          "config": {
-            "command": [
-              "bun",
-              "__DOGFOOD__/src/pickup.ts",
-              "tick"
-            ],
-            "workingDir": "__PROJECT_PATH__",
-            "timeout": 120,
-            "failureMode": "CONTINUE",
-            "routeByExitCode": true
-          },
-          "color": "sky"
-        },
-        {
-          "nodeId": "ok",
-          "type": "CONSOLE_TERMINAL",
-          "config": {
-            "displayOutput": true
-          },
-          "color": "teal"
-        },
-        {
-          "nodeId": "failed",
-          "type": "CONSOLE_TERMINAL",
-          "config": {
-            "displayOutput": true
-          },
-          "color": "magenta"
-        }
-      ],
-      "edges": [
-        {
-          "source": "every",
-          "target": "tick"
-        },
-        {
-          "source": "tick",
-          "target": "ok",
-          "sourcePort": "success"
-        },
-        {
-          "source": "tick",
-          "target": "failed",
-          "sourcePort": "failure"
-        }
-      ]
-    },
     "agent": {
       "workflowId": "agent",
       "description": "One fixer-grade Claude Code session on the AGENT_SESSION plugin; the payload carries the answer, its cost and its turns.",

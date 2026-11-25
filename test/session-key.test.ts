@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // Offline test of the key of the Claude Code session (#1924): server.properties gets an OPERATOR agent key limited to the dogfood session only when the server
-// build knows `agent`, and the Yukta MCP of a pickup session uses it (YUKTA_MCP_KEY=session) while every other caller keeps the dev key.
+// build knows `agent`, and the Yukta MCP of a session started with YUKTA_MCP_KEY=session uses it while every other caller keeps the dev key.
 import { afterAll, beforeAll, expect, test } from 'bun:test'
 import { join } from 'node:path'
 import { put, rm, tmp, withLib } from './helpers.ts'

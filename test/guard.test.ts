@@ -3,18 +3,14 @@
 // The resource guard: what it owns, the order of the install, the directives it sends and the reviews it answers (against a fake server).
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { ADVICE, GUARD, agent, answerReviews, askTargets, directives, runTargets, saveGuard } from '../src/guard.ts'
+import { ADVICE, GUARD, agent, answerReviews, directives, runTargets, saveGuard } from '../src/guard.ts'
 
 const root = join(import.meta.dir, '..')
 const wfs = (f: string): string[] => Object.keys(require(join(root, f)).workflows)
 
-test('the guard owns the run level of every workflow of both session files, ticket-advice only the ASK_INPUT nodes', () => {
+test('the guard owns the run level of every workflow of both session files', () => {
   const run = runTargets('dogfood')
   for (const w of [...wfs('session.json'), ...wfs('ticket-session.json')]) expect(run, w).toContain(`run:dogfood/${w}`)
-  const ask = askTargets('dogfood').join(' ')
-  for (const id of ['approve_spec', 'approve_merge']) expect(ask, id).toContain(id)
-  expect(ask).not.toContain('session:')
-  for (const t of askTargets('dogfood')) expect(t).toMatch(/^workflow:dogfood\/[a-z_]+\/\/[\w,.]+$/)
 })
 
 test('resource-guard.json: an http supervisor that may pause/resume and lets people start, stop and restart', () => {
@@ -50,18 +46,17 @@ function fake(handler: (s: Seen) => Response | undefined = () => undefined) {
 const def = require(join(root, 'supervisor', 'resource-guard.json'))
 const line = (s: Seen): string => `${s.method} ${s.path}`
 
-test('saveGuard: ticket-advice is narrowed first; a stored guard that differs is replaced; the credential comes back', async () => {
+test('saveGuard: an old ticket-advice is deleted first; a stored guard that differs is replaced; the credential comes back', async () => {
   const f = fake((s) => (line(s) === `GET /api/supervisors/${GUARD}` ? Response.json({ data: { settings: { old: true } } }) : undefined))
   try {
     expect(await saveGuard(f.url)).toBe('yag_x')
     expect(f.seen.map(line)).toEqual([
       `GET /api/supervisors/${ADVICE}`,
-      `PUT /api/supervisors/${ADVICE}/assignments`,
+      `DELETE /api/supervisors/${ADVICE}`,
       `GET /api/supervisors/${GUARD}`,
       `PUT /api/supervisors/${GUARD}`,
       `POST /api/supervisors/${GUARD}/credential?ttlHours=24`,
     ])
-    expect(f.seen[1]!.body).not.toContain('session:')
   } finally {
     f.srv.stop(true)
   }

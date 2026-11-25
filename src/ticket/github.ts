@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
-// ticketkit github ACTION ... : the GitHub side of the pipeline (design 15.9). It reuses pickup's rules.
+// ticketkit github ACTION ... : the GitHub side of the pipeline (design 15.9).
 //
 //   intake  ISSUE               open, assigned to the user, Ready on the project, acceptance criteria. SKIPPED (exit 3) if not; BLOCKED (exit 4) when an
 //                               acceptance criterion asks for secrets, a push to main, other repos, changed settings or skipped checks. Text outside the
@@ -12,7 +12,7 @@
 //   finish  RUN --worktree W    spotlessApply, commit, push issue/<n>, open a DRAFT PR (conventional title, `Fixes #n`, the RESULT line, spec summary,
 //                               cost by role); fails when the body lacks what project.json pr_body_must_contain names. Never merges, never pushes main
 //
-// Env: YUKTA_PICKUP_REPO (infenia/yukta), YUKTA_PICKUP_PROJECT (5), YUKTA_PICKUP_OWNER (infenia), TICKET_FORMAT (override of the format command).
+// Env: YUKTA_TICKET_REPO (infenia/yukta), YUKTA_TICKET_PROJECT (5), YUKTA_TICKET_OWNER (infenia), TICKET_FORMAT (override of the format command).
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import {
@@ -36,9 +36,9 @@ import { criteria } from './init.ts'
 import { release, releaseFailed } from './branch.ts'
 import { untag } from './gate-tests.ts'
 
-const REPO = process.env.YUKTA_PICKUP_REPO ?? 'infenia/yukta'
-const PROJECT = process.env.YUKTA_PICKUP_PROJECT ?? '5'
-const OWNER = process.env.YUKTA_PICKUP_OWNER ?? 'infenia'
+const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
+const PROJECT = process.env.YUKTA_TICKET_PROJECT ?? '5'
+const OWNER = process.env.YUKTA_TICKET_OWNER ?? 'infenia'
 const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
 export const CONVENTIONAL = /^(feat|fix|docs|refactor|test|chore|style|ci|build|perf|revert)(\([^)]*\))?!?: \S/
 const SECRET = '(api[ _-]?keys?|secrets?|tokens?|passwords?|credentials?)'

@@ -18,7 +18,7 @@ import { dirname } from 'node:path'
 import { CONVENTIONAL } from './github.ts'
 import { die, git, isDir, join, load, parseArgs, resolve, run, KIT } from './lib.ts'
 
-const REPO = process.env.YUKTA_PICKUP_REPO ?? 'infenia/yukta'
+const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
 const root = (): string => resolve(git(['rev-parse', '--path-format=absolute', '--git-common-dir']).stdout.trim(), '..')
 const paths = (n: string): { branch: string; wt: string } => {
   const p = load(join(KIT, 'project.json')).git

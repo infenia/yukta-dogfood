@@ -54,7 +54,7 @@ export const sessionKey = (): string => devSecret('session-key')
 /** Whether the server built from origin/main knows `agent` on an API key (a property it does not know stops it from starting). */
 export const agentKeysSupported = (): boolean =>
   text(join(DEV_HOME, 'main/core/src/main/java/com/infenia/yukta/security/ApiKeys.java')).includes('boolean agent')
-/** The key of the Yukta MCP: the Claude Code session of `yk pickup session` (YUKTA_MCP_KEY=session) gets an OPERATOR agent key limited to the dogfood session, which may
+/** The key of the Yukta MCP: a Claude Code session started with YUKTA_MCP_KEY=session gets an OPERATOR agent key limited to the dogfood session, which may
  * not answer a request of risk HIGH; every other session keeps the dev key. */
 export const mcpKey = (): string => (process.env.YUKTA_MCP_KEY === 'session' && agentKeysSupported() ? sessionKey() : devKey())
 /** The properties file of the dev server: its keys. */

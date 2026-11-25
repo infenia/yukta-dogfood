@@ -13,7 +13,6 @@
 //   yk ticket worktree <issue> [--branch B] [--base REF] [--in DIR]   a worktree or branch for the issue, reusing what exists (branch.ts)
 //   yk ticket pr <issue> [--worktree W] [--title T] [--result R]      push the branch and open a DRAFT PR with `Fixes #n` (branch.ts)
 //   yk ticket status <issue|execution>            the run's tree (which node runs or failed) and its last events
-//   yk ticket supervisor                          install the dogfood supervisor of the ticket questions (supervisor/*.json: internal session, workflow, profile, binding)
 //   yk ticket report [--json]                      first-try pass rate, cost share and cache hit ratio by role, prefix mismatches, BLOCKED rate (ticket-events.jsonl)
 //   yk ticket resume|stop <issue|execution>       continue a paused run / end it (a drain, like yk stop --tree)
 // Approvals use `yk approve|reject <execution>` as the other gates do. The run dir is .yukta-dev/ticket/<run_id>/ (see README.md, "Ticket pipeline").
@@ -22,18 +21,15 @@ import { tmpdir } from 'node:os'
 import { dirname } from 'node:path'
 import {
   DEV_HOME,
-  DEV_URL,
   STATE_DIR,
   cliJson,
   die,
   ensureServer,
   findCli,
   git,
-  http,
   isDir,
   isFile,
   join,
-  keyHeader,
   mkdirp,
   readJson,
   renderSession,
@@ -46,7 +42,6 @@ import {
 import { cmdRunControl, cmdTree, startNotifier, watchOwned } from '../runs.ts'
 import { main as report } from './report.ts'
 import { KIT } from './lib.ts'
-import { askTargets } from '../guard.ts'
 import { main as github } from './github.ts'
 import { pr as prCmd, releaseCmd, worktree as worktreeCmd } from './branch.ts'
 import { criteria as criteriaOf } from './init.ts'
@@ -143,7 +138,7 @@ export function ticketArgs(argv: string[]): TicketArgs {
   return t
 }
 
-const REPO = (): string => process.env.YUKTA_PICKUP_REPO ?? 'infenia/yukta'
+const REPO = (): string => process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
 
 /** The sizing flags as Sizing (an error in one ends the command: the ticket would be routed on less than you meant), null when none was given. */
 function flagSizing(t: TicketArgs): Sizing | null {
@@ -365,29 +360,6 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
   }
 }
 
-/** The dogfood supervisor of the ticket questions (supervisor/*.json, #1923): the internal session with its workflow, the supervisor and the question nodes it owns, sent to the dev server
- * with the dev key (ADMIN). __TICKET__ and __STATE__ are replaced; an object that exists already (409) is left as it is. */
-export async function installSupervisor(base = DEV_URL, dir = join(KIT, 'supervisor'), state = STATE_DIR): Promise<string[]> {
-  const sub = (s: string): string => s.split('__TICKET__').join(KIT).split('__STATE__').join(state)
-  const steps: [string, string, string][] = [
-    ['session.json', 'POST', '/api/sessions'],
-    ['supervisor.json', 'POST', '/api/supervisors'],
-    ['assignments', 'PUT', '/api/supervisors/dogfood-ticket-advice/assignments'],
-  ]
-  const out: string[] = []
-  for (const [file, method, path] of steps) {
-    const r = await http(method, base + path, {
-      headers: { ...keyHeader(), 'Content-Type': 'application/json' },
-      // the resource guard has the run level (guard.ts), so this supervisor keeps only the nodes that ask a question
-      body: file === 'assignments' ? JSON.stringify(askTargets().map((target) => ({ target }))) : sub(text(join(dir, file))),
-      timeoutMs: 20000,
-    })
-    if (![200, 201, 409].includes(r.code)) die(`${file}: HTTP ${r.code} ${r.body.slice(0, 200)}`)
-    out.push(`${file}: ${r.code === 409 ? 'exists' : 'installed'}`)
-  }
-  return out
-}
-
 export async function cmdTicket(argv: string[], o: { ykPath: string }): Promise<number> {
   const sub = argv[0] ?? ''
   const rest = argv.slice(1)
@@ -404,10 +376,6 @@ export async function cmdTicket(argv: string[], o: { ykPath: string }): Promise<
       return releaseCmd(rest)
     case 'pr':
       return prCmd(rest)
-    case 'supervisor':
-      await ensureServer()
-      console.log((await installSupervisor()).join('\n'))
-      return 0
     case 'report':
       process.env.YUKTA_TICKET_EVENTS ||= join(DEV_HOME, 'ticket-events.jsonl')
       return report(rest)
@@ -446,7 +414,7 @@ export async function cmdTicket(argv: string[], o: { ykPath: string }): Promise<
     }
     default:
       return die(
-        'usage: yk ticket new <title> --criterion C.. | edit <issue> [--criterion C..] | run <issue> [--detach [--notify]] | worktree <issue> [--branch B] [--in DIR] | pr <issue> [--title T] | release <issue> | supervisor | report [--json] | status|resume|stop <issue|execution>',
+        'usage: yk ticket new <title> --criterion C.. | edit <issue> [--criterion C..] | run <issue> [--detach [--notify]] | worktree <issue> [--branch B] [--in DIR] | pr <issue> [--title T] | release <issue> | report [--json] | status|resume|stop <issue|execution>',
       )
   }
 }

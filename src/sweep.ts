@@ -70,7 +70,7 @@ export async function sweep(argv: string[]): Promise<number> {
   for (const e of ex) {
     if (budget <= 0) break
     const id: string = e.executionId
-    if (known.has(id) || seen[id] || e.workflowId === 'pickup') continue
+    if (known.has(id) || seen[id]) continue
     const ended = e.endTime && !String(e.endTime).startsWith('0001') ? secs(e.endTime) : 0
     const status = String(e.status)
     if (!ended) {
