@@ -343,7 +343,6 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
       gateFinal: e.TICKET_GATE_FINAL || '-',
       healCmd: e.TICKET_HEAL_CMD || '-',
       baselineCmd: e.TICKET_BASELINE_CMD || '-',
-      gateWave: e.TICKET_GATE_WAVE || '-',
       events: e.YUKTA_TICKET_EVENTS || join(DEV_HOME, 'ticket-events.jsonl'),
     }
     const execId = cliJson(['workflow', 'start', session, 'ticket', '--payload', JSON.stringify(payload)]).data?.executionId

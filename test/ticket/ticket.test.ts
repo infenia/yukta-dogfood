@@ -112,14 +112,9 @@ test('a step that fails validation writes a digest; an edit outside write_files 
   expect(json(join(w.run, 'steps/S1/attempt-1/failure.json')).class).toBe('scope_violation')
 })
 
-test('a high-risk spec waits for a person', async () => {
-  await w.walk('high', 'true', { env: { TEST_ASK: 'approve' } })
+test('a high-risk spec runs to the draft PR without asking (the person reviewed the ticket before Ready)', async () => {
+  await w.walk('high', 'true')
   expect(w.rc, w.out).toBe(0)
-  expect(w.err).toContain('ASK approve_spec')
-  await w.walk('high', 'true', { env: { TEST_ASK: 'reject' } })
-  expect(w.rc).not.toBe(0)
-  expect(w.out).toContain('NODE spec_rejected')
-  await w.walk('happy', 'true')
   expect(w.err).not.toContain('ASK ')
 })
 

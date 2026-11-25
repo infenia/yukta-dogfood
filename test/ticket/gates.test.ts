@@ -19,18 +19,15 @@ test('every ASK_INPUT of the ticket workflow is on the route ticket and names it
   const asks = Object.values<any>(wf)
     .flatMap((w) => w.nodes)
     .filter((n: any) => n.type === 'ASK_INPUT')
-  expect(asks.map((n: any) => n.nodeId)).toEqual(
-    expect.arrayContaining(['approve_spec', 'approve_merge', 'ask_pause1', 'ask_clarify1', 'ask_clarify2']),
-  )
+  expect(asks.map((n: any) => n.nodeId)).toEqual(expect.arrayContaining(['ask_pause1', 'ask_clarify1', 'ask_clarify2']))
   for (const n of asks)
     expect(n.config, n.nodeId).toMatchObject({
       route: 'ticket',
       context: { issue: '${start.issue}', run_id: '${start.runId}', gate: n.nodeId },
     })
   expect(asks.find((n: any) => n.nodeId === 'ask_clarify1').config).toMatchObject({ kind: 'TEXT', risk: 'MEDIUM' })
-  // the orchestrator session (an agent key) decides the spec and the PR; spending a doubled budget stays with a person
-  for (const id of ['approve_spec', 'approve_merge'])
-    expect(asks.find((n: any) => n.nodeId === id).config.risk, `${id} is for the orchestrator`).toBe('MEDIUM')
+  // no approval inside the run: a person reviews the ticket before Ready and the draft PR after; spending a doubled budget stays with a person
+  for (const id of ['approve_spec', 'approve_merge']) expect(asks.map((n: any) => n.nodeId)).not.toContain(id)
   expect(asks.find((n: any) => n.nodeId === 'ask_pause1').config.risk, 'ask_pause1 is for a person').toBe('HIGH')
 })
 

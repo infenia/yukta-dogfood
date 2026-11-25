@@ -96,7 +96,6 @@ export class World {
       runId?: string
       heal?: string
       baseline?: string
-      gateWave?: string
       env?: Record<string, string>
     } = {},
   ): Promise<void> {
@@ -123,7 +122,6 @@ export class World {
       gateFinal: o.gateFinal ?? this.RESULT_OK,
       healCmd: o.heal ?? 'true',
       baselineCmd: o.baseline ?? 'true',
-      gateWave: o.gateWave ?? 'true',
       events: `${d}/events.jsonl`,
     }
     put(join(d, 'payload.json'), payload)

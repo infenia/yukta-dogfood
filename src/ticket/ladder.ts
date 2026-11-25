@@ -16,7 +16,6 @@
 //   apply-revision                 spec/revision-result.json -> spec v+1 (completed steps are immutable); writes spec/changed_cases.json
 //   final-fail                     the final gate failed: escalation.json asks for a revision
 //   review-verdict                 a blocker finding overrides APPROVE; TESTS_FAITHFUL not met is a major finding; both -> CHANGES_REQUESTED
-//   need-approval KIND             {"ask": bool} for KIND spec (high risk) or merge (project.json merge_gate: high_risk | always | never)
 //   pause-packet                   human-packet.md: ticket, spec, last failure digests, diff stat
 //   clarification                  the architect's NEEDS_CLARIFICATION as one question: {ask, prompt} (ask false when none or after 2 rounds)
 //   apply-clarification TEXT       the person's reply goes to spec/clarification-answers.json for the next architect call
@@ -352,15 +351,6 @@ function finalFail(run: string): number {
   return 0
 }
 
-function needApproval(run: string, kind: string): number {
-  const [p, routing] = ctx(run)
-  const risk: string = routing.risk
-  const policy: string = p.merge_gate ?? 'high_risk'
-  let ask = kind === 'spec' ? risk === 'high' : policy === 'always' || (policy === 'high_risk' && risk === 'high')
-  console.log(dumps({ ask, kind, risk }))
-  return 0
-}
-
 function pausePacket(run: string): number {
   const t = load(join(run, 'ticket.json'))
   const esc = readOr(join(run, 'escalation.json'))
@@ -470,8 +460,6 @@ export function main(argv: string[]): number {
       return reviewVerdict(run)
     case 'final-fail':
       return finalFail(run)
-    case 'need-approval':
-      return needApproval(run, arg!)
     case 'pause-packet':
       return pausePacket(run)
     case 'ack-pause':

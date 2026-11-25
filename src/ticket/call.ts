@@ -163,24 +163,11 @@ Then answer with that JSON.`
   const base =
     step && isFile(join(run, 'steps', step, 'base')) ? readFileSync(join(run, 'steps', step, 'base'), 'utf8').trim() : 'origin/main'
   const stat = git(['diff', '--stat', base], { cwd: wt, check: false }).stdout.slice(-3000)
-  let mut = ''
-  const mf = join(run, 'review', 'mutation.json')
-  if (isFile(mf) && load(mf).exceeds) {
-    // a pre-computed finding: the tests let too many mutants of the changed classes survive
-    const m = load(mf)
-    mut =
-      '\n' +
-      block(
-        'mutation_finding',
-        `${m.survivors} of ${m.total} mutants survived (${Math.round(m.rate * 100)}%, threshold ${Math.round(m.threshold * 100)}%) in ${m.classes} changed classes. Treat it as a finding: say which behaviour the tests do not pin down.`,
-      )
-  }
   return (
     'Review the change against the spec: does it meet every acceptance criterion, and do the tests prove the cases?\n' +
     block('spec', j(spec, 1)) +
     '\n' +
-    block('diff_stat', stat) +
-    mut
+    block('diff_stat', stat)
   )
 }
 

@@ -2,13 +2,14 @@
 // SPDX-FileCopyrightText: 2026 Infenia Private Limited
 // ticketkit flow ACTION RUN [STEP] [--worktree W]: the glue of the `ticket` and `step` workflows (design 6, 8.2, 15.5), no model.
 //
-//   preflight   RUN                    the walking skeleton runs one step of a low or medium risk spec; anything else stops here (approval, waves: later issues)
+//   preflight   RUN                    the walking skeleton runs one step of a low or medium risk spec; anything else stops here
 //   retry-spec  RUN                    the test writer was blocked or the gate failed: the reason goes to spec/downstream.json for the next architect, the worktree is reset
 //   commit-tests RUN                   commit the stubs and locked tests; the base of every step not done is reset to it
 //   step-begin  RUN STEP               commit the scaffold and locked tests as the base, record it, write the step packet (pack-step)
 //   validate-step RUN STEP --attempt N the ladder of 8.2: diff.patch from git, scope-check, regen, free-fix, then the step gate (yk check --no-heal --base B);
 //                                      a failure writes steps/S/attempt-N/failure.json (the digest) and exits 1
 //   commit-step RUN STEP               commit the validated step on the run branch and mark it DONE
+//   next-step   RUN                    {"more": bool, "step": id}: the first step not DONE whose depends_on are DONE
 //   full-checks RUN                    the final gate (yk check --full)
 //   close       RUN [--events FILE]    print the cost by role and append the run's events to the global ticket-events.jsonl
 //
@@ -20,6 +21,7 @@ import {
   type Json,
   costByRole,
   die,
+  dumps,
   existsSync,
   findFiles,
   fmt,
@@ -91,68 +93,6 @@ function attemptEvent(run: string, sid: string, attempt: number, status: string,
     `effort=${m.effort}`,
     `complexity=${cx}`,
   ])
-}
-
-/** pitest on the changed classes (design 15.6), only at medium or high risk, never for :boot, :plus:* or :test-support. Survivors above the
- * threshold go to the reviewer as a finding (review/mutation.json). Never fails the run: a missing tool is a note. */
-function mutation(run: string, wt: string): void {
-  const p = load(join(run, 'project.json'))
-  const routing = load(join(run, 'routing.json'))
-  const out = join(run, 'review', 'mutation.json')
-  mkdirp(join(run, 'review'))
-  if (routing.risk === 'low') {
-    save(out, { skipped: 'low risk' })
-    console.log('SKIPPED mutation: low risk')
-    return
-  }
-  const bases = existsSync(join(run, 'steps'))
-    ? readdirSync(join(run, 'steps'))
-        .sort()
-        .map((s) => join(run, 'steps', s, 'base'))
-        .filter(isFile)
-    : []
-  const first = bases.length ? trim(bases[0]!) : 'origin/main'
-  const files = git(['diff', '--name-only', first, 'HEAD'], { cwd: wt })
-    .stdout.split(/\s+/)
-    .filter((f) => f.includes('/src/main/java/') && f.endsWith('.java'))
-  const mods: Record<string, string[]> = {}
-  for (const f of files) {
-    const i = f.indexOf('/src/main/java/')
-    const mod = f.slice(0, i)
-    const rest = f.slice(i + '/src/main/java/'.length)
-    if (['boot', 'plus', 'test-support'].includes(mod.split('/')[0]!) || mod.startsWith('test-support')) continue
-    ;(mods[mod.replaceAll('/', ':')] ??= []).push(rest.slice(0, -5).replaceAll('/', '.'))
-  }
-  if (!Object.keys(mods).length) {
-    save(out, { skipped: 'no mutable Java classes changed' })
-    console.log('SKIPPED mutation: nothing to mutate')
-    return
-  }
-  let survived = 0
-  let total = 0
-  for (const [mod, classes] of Object.entries(mods).sort()) {
-    let cmd = process.env.TICKET_MUTATION_CMD ?? '-'
-    cmd = cmd === '' || cmd === '-' ? p.commands.mutation : cmd
-    sh(fmt(cmd, { module: mod, classes: classes.join(',') }), wt)
-    for (const rep of findFiles(join(wt, mod.replaceAll(':', '/'), 'build', 'reports', 'pitest'), 'mutations.xml')) {
-      for (const m of readFileSync(rep, 'utf8').matchAll(/<mutation\b[^>]*>/g)) {
-        total++
-        if (/status=["']SURVIVED["']/.test(m[0])) survived++
-      }
-    }
-  }
-  const thr = p.mutation?.max_survivor_rate ?? 0.25
-  const rate = total ? survived / total : 0
-  save(out, {
-    modules: Object.keys(mods).sort(),
-    classes: Object.values(mods).reduce((n, c) => n + c.length, 0),
-    survivors: survived,
-    total,
-    rate: Math.round(rate * 100) / 100,
-    threshold: thr,
-    exceeds: total > 0 && rate > thr,
-  })
-  console.log(`MUTATION survivors=${survived}/${total} threshold=${thr}`)
 }
 
 /** A clean checkout has no changes against origin/main, so `--stage S --base origin/main` runs no stage and exits non-zero ("no stage of the plan is left"):
@@ -310,9 +250,14 @@ export function main(argv: string[]): number {
     }
     case 'full-checks':
       return gate(run, wt, undefined, 1, p.commands.gate_final, 'TICKET_GATE_FINAL', 'full') ? 1 : 0
-    case 'mutation':
-      mutation(run, wt)
+    case 'next-step': {
+      // the first step not DONE whose depends_on are all DONE; {"more": false} when none is left
+      const spec = load(join(run, 'spec', 'spec.json'))
+      const done = (id: string): boolean => isFile(join(run, 'steps', id, 'status.json'))
+      const next = spec.steps.find((s: Json) => !done(s.id) && (s.depends_on as string[]).every(done))
+      console.log(dumps(next ? { more: true, step: next.id } : { more: false, step: null }))
       return 0
+    }
     case 'close': {
       const [by, total] = costByRole(run)
       const evf = join(run, 'events.jsonl')

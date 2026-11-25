@@ -3,11 +3,11 @@
 // Writes the workflows of the ticket pipeline into session.json (design 6.1 to 6.3, 9, 15.3, 15.5), the way
 // dogfood/src/gen-heal.ts does. `yk ticket` adds them to the `dogfood` session, so they call its `tool` workflow.
 //
-//   ticket        issue -> intake -> init -> claim -> route -> architect (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect) -> [spec approval]
-//                 -> plan comment -> attempt_round, recovered up to 3 times (revise: `escalate`; pause: a human packet and an ASK_INPUT) -> [merge gate]
+//   ticket        issue -> intake -> init -> claim -> route -> architect (validate-spec, 2 retries; policy conflicts ask a person) -> test writer -> gate-tests (blocked or red-check failures retry the architect)
+//                 -> plan comment -> attempt_round, recovered up to 3 times (revise: `escalate`; pause: a human packet and an ASK_INPUT)
 //                 -> finish (draft PR) -> close
 //   attempt_round steps_round -> finalize
-//   steps_round   the steps whose depends_on are DONE, one `step` run each, in order (8 slots)
+//   steps_round   the next step whose depends_on are DONE, one `step` run each, in order (8 slots)
 //   step          one step, up to 4 attempts: begin -> implementer -> validate-step; a failure goes to `ladder decide`: retry, tier_up (one model tier up),
 //                 heal (yk check --stage <stage> heals, then everything outside write_files is reverted), baseline (the stage also fails on origin/main),
 //                 or an escalation (revise, human, pause: escalation.json)
@@ -37,7 +37,6 @@ const START_KEYS = [
   'stateDir',
   'healCmd',
   'baselineCmd',
-  'gateWave',
   'runId',
   'events',
 ]
@@ -54,7 +53,6 @@ function pe(nodeId: string, args: string[], timeout = 300, o: { json?: boolean; 
     YUKTA_DEV_STATE_DIR: S('stateDir'),
     TICKET_HEAL_CMD: S('healCmd'),
     TICKET_BASELINE_CMD: S('baselineCmd'),
-    TICKET_GATE_WAVE: S('gateWave'),
   }
   const cfg: Json = { command: [...CMD, ...args], workingDir: S('project'), env, timeout, timeoutSeconds: timeout, failureMode: 'CONTINUE' }
   if (o.routed ?? true) cfg.routeByExitCode = true
@@ -70,8 +68,7 @@ const select = (nodeId: string, key: string, cases: Json, def: string): Json => 
   type: 'BRANCH',
   config: { mode: 'SELECT_KEY', selector: `payload['output']['${key}']`, cases, defaultPort: def },
 })
-// every question of a run goes on the route `ticket` and says which issue and run it is about (design/plans/ticket-input-routing.md 3.5): the input bridge finds the
-// Claude Code session that works the issue from context.issue
+// every question of a run goes on the route `ticket` and says which issue and run it is about (design/plans/ticket-input-routing.md 3.5)
 const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', risk = 'HIGH'): Json => ({
   nodeId,
   type: 'ASK_INPUT',
@@ -192,56 +189,27 @@ const STEP_WF = st.workflow(
   'step',
   'One step of a ticket: up to four attempts with the retry ladder, heal for mechanical failures, escalation.',
 )
-STEP_WF.nodes.push(pe('warm', ['waves', 'warm-wait', RUN, S('step')], 400, { routed: false })) // the second step of a wave waits for the cache to be warm
-STEP_WF.edges = [...STEP_WF.edges, ...edges('trigger', 'warm'), ...edges('warm', 'begin1')]
+STEP_WF.edges.push(...edges('trigger', 'begin1'))
 
-// ---------------------------------------------------------------- wave: two steps in parallel, each in its own worktree from the same base (design 11.2)
-const wv = new G()
-wv.add(
-  ok('ok'),
-  pe('prepare', ['waves', 'prepare', RUN, ...W], 120, { json: true }),
-  { nodeId: 'split', type: 'SPLITTER', config: { itemsPath: 'payload.output.items' } },
-  sub('runw', 'step', { step: '${payload.step}', worktree: '${payload.worktree}' }, 2),
-  { nodeId: 'join', type: 'AGGREGATE', config: { size: 2, timeoutMs: 21600000 } },
-  pe('merge', ['waves', 'merge', RUN, ...W], 300),
-  pe('wave_check', ['waves', 'check', RUN, ...W], 3700),
-)
-wv.link('prepare', 'split', 'success')
-wv.fail('prepare', 'the wave could not be prepared')
-wv.link('split', 'runw')
-wv.link('runw', 'join', 'success', 'failure')
-wv.link('join', 'merge')
-wv.link('merge', 'wave_check', 'success')
-wv.fail('merge', 'the wave could not be merged (a conflict is an escalation)')
-wv.link('wave_check', 'ok', 'success')
-wv.fail('wave_check', 'the merged wave fails its post-wave check')
-const WAVE_WF = wv.workflow('wave', 'Two independent steps in parallel worktrees, merged in step order, then a post-wave check.')
-WAVE_WF.edges.push(...edges('trigger', 'prepare'))
-
-// ---------------------------------------------------------------- steps_round: wave after wave (8 slots, the sizing lint caps a spec at 8 steps)
+// ---------------------------------------------------------------- steps_round: step after step (8 slots, the sizing lint caps a spec at 8 steps)
 const SLOTS = 8
 const sr = new G()
 sr.add(ok('ok'))
 for (let k = 1; k <= SLOTS; k++) {
-  const [nx, mode, run, pair] = [`next${k}`, `mode${k}`, `run${k}`, `pair${k}`] as [string, string, string, string]
+  const [nx, more, run] = [`next${k}`, `more${k}`, `run${k}`] as [string, string, string]
   sr.add(
-    pe(nx, ['waves', 'next-wave', RUN], 60, { json: true }),
-    select(mode, 'mode', { single: 'single', pair: 'pair' }, 'none'),
+    pe(nx, ['flow', 'next-step', RUN], 60, { json: true }),
+    select(more, 'more', { true: 'step' }, 'none'),
     sub(run, 'step', { step: '${payload.output.step}' }),
-    sub(pair, 'wave'),
   )
-  const follow = k < SLOTS ? `next${k + 1}` : 'ok'
-  sr.link(nx, mode, 'success')
-  sr.fail(nx, 'next-wave failed')
-  sr.link(mode, run, 'single')
-  sr.link(mode, pair, 'pair')
-  sr.link(mode, 'ok', 'none')
-  sr.link(run, follow, 'success')
+  sr.link(nx, more, 'success')
+  sr.fail(nx, 'next-step failed')
+  sr.link(more, run, 'step')
+  sr.link(more, 'ok', 'none')
+  sr.link(run, k < SLOTS ? `next${k + 1}` : 'ok', 'success')
   sr.fail(run, 'a step ended without DONE (escalation.json says what to do)')
-  sr.link(pair, follow, 'success')
-  sr.fail(pair, 'a wave failed (escalation.json says what to do)')
 }
-const STEPS_WF = sr.workflow('steps_round', 'Run the ready steps, one or two at a time, in order.')
+const STEPS_WF = sr.workflow('steps_round', 'Run the ready steps one at a time, in order.')
 STEPS_WF.edges.push(...edges('trigger', 'next1'))
 
 // ---------------------------------------------------------------- finalize: full checks, reviewer, verdict
@@ -252,9 +220,7 @@ fz.add(
   terminal('full_checks.failed', 'the final gate failed'),
 )
 fz.add(pe('full_checks', ['flow', 'full-checks', RUN, ...W], 3700), pe('final_fail', ['ladder', 'final-fail', RUN], 60, { routed: false }))
-fz.link('full_checks', 'mutation', 'success')
-fz.add(pe('mutation', ['flow', 'mutation', RUN, ...W], 3700, { routed: false }))
-fz.link('mutation', 'review')
+fz.link('full_checks', 'review', 'success')
 fz.link('full_checks', 'final_fail', 'failure')
 fz.link('final_fail', 'full_checks.failed')
 fz.add(pe('review', ['call', 'reviewer', RUN, '--step', 'S1', ...W], 2400, { json: true, claude: true }))
@@ -397,30 +363,14 @@ for (const k of [1, 2, 3]) {
     t.fail(gt, 'the tests of the third spec did not pass the red check (spec/gate.json)', true)
   }
 }
-t.chain([[pe('commit_tests', ['flow', 'commit-tests', RUN, ...W], 120), 'the tests could not be committed']], 'need_spec', true)
-// approvals: a high-risk spec waits for an answer. MEDIUM, so the orchestrator session (an agent key) may decide it for the person; the budget pause stays
-// HIGH (money: a person only)
-t.add(
-  pe('need_spec', ['ladder', 'need-approval', RUN, 'spec'], 60, { json: true }),
-  select('spec_ask?', 'ask', { true: 'ask' }, 'skip'),
-  ask('approve_spec', 'Approve the spec of run ${start.runId} (high risk)? spec/spec.json in ${start.run}', 86400, 'APPROVAL', 'MEDIUM'),
-  rejected('spec_decision?'),
-  terminal('spec_rejected', 'the spec was rejected'),
-)
-t.link('need_spec', 'spec_ask?', 'success')
-t.fail('need_spec', 'approval policy failed', true)
-t.link('spec_ask?', 'approve_spec', 'ask')
-t.link('spec_ask?', 'plan_comment', 'skip')
-t.link('approve_spec', 'spec_decision?')
-t.link('spec_decision?', 'spec_rejected', 'reject')
-t.link('spec_decision?', 'plan_comment', 'approve')
+t.chain([[pe('commit_tests', ['flow', 'commit-tests', RUN, ...W], 120), 'the tests could not be committed']], 'plan_comment', true)
 t.chain([[pe('plan_comment', ['github', 'plan-comment', RUN], 120), 'the plan could not be posted on the issue']], 'round1', true)
 // rounds: a failed round is recovered by a revision or a pause, 3 times
 const ROUNDS = 4
 for (let k = 1; k <= ROUNDS; k++) {
   const [r, rf] = [`round${k}`, `route_failure${k}`]
   t.add(sub(r, 'attempt_round'))
-  t.link(r, 'need_merge', 'success')
+  t.link(r, 'finish', 'success')
   if (k === ROUNDS) {
     t.fail(r, 'the run did not finish after three recoveries', true)
     continue
@@ -466,21 +416,7 @@ for (let k = 1; k <= ROUNDS; k++) {
   t.link(ack, `round${k + 1}`, 'success')
   t.fail(ack, 'the pause could not be acknowledged')
 }
-// merge gate by policy, then the draft PR
-t.add(
-  pe('need_merge', ['ladder', 'need-approval', RUN, 'merge', ...W], 60, { json: true }),
-  select('merge_ask?', 'ask', { true: 'ask' }, 'skip'),
-  ask('approve_merge', 'Open the PR for run ${start.runId}? The change is on its branch, reviewed and green.', 86400, 'APPROVAL', 'MEDIUM'),
-  rejected('merge_decision?'),
-  terminal('merge_rejected', 'the PR was declined'),
-)
-t.link('need_merge', 'merge_ask?', 'success')
-t.fail('need_merge', 'approval policy failed')
-t.link('merge_ask?', 'approve_merge', 'ask')
-t.link('merge_ask?', 'finish', 'skip')
-t.link('approve_merge', 'merge_decision?')
-t.link('merge_decision?', 'merge_rejected', 'reject')
-t.link('merge_decision?', 'finish', 'approve')
+// the draft PR: a person reviews it, nothing is merged
 t.chain(
   [
     [pe('finish', ['github', 'finish', RUN, ...W], 600), 'the draft PR could not be opened'],
@@ -498,7 +434,6 @@ export const WORKFLOWS: Record<string, Json> = {
   ticket: TICKET_WF,
   attempt_round: ROUND_WF,
   steps_round: STEPS_WF,
-  wave: WAVE_WF,
   step: STEP_WF,
   finalize: FINAL_WF,
   escalate: ESC_WF,
