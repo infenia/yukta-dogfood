@@ -38,6 +38,7 @@ import {
   writeFileSync,
 } from './lib.ts'
 import { recordFailure } from './failures.ts'
+import { costByRole } from './ticket/lib.ts'
 import { mkdtempSync, openSync, closeSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 
@@ -292,6 +293,8 @@ export function printResult(session: string, exec: string): number {
     if (failed === 'analyzers' && isFile(join(records, 'analyzers.failed')) && statSize(join(records, 'analyzers.failed')) > 0)
       failed = text(join(records, 'analyzers.failed')).trim()
   }
+  // a precondition that is not met (the issue is not Ready, say) is no failure of the run: SKIPPED, exit 3 as ticketkit's own
+  if (failed === 'intake' && /^SKIPPED /m.test(failedOutput(session, exec))) status = 'SKIPPED'
   const healed = healedStages(session, failed, records)
   // a run can end well and still not be done: an OUTCOME_TERMINAL that reached ESCALATE, FAILED or RETRY
   const reached = tasks.filter((t) => t.module === 'OUTCOME_TERMINAL' && t.metadata?.reached === true)
@@ -328,6 +331,8 @@ export function printResult(session: string, exec: string): number {
   } catch {
     /* no records */
   }
+  // a ticket run also spent on its implementer, test writer and reviewer (RUN/events.jsonl), not only on heal attempts
+  if (process.env.YUKTA_TICKET_RUN) cost += costByRole(process.env.YUKTA_TICKET_RUN)[1]
   const costS = String(Math.round(cost * 100) / 100)
   let line = `RESULT status=${status} failed_node=${failed} healed=${healed || '-'} execution=${exec} session=${session} wall=${wall || 0} cost=$${costS}`
   // the next level: the full text of the failure is one command away
@@ -359,6 +364,7 @@ export function printResult(session: string, exec: string): number {
     ].join('\t') + '\n',
   )
   if (status === 'COMPLETED' || status === 'SUCCESS') return 0
+  if (status === 'SKIPPED') return 3
   recordFailure({
     kind: 'result',
     where: failed,
@@ -507,7 +513,8 @@ export async function cmdWatch(session: string, target: string, mode = ''): Prom
   })
   procs.push(
     eachLine(w as never, (l) => {
-      if (!quiet || !NOISE.test(l)) out(l)
+      // the engine's own end state says the workflow ran to its end, not that the check passed: the RESULT line below is the verdict
+      if (!quiet || !NOISE.test(l)) out(l.replace(/^WORKFLOW SUCCESS\b/, 'WORKFLOW ENDED'))
     }),
   )
   await Promise.all(procs)

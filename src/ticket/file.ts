@@ -21,6 +21,7 @@ import { flatSchema } from './call.ts'
 import { REPO, gh, projectSetStatus } from './github.ts'
 import {
   type Json,
+  GUARD_PATHS,
   KIT,
   die,
   dumps,
@@ -88,8 +89,10 @@ ${DATA}`,
   stubs when tests are written up front (cases_to_code, repro_only) against code that does not exist yet: for each such source file, its whole new content with the
   new types and signatures and bodies that only throw (Java: UnsupportedOperationException); only files some step writes. Without them the tests do not compile.
 - Acceptance criteria are commands wherever possible (verification kind command), else review.
-- Steps: at most ${MAX_STEPS.S} for S, ${MAX_STEPS.M} for M, ${MAX_STEPS.L} for L; one module each; max_diff_lines 30-150; every command is one of the project's yk commands (never ./gradlew, go or pnpm); read_files exist.
-- Never put generated files (openapi.json, api.generated.ts, session.json) in write_files.
+- Steps: at most ${MAX_STEPS.S} for S, ${MAX_STEPS.M} for M, ${MAX_STEPS.L} for L; one module each; max_diff_lines 30-150; read_files exist.
+- Every done_when command and every command criterion must match, word for word with its placeholders filled, one of the templates in <project_commands>; any other command (yk tool grep, yk check with other flags, ./gradlew, go, pnpm) is rejected. Chain several with " && ".
+- A step needs covers (the test cases it makes pass) or a test command in done_when; with tests_mode existing (docs, chore) it needs neither. A change to documentation only is tests_mode existing, one step, and done_when is the single command of the template heal_stage with stage docs, never the whole gate_step or a test run; its criteria are kind review.
+- Never put generated files (openapi.json, api.generated.ts, session.json) in write_files, nor files under ${GUARD_PATHS.join(', ')} (build and dogfood tickets only): such a ticket is rejected as scope_violation, so leave that file out and say in out_of_scope what a person must change.
 - Self-check: write the whole answer to the draft file named in the prompt (Write tool) and run the check command given there (Bash) until it ends with errors=0. Do not answer with drafts it rejects.
 - If something cannot be settled from the request, the answers and the code, make the most conservative choice and record it in decisions and assumptions. Use the AskUserQuestion tool only for a choice that would change the scope.
 ${DATA}`,
@@ -98,7 +101,7 @@ ${DATA}`,
 - One ticket per deliverable a reviewer can judge on its own; each ticket follows every rule for a ticket:
   complete sections (summary, type, complexity, risk with risk_reason, architecture, steps, test_cases, tests_mode, locked_files, scope, security, decisions, out_of_scope, assumptions, roles {},
   stubs: the files the up-front tests compile against, bodies that only throw, only files a step writes),
-  steps with exact files, signatures and algorithm (sonnet implements, haiku writes the tests), commands only from the project's yk commands, generated files never in write_files.
+  steps with exact files, signatures and algorithm (sonnet implements, haiku writes the tests), commands only from the templates in <project_commands>, generated files and files under ${GUARD_PATHS.join(', ')} never in write_files.
 - Self-check: write the whole answer to the draft file named in the prompt and run the check command given there until it ends with errors=0.
 ${DATA}`,
 }

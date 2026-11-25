@@ -241,8 +241,24 @@ export function main(argv: string[]): number {
         }
       }
       kit(['free-fix', run, '--base', base, '--worktree', wt])
-      const rc = gate(run, wt, step, attempt, p.commands.gate_step, 'TICKET_GATE_STEP', 'tests')
-      save(join(ad, 'validation.json'), { ok: rc === 0, base })
+      let rc = gate(run, wt, step, attempt, p.commands.gate_step, 'TICKET_GATE_STEP', 'tests')
+      // the spec's done_when commands each run once the gate passed (they MUST exit 0); the evidence is kept per command
+      const commands: { command: string; exit: number | null; seconds: number }[] = []
+      // a gate overridden by env (tests, a stand-in) means the project's commands are not available either
+      if (!rc && (process.env.TICKET_GATE_STEP ?? '-') === '-') {
+        const spec = load(join(run, 'spec', 'spec.json'))
+        for (const c of spec.steps.find((s: Json) => s.id === step)?.done_when.commands ?? []) {
+          const t0 = Date.now()
+          const r = sh(c, wt)
+          commands.push({ command: c, exit: r.code, seconds: Math.round((Date.now() - t0) / 100) / 10 })
+          if (r.code) {
+            failDigest(run, step!, attempt, 'tests', r.stdout + r.stderr, c, undefined, r.code)
+            rc = r.code
+            break
+          }
+        }
+      }
+      save(join(ad, 'validation.json'), { ok: rc === 0, base, done_when: commands })
       attemptEvent(run, step!, attempt, rc === 0 ? 'pass' : 'fail', rc === 0 ? '-' : (load(join(ad, 'failure.json')).class ?? '-'))
       return rc ? 1 : 0
     }
