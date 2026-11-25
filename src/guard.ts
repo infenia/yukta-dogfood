@@ -47,9 +47,20 @@ const canon = (v: unknown): string =>
   JSON.stringify(v, (_, x) =>
     x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b))) : x,
   )
-export async function saveGuard(base = DEV_URL, dir = join(KIT, 'supervisor')): Promise<string> {
-  await dropAdvice(base)
+/** Whether the server built from origin/main knows the supervisor setting `onReviewTimeout` (a setting it does not know makes it refuse the save). */
+export const lenientSupported = (): boolean =>
+  text(join(DEV_HOME, 'main/plugin-api/src/main/java/com/infenia/yukta/plugin/control/SupervisorCapabilities.java')).includes(
+    'ON_REVIEW_TIMEOUT',
+  )
+/** The guard never refuses a person, so a review it does not answer in time (it is slow, or stopped) lets the command through instead of refusing it. */
+export function guardDef(dir: string, lenient: boolean): { settings: Record<string, unknown> } {
   const def = tryJson(text(join(dir, 'resource-guard.json')))
+  if (lenient) def.settings = { ...def.settings, onReviewTimeout: 'ALLOW' }
+  return def
+}
+export async function saveGuard(base = DEV_URL, dir = join(KIT, 'supervisor'), lenient = lenientSupported()): Promise<string> {
+  await dropAdvice(base)
+  const def = guardDef(dir, lenient)
   const have = await admin(base, 'GET', `/api/supervisors/${GUARD}`)
   const same = have.code === 200 && canon(tryJson(have.body)?.data?.settings) === canon(def.settings)
   if (!same) {
