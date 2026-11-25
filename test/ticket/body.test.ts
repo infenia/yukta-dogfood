@@ -17,6 +17,13 @@ test('render then parse gives the same body', () => {
   expect(r.ticket).toEqual(valid)
 })
 
+test('dependencies round-trip as issue links', () => {
+  const b = { ...valid, depends_on: [12, 15] }
+  const md = renderTicket(b)
+  expect(md).toContain('- depends on: #12, #15')
+  expect(parseTicket(md).ticket).toEqual(b)
+})
+
 test('a body without optional parts round-trips too', () => {
   const { risk_reason, plan_file, base_sha, ...bare } = valid
   void [risk_reason, plan_file, base_sha]

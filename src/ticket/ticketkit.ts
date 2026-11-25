@@ -19,6 +19,7 @@ const MODULES: Record<string, () => Promise<Module>> = {
   init: () => import('./init.ts'),
   route: () => import('./route.ts'),
   'validate-spec': () => import('./validate-spec.ts'),
+  file: () => import('./file.ts'),
   call: () => import('./call.ts'),
   flow: () => import('./flow.ts'),
   'gate-tests': () => import('./gate-tests.ts'),

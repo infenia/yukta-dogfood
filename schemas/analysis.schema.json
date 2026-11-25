@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analysis.schema.json",
+  "title": "Analysis",
+  "description": "The analyst's reading of a plain-text request (yk ticket new): its type, a title, and the questions the text leaves open.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "confidence", "title", "questions"],
+  "properties": {
+    "type": { "enum": ["bug", "enhancement", "feature", "refactor", "docs", "chore"] },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "How sure the type and the scope are; below 0.7 the questions go to a person."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 100,
+      "description": "A conventional-commit style title, e.g. fix(core): ..."
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "type": "string", "minLength": 3, "maxLength": 300 },
+      "description": "Only what the text and the repository do not settle; empty when nothing is open."
+    }
+  }
+}

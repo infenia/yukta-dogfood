@@ -1,0 +1,6 @@
+{
+  "type": "bug",
+  "confidence": 1.5,
+  "title": "fix(core): limiter lets the 101st request through",
+  "questions": []
+}

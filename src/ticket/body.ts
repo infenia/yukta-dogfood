@@ -34,7 +34,11 @@ export function renderTicket(t: Json): string {
     ...(t.risk_reason ? [`- risk reason: ${t.risk_reason}`] : []),
   ]
   const roles = ROLE_NAMES.filter((r) => t.roles[r]).map((r) => `${r}: ${t.roles[r].model}/${t.roles[r].effort}`)
-  const source = [...(t.plan_file ? [`- plan: ${t.plan_file}`] : []), ...(t.base_sha ? [`- base: ${t.base_sha}`] : [])]
+  const source = [
+    ...(t.plan_file ? [`- plan: ${t.plan_file}`] : []),
+    ...(t.base_sha ? [`- base: ${t.base_sha}`] : []),
+    ...(t.depends_on?.length ? [`- depends on: ${t.depends_on.map((n: number) => `#${n}`).join(', ')}`] : []),
+  ]
   return [
     sec('Summary', t.summary),
     sec('Type and size', size.join('\n')),
@@ -159,6 +163,7 @@ export function parseTicket(md: string): { ticket: Json; errors: string[] } {
     roles: rolesOf(md),
     ...(source.get('plan') ? { plan_file: source.get('plan') } : {}),
     ...(source.get('base') ? { base_sha: source.get('base') } : {}),
+    ...(source.get('depends on') ? { depends_on: [...source.get('depends on')!.matchAll(/#?(\d+)/g)].map((m) => Number(m[1])) } : {}),
   }
   if (!errors.length) errors.push(...validateDoc('ticket-body', ticket, 'ticket').lines)
   return { ticket, errors }

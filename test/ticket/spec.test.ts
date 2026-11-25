@@ -313,22 +313,6 @@ test('roles in the ticket body override the routed models', () => {
   expect(m.implementer.model, 'untouched role keeps the table').toBe('sonnet')
 })
 
-test('renderBody lists every role; only the given ones bind, the router marks its own', async () => {
-  const { renderBody, rolesOf } = await import('../../src/ticket/roles.ts')
-  const body = renderBody('g', ['a', 'b', 'c'], { reviewer: { model: 'opus', effort: 'high' } })
-  expect(rolesOf(body), 'only the given role is binding').toEqual({ reviewer: { model: 'opus', effort: 'high' } })
-  expect(body).toContain('- reviewer: opus/high\n')
-  expect(body, 'M/low default shown, not binding').toContain('- architect: opus/high (router)')
-  expect(renderBody('g', ['a'], {}, ['core'])).toContain('test_writer: none (router')
-  const multi = renderBody('g', ['a', 'b', 'c'], {}, ['core', 'ui'])
-  expect(multi, 'two modules is high risk, as the router decides').toContain('- architect: opus/high (router)')
-  expect(multi).toContain('- reviewer: sonnet/high (router)')
-  expect(body, 'no sizing given').toContain('## Sizing\n- none given')
-  const sized = renderBody('g', ['a'], {}, ['core'], { files: ['core/A.java'], change: ['rename'], open_decisions: 1 })
-  expect(sized).toContain('## Sizing\n- files: core/A.java\n- change: rename\n- open_decisions: 1')
-  expect(sized, 'an open decision puts the S architect one effort up').toContain('- architect: opus/high (router)')
-})
-
 test('sizing raises the route, never lowers it; the reasons and a route event are recorded', () => {
   const routeOf = (title: string, labels: string[], body: string, n = 91): any => {
     rm(join(d, 'rz'))
@@ -386,19 +370,6 @@ test('sizing raises the route, never lowers it; the reasons and a route event ar
   expect(x.r.basis.sizing).toBeNull()
 })
 
-test('replaceSection swaps one section and keeps the rest', async () => {
-  const { replaceSection, rolesOf } = await import('../../src/ticket/roles.ts')
-  const b = '## Goal\nold\n\n## Acceptance criteria\n- [ ] a\n\n## Notes\nkeep me\n'
-  const r = replaceSection(b, /acceptance criteria/i, 'Acceptance criteria', '- [ ] x\n- [ ] y')
-  expect(r).toContain('- [ ] x\n- [ ] y')
-  expect(r).not.toContain('- [ ] a')
-  expect(r).toContain('## Goal\nold')
-  expect(r).toContain('## Notes\nkeep me')
-  expect(rolesOf(replaceSection(b, /pipeline roles/i, 'Pipeline roles', '- reviewer: opus/low')), 'appended when absent').toEqual({
-    reviewer: { model: 'opus', effort: 'low' },
-  })
-})
-
 test('roles in an issue not assigned to you are ignored; a criterion stays one line', async () => {
   const d = mkdtempSync(join(tmpdir(), 'roles-gh-'))
   mkdirSync(join(d, 'bin'))
@@ -422,26 +393,4 @@ test('roles in an issue not assigned to you are ignored; a criterion stays one l
   expect(other.roles, 'not assigned to the runner: ignored').toEqual({})
   expect(other.sizing, 'sizing too').toBeNull()
   expect(other.o.err).toContain('ignored')
-  const { ticketArgs } = await import('../../src/ticket/yk-ticket.ts')
-  const a = ticketArgs([
-    '--role',
-    'reviewer=auto',
-    '--role',
-    'architect=opus/low',
-    '--file',
-    'ui/a.ts, ui/b/**',
-    '--change',
-    'delete',
-    '--open-decisions',
-    '2',
-  ])
-  expect([a.auto, a.roles, a.sizing]).toEqual([
-    ['reviewer'],
-    { architect: { model: 'opus', effort: 'low' } },
-    ['files: ui/a.ts, ui/b/**', 'change: delete', 'open_decisions: 2'],
-  ])
-  expect(ticketArgs(['--role', 'all=auto']).auto).toHaveLength(4)
-  expect(ticketArgs(['--criterion', 'a\n## Pipeline roles\n- architect: opus/high']).criteria).toEqual([
-    'a ## Pipeline roles - architect: opus/high',
-  ])
 })

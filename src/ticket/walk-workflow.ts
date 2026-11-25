@@ -4,7 +4,9 @@
 //
 // Supports what gen-ticket.ts emits: CONSTANT_SOURCE, PROCESS_EXECUTOR (exit code routing, JSON output, ${start.x} in command and env),
 // BRANCH (SELECT_KEY on payload['output'][key]; the decision expression, answered by $TEST_ASK), ASK_INPUT, SUB_WORKFLOW (payload mapping), SPLITTER with
-// its parallel children, OUTCOME_TERMINAL, CONSOLE_TERMINAL. Prints one `NODE <id> <port>` line per node run and `OUTCOME <SUCCESS|FAILED> <reason>`;
+// its parallel children, OUTCOME_TERMINAL, CONSOLE_TERMINAL, and AGENT_SESSION: $YK_CLAUDE_BIN -p PROMPT (the fake claude), its JSON answer turned into
+// AGENT_SESSION's payload; a SUB_WORKFLOW hands its child's last payload on as {results: [payload]} to a PROCESS_EXECUTOR with inputMode STDIN.
+// ${metadata.input.text} is $TEST_ANSWER when set (else it stays literal: an unresolved reply). Prints one `NODE <id> <port>` line per node run and `OUTCOME <SUCCESS|FAILED> <reason>`;
 // exit 0 on SUCCESS. __TICKET__ is the folder of ticketkit.
 import { spawn } from 'bun'
 import { type Json, KIT, readFileSync } from './lib.ts'
@@ -17,16 +19,18 @@ function sub(v: Json, start: Start, out?: Json, item?: Json): Json {
       .replace(/\$\{payload\.(?!output)(\w+)\}/g, (_, k: string) => String(item?.[k] ?? 'None'))
       .replace(/\$\{payload\.output\.(\w+)\}/g, (_, k: string) => String(out?.[k] ?? 'None'))
     s = s.replaceAll('__TICKET__', KIT)
+    if (process.env.TEST_ANSWER !== undefined) s = s.replaceAll('${metadata.input.text}', process.env.TEST_ANSWER)
     return s.replace(/\$\{start\.(\w+)\}/g, (_, k: string) => String(start[k] ?? '-'))
   }
   if (Array.isArray(v)) return v.map((x) => sub(x, start, out, item))
   return v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sub(x, start, out, item)])) : v
 }
 
-async function walk(wfs: Json, name: string, start: Start): Promise<[string, string]> {
+async function walk(wfs: Json, name: string, start: Start): Promise<[string, string, Json]> {
   const wf = wfs[name]
   const nodes: Record<string, Json> = Object.fromEntries(wf.nodes.map((n: Json) => [n.nodeId, n]))
   let out: Json = null
+  let msg: Json = null // the message on stdin of the next STDIN node: a sub-workflow's results
   let cur = 'trigger'
   for (;;) {
     const n = nodes[cur]!
@@ -35,11 +39,11 @@ async function walk(wfs: Json, name: string, start: Start): Promise<[string, str
     let port: string | null
     if (t === 'OUTCOME_TERMINAL') {
       console.log(`NODE ${cur} -`)
-      return [c.outcome, c.reason]
+      return [c.outcome, c.reason, msg]
     }
     if (t === 'CONSOLE_TERMINAL') {
       console.log(`NODE ${cur} -`)
-      return ['SUCCESS', '']
+      return ['SUCCESS', '', msg]
     }
     if (t === 'PROCESS_EXECUTOR') {
       const env = { ...process.env, ...Object.fromEntries(Object.entries(sub(c.env, start)).map(([k, x]) => [k, String(x)])) } as Record<
@@ -47,7 +51,8 @@ async function walk(wfs: Json, name: string, start: Start): Promise<[string, str
         string
       >
       const cmd: string[] = sub(c.command, start)
-      const p = spawn(cmd, { env, cwd: String(start.project), stdout: 'pipe', stderr: 'pipe', stdin: 'ignore' })
+      const stdin = c.inputMode === 'STDIN' ? new Blob([JSON.stringify(msg ?? {})]) : 'ignore'
+      const p = spawn(cmd, { env, cwd: String(start.project), stdout: 'pipe', stderr: 'pipe', stdin })
       const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited])
       out = null
       if (c.outputFormat === 'JSON') {
@@ -59,6 +64,32 @@ async function walk(wfs: Json, name: string, start: Start): Promise<[string, str
       }
       port = code === 0 ? 'success' : 'failure'
       if (code) console.error((stdout + stderr).slice(-600))
+    } else if (t === 'AGENT_SESSION') {
+      const bin = process.env.YK_CLAUDE_BIN || String(start.claudeBin)
+      const prompt = String(sub(c.prompt, { ...start, prompt: start.prompt }, out, start))
+      const p = spawn([bin, '-p', prompt, ...sub(c.args ?? [], start)], {
+        env: process.env,
+        cwd: String(start.project),
+        stdout: 'pipe',
+        stderr: 'pipe',
+      })
+      const [stdout, code] = await Promise.all([new Response(p.stdout).text(), p.exited])
+      let r: Json = null
+      try {
+        r = JSON.parse(stdout)
+      } catch {
+        r = null
+      }
+      const okRun = code === 0 && r && !r.is_error
+      msg = {
+        status: okRun ? 'success' : 'failure',
+        text: r?.result ?? '',
+        structured: r?.structured_output ?? null,
+        costUsd: r?.total_cost_usd ?? 0,
+        usage: r?.usage ?? null,
+        ...(okRun ? {} : { reason: r?.subtype ?? `exit ${code}` }),
+      }
+      port = okRun ? 'success' : 'failure'
     } else if (t === 'SPLITTER') {
       // SPLITTER -> SUB_WORKFLOW (concurrency) -> AGGREGATE: the children run in parallel, the join waits for all
       const items: Json[] = out[c.itemsPath.split('.').pop()]
@@ -81,14 +112,15 @@ async function walk(wfs: Json, name: string, start: Start): Promise<[string, str
       const val = (out ?? {})[key]
       port = c.cases[typeof val === 'boolean' ? JSON.stringify(val) : String(val)] ?? c.defaultPort
     } else if (t === 'SUB_WORKFLOW') {
-      const [outcome] = await walk(wfs, c.workflowId, { ...start, ...sub(c.payload, start, out) })
+      const [outcome, , child] = await walk(wfs, c.workflowId, { ...start, ...sub(c.payload, start, out) })
       port = outcome === 'SUCCESS' ? 'success' : 'failure'
+      msg = { results: child ? [child] : [] }
     } else port = null
     console.log(`NODE ${cur} ${port ?? '-'}`)
     const nxt = wf.edges
       .filter((e: Json) => e.source === cur && (e.sourcePort === undefined || e.sourcePort === null || e.sourcePort === port))
       .map((e: Json) => e.target)
-    if (!nxt.length) return ['FAILED', `${cur} ended with no edge for ${port}`]
+    if (!nxt.length) return ['FAILED', `${cur} ended with no edge for ${port}`, msg]
     cur = nxt[0]
   }
 }

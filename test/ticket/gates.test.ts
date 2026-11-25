@@ -23,7 +23,8 @@ test('every ASK_INPUT of the ticket workflow is on the route ticket and names it
   for (const n of asks)
     expect(n.config, n.nodeId).toMatchObject({
       route: 'ticket',
-      context: { issue: '${start.issue}', run_id: '${start.runId}', gate: n.nodeId },
+      // a filing question has no issue yet
+      context: { issue: n.nodeId === 'ask_analyst' ? 'new' : '${start.issue}', run_id: '${start.runId}', gate: n.nodeId },
     })
   expect(asks.find((n: any) => n.nodeId === 'ask_clarify1').config).toMatchObject({ kind: 'TEXT', risk: 'MEDIUM' })
   // no approval inside the run: a person reviews the ticket before Ready and the draft PR after; spending a doubled budget stays with a person

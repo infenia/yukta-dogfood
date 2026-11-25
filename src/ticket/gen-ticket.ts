@@ -45,7 +45,12 @@ type Edge = { source: string; target: string; sourcePort?: string }
 const edges = (src: string, dst: string, ...ports: string[]): Edge[] =>
   ports.length ? ports.map((p) => ({ source: src, target: dst, sourcePort: p })) : [{ source: src, target: dst }]
 
-function pe(nodeId: string, args: string[], timeout = 300, o: { json?: boolean; claude?: boolean; routed?: boolean } = {}): Json {
+function pe(
+  nodeId: string,
+  args: string[],
+  timeout = 300,
+  o: { json?: boolean; claude?: boolean; routed?: boolean; stdin?: boolean } = {},
+): Json {
   const env = {
     YK_CLAUDE_BIN: S('claudeBin'),
     TICKET_GATE_STEP: S('gateStep'),
@@ -56,6 +61,7 @@ function pe(nodeId: string, args: string[], timeout = 300, o: { json?: boolean; 
   }
   const cfg: Json = { command: [...CMD, ...args], workingDir: S('project'), env, timeout, timeoutSeconds: timeout, failureMode: 'CONTINUE' }
   if (o.routed ?? true) cfg.routeByExitCode = true
+  if (o.stdin) cfg.inputMode = 'STDIN' // the message as JSON on stdin (a sub-workflow's results)
   if (o.json) cfg.outputFormat = 'JSON'
   if (o.claude) cfg.engine = { concurrencyGroup: 'claude' }
   return { nodeId, type: 'PROCESS_EXECUTOR', config: cfg }
@@ -69,7 +75,7 @@ const select = (nodeId: string, key: string, cases: Json, def: string): Json => 
   config: { mode: 'SELECT_KEY', selector: `payload['output']['${key}']`, cases, defaultPort: def },
 })
 // every question of a run goes on the route `ticket` and says which issue and run it is about (design/plans/ticket-input-routing.md 3.5)
-const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', risk = 'HIGH'): Json => ({
+const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', risk = 'HIGH', issue = S('issue')): Json => ({
   nodeId,
   type: 'ASK_INPUT',
   config: {
@@ -79,7 +85,7 @@ const ask = (nodeId: string, prompt: string, ttl = 86400, kind = 'APPROVAL', ris
     ttlSeconds: ttl,
     onTimeout: 'FAIL',
     route: 'ticket',
-    context: { issue: S('issue'), run_id: S('runId'), gate: nodeId },
+    context: { issue, run_id: S('runId'), gate: nodeId },
   },
 })
 const rejected = (nodeId: string): Json => ({
@@ -434,8 +440,134 @@ const TICKET_WF = t.workflow(
   'Implement one Ready GitHub issue end to end: architect spec, locked failing tests, step-by-step implementation (retry ladder, heal, escalation), fresh reviewer. Ends with a draft PR (Fixes #<issue>), never merges. Start with `yk ticket run <issue>`.',
 )
 
+// ---------------------------------------------------------------- filing: yk ticket new "<text>" and yk ticket from-plan <plan>
+// ticket-agent: one Claude Code session on AGENT_SESSION. approvals ASK: a tool use outside the pre-allowed ones (and AskUserQuestion) becomes an input
+// request that a person answers in the UI (Agents tab), over REST, the CLI or MCP; the session waits for it up to 24 h (timeout: work time + 24 h).
+const FILING_WAIT = 86400
+const AGENT_WF: Json = {
+  workflowId: 'ticket-agent',
+  description: 'One filing session (analyst or architect) on AGENT_SESSION; its questions go to a person through the input requests.',
+  nodes: [
+    { nodeId: 'trigger', type: 'CONSTANT_SOURCE', config: { variables: { prompt: S('prompt') } } },
+    {
+      nodeId: 'agent',
+      type: 'AGENT_SESSION',
+      config: {
+        harness: 'claude-code',
+        mode: 'TASK',
+        prompt: '${payload.prompt}',
+        model: S('model'),
+        workingDir: S('project'),
+        approvals: 'ASK',
+        approvalRisk: 'MEDIUM',
+        approvalTimeout: FILING_WAIT,
+        timeout: 3600 + FILING_WAIT,
+        args: [
+          ...['--setting-sources', 'project', '--disable-slash-commands', '--no-session-persistence'],
+          ...['--tools', 'Read,Grep,Glob,Bash,Write,AskUserQuestion'],
+          ...['--allowedTools', 'Read', 'Grep', 'Glob', S('allowWrite'), S('allowBash')],
+          ...['--disallowedTools', 'Edit', 'Bash(git commit:*)', 'Bash(git push:*)'],
+          ...[
+            '--append-system-prompt-file',
+            S('rulesFile'),
+            '--max-budget-usd',
+            S('budget'),
+            '--effort',
+            S('effort'),
+            '--json-schema',
+            S('schema'),
+          ],
+        ],
+        env: {
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5',
+          ANTHROPIC_DEFAULT_SONNET_MODEL: 'claude-sonnet-5-5',
+          ANTHROPIC_DEFAULT_OPUS_MODEL: 'claude-opus-5-5',
+        },
+        engine: { concurrencyGroup: 'claude' },
+      },
+    },
+    ok('ok'),
+    { nodeId: 'failed', type: 'CONSOLE_TERMINAL', config: {} },
+    { nodeId: 'early', type: 'CONSOLE_TERMINAL', config: {} },
+  ],
+  edges: [
+    ...edges('trigger', 'agent'),
+    ...edges('agent', 'ok', 'success'),
+    ...edges('agent', 'failed', 'failure'),
+    ...edges('agent', 'early', 'incomplete'),
+  ],
+}
+const DIR = S('dir')
+/** A call of ticket-agent: the session may wait a day for a person, and an error routes to the answer like a failure. */
+const agentCall = (nodeId: string, payload: Record<string, string>): Json => {
+  const n = sub(nodeId, 'ticket-agent', payload)
+  n.config = { ...n.config, timeoutSeconds: 3600 + FILING_WAIT + 600, engine: { onError: 'ROUTE' } }
+  return n
+}
+/** prepare ROLE -> ticket-agent -> answer ROLE (every port of the session goes to the answer, which says what went wrong). */
+function session(g: G, role: string, next: string): void {
+  const [p, a, r] = [`prepare_${role}`, role, `answer_${role}`]
+  g.add(
+    pe(p, ['file', 'prepare', role, DIR], 120, { json: true }),
+    agentCall(a, {
+      prompt: '${payload.output.prompt}',
+      project: S('project'),
+      model: '${payload.output.model}',
+      effort: '${payload.output.effort}',
+      budget: '${payload.output.budget}',
+      schema: '${payload.output.schema}',
+      rulesFile: '${payload.output.rules}',
+      allowWrite: '${payload.output.allowWrite}',
+      allowBash: '${payload.output.allowBash}',
+    }),
+    pe(r, ['file', 'answer', role, DIR], 300, { json: true, stdin: true }),
+  )
+  g.link(p, a, 'success')
+  g.fail(p, `the ${role} prompt could not be written`)
+  g.link(a, r, 'success', 'failure', 'error')
+  g.link(r, next, 'success')
+  g.fail(r, `the ${role} did not give a valid answer (the ERROR line says why)`)
+}
+const fileNode = (g: G): void => {
+  g.add(pe('file_issues', ['file', 'issue', DIR], 600), ok('done'))
+  g.link('file_issues', 'done', 'success')
+  g.fail('file_issues', 'the issues could not be filed')
+}
+// ticket-new: analyst -> [the open questions to a person] -> architect -> issue in Backlog
+const tn = new G()
+session(tn, 'analyst', 'ask?')
+tn.add(
+  select('ask?', 'ask', { true: 'ask' }, 'plan'),
+  ask('ask_analyst', '${payload.output.prompt}', FILING_WAIT, 'TEXT', 'MEDIUM', 'new'),
+  pe('save_answers', ['file', 'answers', DIR, '${metadata.input.text}'], 60),
+)
+tn.link('ask?', 'ask_analyst', 'ask')
+tn.link('ask?', 'prepare_architect', 'plan')
+tn.link('ask_analyst', 'save_answers')
+tn.link('save_answers', 'prepare_architect', 'success')
+tn.fail('save_answers', 'the answers could not be saved')
+session(tn, 'architect', 'file_issues')
+fileNode(tn)
+const NEW_WF = tn.workflow(
+  'ticket-new',
+  'File one ticket from a plain-text request: analyst, open questions to a person, architect (the whole spec), issue in Backlog. Start with `yk ticket new "<text>"`.',
+)
+NEW_WF.edges.push(...edges('trigger', 'prepare_analyst'))
+// ticket-from-plan: the architect splits a plan into tickets -> issues in Backlog, in order, with their dependencies
+const tp = new G()
+session(tp, 'split', 'file_issues')
+fileNode(tp)
+const PLAN_WF = tp.workflow(
+  'ticket-from-plan',
+  'File the tickets of a plan (design/plans/*.md): the architect splits it, each ticket is filed in Backlog in order with its dependencies. Start with `yk ticket from-plan <plan>`.',
+)
+PLAN_WF.edges.push(...edges('trigger', 'prepare_split'))
+
 export const WORKFLOWS: Record<string, Json> = {
   ticket: TICKET_WF,
+  'ticket-agent': AGENT_WF,
+  'ticket-new': NEW_WF,
+  'ticket-from-plan': PLAN_WF,
   attempt_round: ROUND_WF,
   steps_round: STEPS_WF,
   step: STEP_WF,

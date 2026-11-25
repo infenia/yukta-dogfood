@@ -36,7 +36,7 @@ import { criteria } from './init.ts'
 import { release, releaseFailed } from './branch.ts'
 import { untag } from './gate-tests.ts'
 
-const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
+export const REPO = process.env.YUKTA_TICKET_REPO ?? 'infenia/yukta'
 const PROJECT = process.env.YUKTA_TICKET_PROJECT ?? '5'
 const OWNER = process.env.YUKTA_TICKET_OWNER ?? 'infenia'
 const TYPES: Record<string, string> = { feature: 'feat', bug: 'fix', refactor: 'refactor', docs: 'docs', chore: 'chore' }
@@ -65,7 +65,7 @@ const FORBIDDEN: [RegExp, string][] = [
   ],
 ]
 
-function gh(args: string[], check = true, env?: Record<string, string>): string {
+export function gh(args: string[], check = true, env?: Record<string, string>): string {
   const r = runProc(['gh', ...args], { env })
   if (check && r.code) die(`gh ${args.slice(0, 3).join(' ')}: ${r.stderr.trim().slice(0, 300)}`)
   return r.stdout
@@ -106,7 +106,7 @@ function intake(n: string): number {
 }
 
 /** Adds the issue to the project (a no-op when it is there) and sets the Status field by option name; an unknown field or option is reported and skipped. */
-function projectSetStatus(url: string, status: string, token: string): void {
+export function projectSetStatus(url: string, status: string, token: string): void {
   const env = { GH_TOKEN: token }
   const projectId = JSON.parse(gh(['project', 'view', PROJECT, '--owner', OWNER, '--format', 'json'], true, env)).id as string
   const fields: Json[] = JSON.parse(

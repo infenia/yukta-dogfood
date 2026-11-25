@@ -3347,6 +3347,755 @@
         }
       ]
     },
+    "ticket-agent": {
+      "workflowId": "ticket-agent",
+      "description": "One filing session (analyst or architect) on AGENT_SESSION; its questions go to a person through the input requests.",
+      "nodes": [
+        {
+          "nodeId": "trigger",
+          "type": "CONSTANT_SOURCE",
+          "config": {
+            "variables": {
+              "prompt": "${start.prompt}"
+            }
+          }
+        },
+        {
+          "nodeId": "agent",
+          "type": "AGENT_SESSION",
+          "config": {
+            "harness": "claude-code",
+            "mode": "TASK",
+            "prompt": "${payload.prompt}",
+            "model": "${start.model}",
+            "workingDir": "${start.project}",
+            "approvals": "ASK",
+            "approvalRisk": "MEDIUM",
+            "approvalTimeout": 86400,
+            "timeout": 90000,
+            "args": [
+              "--setting-sources",
+              "project",
+              "--disable-slash-commands",
+              "--no-session-persistence",
+              "--tools",
+              "Read,Grep,Glob,Bash,Write,AskUserQuestion",
+              "--allowedTools",
+              "Read",
+              "Grep",
+              "Glob",
+              "${start.allowWrite}",
+              "${start.allowBash}",
+              "--disallowedTools",
+              "Edit",
+              "Bash(git commit:*)",
+              "Bash(git push:*)",
+              "--append-system-prompt-file",
+              "${start.rulesFile}",
+              "--max-budget-usd",
+              "${start.budget}",
+              "--effort",
+              "${start.effort}",
+              "--json-schema",
+              "${start.schema}"
+            ],
+            "env": {
+              "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-5-5",
+              "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-5-5",
+              "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"
+            },
+            "engine": {
+              "concurrencyGroup": "claude"
+            }
+          }
+        },
+        {
+          "nodeId": "ok",
+          "type": "CONSOLE_TERMINAL",
+          "config": {
+            "displayOutput": true
+          }
+        },
+        {
+          "nodeId": "failed",
+          "type": "CONSOLE_TERMINAL",
+          "config": {}
+        },
+        {
+          "nodeId": "early",
+          "type": "CONSOLE_TERMINAL",
+          "config": {}
+        }
+      ],
+      "edges": [
+        {
+          "source": "trigger",
+          "target": "agent"
+        },
+        {
+          "source": "agent",
+          "target": "ok",
+          "sourcePort": "success"
+        },
+        {
+          "source": "agent",
+          "target": "failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "agent",
+          "target": "early",
+          "sourcePort": "incomplete"
+        }
+      ]
+    },
+    "ticket-new": {
+      "workflowId": "ticket-new",
+      "description": "File one ticket from a plain-text request: analyst, open questions to a person, architect (the whole spec), issue in Backlog. Start with `yk ticket new \"<text>\"`.",
+      "nodes": [
+        {
+          "nodeId": "trigger",
+          "type": "CONSTANT_SOURCE",
+          "config": {}
+        },
+        {
+          "nodeId": "prepare_analyst",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "prepare",
+              "analyst",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 120,
+            "timeoutSeconds": 120,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "analyst",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "ticket-agent",
+            "timeoutSeconds": 90600,
+            "routeByOutcome": true,
+            "payload": {
+              "run": "${start.run}",
+              "worktree": "${start.worktree}",
+              "claudeBin": "${start.claudeBin}",
+              "gateStep": "${start.gateStep}",
+              "gateFinal": "${start.gateFinal}",
+              "stateDir": "${start.stateDir}",
+              "healCmd": "${start.healCmd}",
+              "baselineCmd": "${start.baselineCmd}",
+              "runId": "${start.runId}",
+              "events": "${start.events}",
+              "prompt": "${payload.output.prompt}",
+              "project": "${start.project}",
+              "model": "${payload.output.model}",
+              "effort": "${payload.output.effort}",
+              "budget": "${payload.output.budget}",
+              "schema": "${payload.output.schema}",
+              "rulesFile": "${payload.output.rules}",
+              "allowWrite": "${payload.output.allowWrite}",
+              "allowBash": "${payload.output.allowBash}"
+            },
+            "engine": {
+              "onError": "ROUTE"
+            }
+          }
+        },
+        {
+          "nodeId": "answer_analyst",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "answer",
+              "analyst",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 300,
+            "timeoutSeconds": 300,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "inputMode": "STDIN",
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "prepare_analyst.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the analyst prompt could not be written"
+          }
+        },
+        {
+          "nodeId": "answer_analyst.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the analyst did not give a valid answer (the ERROR line says why)"
+          }
+        },
+        {
+          "nodeId": "ask?",
+          "type": "BRANCH",
+          "config": {
+            "mode": "SELECT_KEY",
+            "selector": "payload['output']['ask']",
+            "cases": {
+              "true": "ask"
+            },
+            "defaultPort": "plan"
+          }
+        },
+        {
+          "nodeId": "ask_analyst",
+          "type": "ASK_INPUT",
+          "config": {
+            "prompt": "${payload.output.prompt}",
+            "kind": "TEXT",
+            "risk": "MEDIUM",
+            "ttlSeconds": 86400,
+            "onTimeout": "FAIL",
+            "route": "ticket",
+            "context": {
+              "issue": "new",
+              "run_id": "${start.runId}",
+              "gate": "ask_analyst"
+            }
+          }
+        },
+        {
+          "nodeId": "save_answers",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "answers",
+              "${start.dir}",
+              "${metadata.input.text}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 60,
+            "timeoutSeconds": 60,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true
+          }
+        },
+        {
+          "nodeId": "save_answers.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the answers could not be saved"
+          }
+        },
+        {
+          "nodeId": "prepare_architect",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "prepare",
+              "architect",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 120,
+            "timeoutSeconds": 120,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "architect",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "ticket-agent",
+            "timeoutSeconds": 90600,
+            "routeByOutcome": true,
+            "payload": {
+              "run": "${start.run}",
+              "worktree": "${start.worktree}",
+              "claudeBin": "${start.claudeBin}",
+              "gateStep": "${start.gateStep}",
+              "gateFinal": "${start.gateFinal}",
+              "stateDir": "${start.stateDir}",
+              "healCmd": "${start.healCmd}",
+              "baselineCmd": "${start.baselineCmd}",
+              "runId": "${start.runId}",
+              "events": "${start.events}",
+              "prompt": "${payload.output.prompt}",
+              "project": "${start.project}",
+              "model": "${payload.output.model}",
+              "effort": "${payload.output.effort}",
+              "budget": "${payload.output.budget}",
+              "schema": "${payload.output.schema}",
+              "rulesFile": "${payload.output.rules}",
+              "allowWrite": "${payload.output.allowWrite}",
+              "allowBash": "${payload.output.allowBash}"
+            },
+            "engine": {
+              "onError": "ROUTE"
+            }
+          }
+        },
+        {
+          "nodeId": "answer_architect",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "answer",
+              "architect",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 300,
+            "timeoutSeconds": 300,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "inputMode": "STDIN",
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "prepare_architect.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the architect prompt could not be written"
+          }
+        },
+        {
+          "nodeId": "answer_architect.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the architect did not give a valid answer (the ERROR line says why)"
+          }
+        },
+        {
+          "nodeId": "file_issues",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "issue",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 600,
+            "timeoutSeconds": 600,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true
+          }
+        },
+        {
+          "nodeId": "done",
+          "type": "CONSOLE_TERMINAL",
+          "config": {
+            "displayOutput": true
+          }
+        },
+        {
+          "nodeId": "file_issues.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the issues could not be filed"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "source": "prepare_analyst",
+          "target": "analyst",
+          "sourcePort": "success"
+        },
+        {
+          "source": "prepare_analyst",
+          "target": "prepare_analyst.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "analyst",
+          "target": "answer_analyst",
+          "sourcePort": "success"
+        },
+        {
+          "source": "analyst",
+          "target": "answer_analyst",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "analyst",
+          "target": "answer_analyst",
+          "sourcePort": "error"
+        },
+        {
+          "source": "answer_analyst",
+          "target": "ask?",
+          "sourcePort": "success"
+        },
+        {
+          "source": "answer_analyst",
+          "target": "answer_analyst.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "ask?",
+          "target": "ask_analyst",
+          "sourcePort": "ask"
+        },
+        {
+          "source": "ask?",
+          "target": "prepare_architect",
+          "sourcePort": "plan"
+        },
+        {
+          "source": "ask_analyst",
+          "target": "save_answers"
+        },
+        {
+          "source": "save_answers",
+          "target": "prepare_architect",
+          "sourcePort": "success"
+        },
+        {
+          "source": "save_answers",
+          "target": "save_answers.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "prepare_architect",
+          "target": "architect",
+          "sourcePort": "success"
+        },
+        {
+          "source": "prepare_architect",
+          "target": "prepare_architect.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "architect",
+          "target": "answer_architect",
+          "sourcePort": "success"
+        },
+        {
+          "source": "architect",
+          "target": "answer_architect",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "architect",
+          "target": "answer_architect",
+          "sourcePort": "error"
+        },
+        {
+          "source": "answer_architect",
+          "target": "file_issues",
+          "sourcePort": "success"
+        },
+        {
+          "source": "answer_architect",
+          "target": "answer_architect.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "file_issues",
+          "target": "done",
+          "sourcePort": "success"
+        },
+        {
+          "source": "file_issues",
+          "target": "file_issues.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "trigger",
+          "target": "prepare_analyst"
+        }
+      ]
+    },
+    "ticket-from-plan": {
+      "workflowId": "ticket-from-plan",
+      "description": "File the tickets of a plan (design/plans/*.md): the architect splits it, each ticket is filed in Backlog in order with its dependencies. Start with `yk ticket from-plan <plan>`.",
+      "nodes": [
+        {
+          "nodeId": "trigger",
+          "type": "CONSTANT_SOURCE",
+          "config": {}
+        },
+        {
+          "nodeId": "prepare_split",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "prepare",
+              "split",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 120,
+            "timeoutSeconds": 120,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "split",
+          "type": "SUB_WORKFLOW",
+          "config": {
+            "workflowId": "ticket-agent",
+            "timeoutSeconds": 90600,
+            "routeByOutcome": true,
+            "payload": {
+              "run": "${start.run}",
+              "worktree": "${start.worktree}",
+              "claudeBin": "${start.claudeBin}",
+              "gateStep": "${start.gateStep}",
+              "gateFinal": "${start.gateFinal}",
+              "stateDir": "${start.stateDir}",
+              "healCmd": "${start.healCmd}",
+              "baselineCmd": "${start.baselineCmd}",
+              "runId": "${start.runId}",
+              "events": "${start.events}",
+              "prompt": "${payload.output.prompt}",
+              "project": "${start.project}",
+              "model": "${payload.output.model}",
+              "effort": "${payload.output.effort}",
+              "budget": "${payload.output.budget}",
+              "schema": "${payload.output.schema}",
+              "rulesFile": "${payload.output.rules}",
+              "allowWrite": "${payload.output.allowWrite}",
+              "allowBash": "${payload.output.allowBash}"
+            },
+            "engine": {
+              "onError": "ROUTE"
+            }
+          }
+        },
+        {
+          "nodeId": "answer_split",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "answer",
+              "split",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 300,
+            "timeoutSeconds": 300,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true,
+            "inputMode": "STDIN",
+            "outputFormat": "JSON"
+          }
+        },
+        {
+          "nodeId": "prepare_split.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the split prompt could not be written"
+          }
+        },
+        {
+          "nodeId": "answer_split.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the split did not give a valid answer (the ERROR line says why)"
+          }
+        },
+        {
+          "nodeId": "file_issues",
+          "type": "PROCESS_EXECUTOR",
+          "config": {
+            "command": [
+              "bun",
+              "__TICKET__/src/ticket/ticketkit.ts",
+              "file",
+              "issue",
+              "${start.dir}"
+            ],
+            "workingDir": "${start.project}",
+            "env": {
+              "YK_CLAUDE_BIN": "${start.claudeBin}",
+              "TICKET_GATE_STEP": "${start.gateStep}",
+              "TICKET_GATE_FINAL": "${start.gateFinal}",
+              "YUKTA_DEV_STATE_DIR": "${start.stateDir}",
+              "TICKET_HEAL_CMD": "${start.healCmd}",
+              "TICKET_BASELINE_CMD": "${start.baselineCmd}"
+            },
+            "timeout": 600,
+            "timeoutSeconds": 600,
+            "failureMode": "CONTINUE",
+            "routeByExitCode": true
+          }
+        },
+        {
+          "nodeId": "done",
+          "type": "CONSOLE_TERMINAL",
+          "config": {
+            "displayOutput": true
+          }
+        },
+        {
+          "nodeId": "file_issues.failed",
+          "type": "OUTCOME_TERMINAL",
+          "config": {
+            "outcome": "FAILED",
+            "reason": "the issues could not be filed"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "source": "prepare_split",
+          "target": "split",
+          "sourcePort": "success"
+        },
+        {
+          "source": "prepare_split",
+          "target": "prepare_split.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "split",
+          "target": "answer_split",
+          "sourcePort": "success"
+        },
+        {
+          "source": "split",
+          "target": "answer_split",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "split",
+          "target": "answer_split",
+          "sourcePort": "error"
+        },
+        {
+          "source": "answer_split",
+          "target": "file_issues",
+          "sourcePort": "success"
+        },
+        {
+          "source": "answer_split",
+          "target": "answer_split.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "file_issues",
+          "target": "done",
+          "sourcePort": "success"
+        },
+        {
+          "source": "file_issues",
+          "target": "file_issues.failed",
+          "sourcePort": "failure"
+        },
+        {
+          "source": "trigger",
+          "target": "prepare_split"
+        }
+      ]
+    },
     "attempt_round": {
       "workflowId": "attempt_round",
       "description": "All steps, the final gate and the review.",

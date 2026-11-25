@@ -174,14 +174,28 @@ Then answer with that JSON.`
 /** The schema text for claude: cross-file $refs (revision-result -> ticket-spec) are inlined, as claude cannot resolve files, every `$schema` is dropped and top-level allOf/anyOf/oneOf too:
  * claude's validator does not know draft 2020-12 and refuses the schema ("no schema with key or ref ...") */
 export function flatSchema(name: string): string {
-  const sch = JSON.parse(readFileSync(join(KIT, 'schemas', `${name}.schema.json`), 'utf8'))
-  const ext = JSON.parse(readFileSync(join(KIT, 'schemas', 'ticket-spec.schema.json'), 'utf8'))['$defs'] ?? {}
-  let text = dumps(sch)
-  if (text.includes('ticket-spec.schema.json#/$defs/')) {
-    sch['$defs'] = { ...(sch['$defs'] ?? {}), ...ext }
-    text = dumps(sch).replaceAll('ticket-spec.schema.json#/$defs/', '#/$defs/')
+  const files: Record<string, Json> = {}
+  const file = (f: string): Json => (files[f] ??= JSON.parse(readFileSync(join(KIT, 'schemas', f), 'utf8')))
+  const at = (doc: Json, ptr: string): Json =>
+    ptr
+      .split('/')
+      .filter(Boolean)
+      .reduce((o, k) => o[k.replaceAll('~1', '/').replaceAll('~0', '~')], doc)
+  // every $ref, local ("#/$defs/x") or to another schema file ("ticket-spec.schema.json#/$defs/step", "ticket-body.schema.json"), is inlined:
+  // claude's validator cannot resolve files; the schemas have no cycles
+  const inline = (v: Json, f: string): Json => {
+    if (Array.isArray(v)) return v.map((x) => inline(x, f))
+    if (!v || typeof v !== 'object') return v
+    if (typeof v.$ref === 'string') {
+      const [target, ptr = ''] = v.$ref.split('#')
+      const tf = target || f
+      const { $ref: _, ...rest } = v
+      void _
+      return { ...inline(at(file(tf), ptr), tf), ...inline(rest, f) }
+    }
+    return Object.fromEntries(Object.entries(v).flatMap(([k, x]) => (['$schema', '$id', '$defs'].includes(k) ? [] : [[k, inline(x, f)]])))
   }
-  const out = JSON.parse(JSON.stringify(JSON.parse(text), (k, v) => (k === '$schema' && typeof v === 'string' ? undefined : v)))
+  const out = inline(file(`${name}.schema.json`), `${name}.schema.json`)
   for (const k of ['allOf', 'anyOf', 'oneOf']) delete out[k] // the API refuses them at the top of a tool schema (400); ajv still enforces them on the answer, with one retry
   return JSON.stringify(out)
 }

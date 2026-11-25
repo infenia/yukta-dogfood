@@ -34,7 +34,6 @@ import { main as healReport } from './heal/heal-report.ts'
 import { plan, main as planMain } from './plan.ts'
 import { cmdThrottle } from './throttle.ts'
 import {
-  api,
   cmdAnswer,
   cmdBreak,
   cmdDetail,
@@ -62,7 +61,6 @@ import {
   changesSum,
   checkSession,
   cliJson,
-  devKey,
   mcpKey,
   die,
   ensureServer,
@@ -78,7 +76,6 @@ import {
   lock,
   lockHeld,
   mkdirp,
-  need,
   onPath,
   ours,
   readJson,
