@@ -67,8 +67,9 @@ export function renderLocalTicketSession(out: string): void {
 
 /** "<run_id> <execution>" of the latest run of an issue. */
 function ticketLast(issue: string): [string, string] {
-  const f = join(STATE_DIR, `ticket-last-${issue}`)
-  if (!isFile(f)) die(`no ticket run of issue ${issue} started from this checkout`)
+  // the run's checkout first, then the machine's copy: status may be asked from another checkout or worktree than the one that started the run
+  const f = [join(STATE_DIR, `ticket-last-${issue}`), join(DEV_HOME, `ticket-last-${issue}`)].find(isFile)
+  if (!f) die(`no ticket run of issue ${issue} recorded (a run that was never started leaves none)`)
   const [runId, execId] = text(f).trim().split(/\s+/)
   return [runId!, execId!]
 }
@@ -128,10 +129,11 @@ async function ticketRun(argv: string[], ykPath: string): Promise<number> {
     }
     const execId = cliJson(['workflow', 'start', session, 'ticket-run', '--payload', JSON.stringify(payload)]).data?.executionId
     if (!execId) die('could not start the ticket workflow')
-    writeFileSync(join(STATE_DIR, `ticket-last-${issue}`), `${runId} ${execId}\n`)
+    for (const d of [STATE_DIR, DEV_HOME]) writeFileSync(join(d, `ticket-last-${issue}`), `${runId} ${execId}\n`)
     console.log(`STARTED execution=${execId} session=${session} run=${STATE_DIR}/ticket/${runId} worktree=${wt}`)
     process.env.YUKTA_PROJECT = root
     process.env.YUKTA_SCOPE = `ticket:${issue}`
+    process.env.YUKTA_TICKET_RUN = payload.run
     if (notify) startNotifier(session, execId, ykPath)
     if (mode === 'detach') return 0
     return await watchOwned(session, execId)
@@ -197,8 +199,12 @@ async function ticketFile(wf: 'ticket-new' | 'ticket-from-plan', argv: string[],
     )
     if (detach) return 0
     const rc = await watchOwned(session, execId)
-    for (const f of ['filed.json']) if (isFile(join(dir, f))) console.log(`filed: ${text(join(dir, f)).trim()}`)
-    if (dryRun) console.log(`dry run: the bodies are ${dir}/ticket-<i>.md`)
+    const filed: number[] = isFile(join(dir, 'filed.json')) ? JSON.parse(text(join(dir, 'filed.json'))).numbers : []
+    if (dryRun)
+      console.log(
+        `dry run: nothing filed; would file ${filed.length} ticket${filed.length === 1 ? '' : 's'}, the bodies are ${dir}/ticket-<i>.md`,
+      )
+    else if (filed.length) console.log(`filed: ${filed.map((n) => '#' + n).join(' ')}`)
     return rc
   } finally {
     rmSync(tmp, { recursive: true, force: true })

@@ -177,7 +177,8 @@ export function validate(
     }
     // 4 commands
     for (const c of s.done_when.commands as string[])
-      if (!isProjectCommand(templates, c)) err(`${i}: done_when command is not a project command template: ${c}`)
+      if (!isProjectCommand(templates, c))
+        err(`${i}: done_when command is not a project command template (${Object.values<string>(project.commands).join(' | ')}): ${c}`)
     const mods = [...new Set((s.write_files as string[]).map(moduleOf))]
     if (mods.length > 1)
       err(
@@ -186,7 +187,9 @@ export function validate(
           .map((m) => `'${m}'`)
           .join(', ')}]`,
       )
+    // tests_mode existing (docs, chore): no test is written, so a step is verified by its criteria and the checks, not by a test command
     if (
+      spec.tests_mode !== 'existing' &&
       !s.covers.length &&
       !(s.done_when.commands as string[]).some((c) => c.split(' && ').some((p) => testTemplates.some((t) => t.test(p))))
     )
