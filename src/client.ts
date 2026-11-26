@@ -73,6 +73,8 @@ export function serverProperties(postgres = false): string {
   ]
   // a session of the dogfood plus the ticket workflows is over the 256 KB default body (`session apply` answers 413); loopback only
   keys.push('spring.http.codecs.max-in-memory-size=8MB') // Boot 4 name; spring.codec.* (application.yaml) is ignored
+  // the guard answers people's reviews; on a busy machine it can miss the 5 s default, which refused their start or stop
+  keys.push('yukta.supervisor.review-timeout=15s')
   if (agentKeysSupported())
     keys.push(
       'yukta.api-keys[2].name=claude-session',

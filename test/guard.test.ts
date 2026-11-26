@@ -3,7 +3,7 @@
 // The resource guard: what it owns, the order of the install, the directives it sends and the reviews it answers (against a fake server).
 import { expect, test } from 'bun:test'
 import { join } from 'node:path'
-import { ADVICE, GUARD, agent, answerReviews, directives, runTargets, saveGuard } from '../src/guard.ts'
+import { ADVICE, GUARD, agent, answerReviews, directives, guardDef, runTargets, saveGuard } from '../src/guard.ts'
 
 const root = join(import.meta.dir, '..')
 const wfs = (f: string): string[] => Object.keys(require(join(root, f)).workflows)
@@ -49,7 +49,7 @@ const line = (s: Seen): string => `${s.method} ${s.path}`
 test('saveGuard: an old ticket-advice is deleted first; a stored guard that differs is replaced; the credential comes back', async () => {
   const f = fake((s) => (line(s) === `GET /api/supervisors/${GUARD}` ? Response.json({ data: { settings: { old: true } } }) : undefined))
   try {
-    expect(await saveGuard(f.url)).toBe('yag_x')
+    expect(await saveGuard(f.url, join(root, 'supervisor'), false)).toBe('yag_x')
     expect(f.seen.map(line)).toEqual([
       `GET /api/supervisors/${ADVICE}`,
       `DELETE /api/supervisors/${ADVICE}`,
@@ -57,6 +57,25 @@ test('saveGuard: an old ticket-advice is deleted first; a stored guard that diff
       `PUT /api/supervisors/${GUARD}`,
       `POST /api/supervisors/${GUARD}/credential?ttlHours=24`,
     ])
+  } finally {
+    f.srv.stop(true)
+  }
+})
+
+test('guardDef: onReviewTimeout ALLOW only for a server that knows the setting', () => {
+  const dir = join(root, 'supervisor')
+  expect(guardDef(dir, false).settings.onReviewTimeout).toBeUndefined()
+  expect(guardDef(dir, true).settings).toEqual({ ...def.settings, onReviewTimeout: 'ALLOW' })
+})
+
+test('saveGuard: a lenient guard is saved with onReviewTimeout ALLOW', async () => {
+  const f = fake((s) =>
+    s.path.endsWith(ADVICE) || line(s) === `GET /api/supervisors/${GUARD}` ? new Response('{}', { status: 404 }) : undefined,
+  )
+  try {
+    await saveGuard(f.url, join(root, 'supervisor'), true)
+    const post = f.seen.find((s) => line(s) === 'POST /api/supervisors')
+    expect(JSON.parse(post!.body).settings.onReviewTimeout).toBe('ALLOW')
   } finally {
     f.srv.stop(true)
   }
@@ -71,7 +90,7 @@ test('saveGuard: the same stored guard (the server orders the keys its own way) 
         : undefined,
   )
   try {
-    await saveGuard(f.url)
+    await saveGuard(f.url, join(root, 'supervisor'), false)
     expect(f.seen.map(line)).toEqual([
       `GET /api/supervisors/${ADVICE}`,
       `GET /api/supervisors/${GUARD}`,
@@ -91,7 +110,7 @@ test('saveGuard: a new guard is created, and a refusal throws', async () => {
         : undefined,
   )
   try {
-    await expect(saveGuard(f.url)).rejects.toThrow('supervisor: HTTP 400')
+    await expect(saveGuard(f.url, join(root, 'supervisor'), false)).rejects.toThrow('supervisor: HTTP 400')
     expect(f.seen.map(line)).toEqual([`GET /api/supervisors/${ADVICE}`, `GET /api/supervisors/${GUARD}`, 'POST /api/supervisors'])
   } finally {
     f.srv.stop(true)
